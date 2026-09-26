@@ -12,7 +12,7 @@ const state = {
   attempt: null,         // currently selected attempt
   catches: new Map(),    // route_id -> {id, route_id, pokemon}
   fights: new Map(),     // battle_id -> {id, battle_id, result, members: [{slot, catch_id}]}
-  battleId: null,        // battle shown on the Boss Fights tab
+  battleId: null,        // battle shown on the Trainer Battles tab
 };
 
 const TEAM_SIZE = 6;
@@ -196,7 +196,7 @@ async function onCatchChange(route, select) {
 }
 
 // ---------------------------------------------------------------------------
-// Boss fights tab: battle list drawer + focus view (enemy team, your team, box)
+// Trainer Battles tab: battle list drawer + focus view (enemy team, your team, box)
 // ---------------------------------------------------------------------------
 
 const mobileLayout = window.matchMedia("(max-width: 760px)");
@@ -265,32 +265,38 @@ function renderFightView() {
 
 // --- battle list (drawer) ------------------------------------------------------
 
-/** Level-cap battles, each followed by the other trainers leading up to it. */
+/**
+ * One dropdown per split: the trainers leading up to a level-cap battle, in
+ * game order, ending with the level-cap battle itself.
+ */
 function renderBattleList() {
   const query = $("#battle-filter").value.trim().toLowerCase();
   const matches = (b) => !query || `${b.name} ${b.location ?? ""}`.toLowerCase().includes(query);
   const groups = levelCapBattles().map((boss) => {
-    const others = state.battles.filter((b) => b.group_id === boss.id);
-    const shown = others.filter(matches);
-    if (query && !matches(boss) && !shown.length) return null;
-    const open = query ? shown.length > 0 : openGroups.has(boss.id);
+    const battles = [...state.battles.filter((b) => b.group_id === boss.id), boss];
+    const shown = battles.filter(matches);
+    if (!shown.length) return null;
+    const open = Boolean(query) || openGroups.has(boss.id);
+    const result = state.fights.get(boss.id)?.result;
     const toggle = el("button", {
       type: "button",
-      class: "group-toggle",
+      class: `group-toggle ${result ?? ""}`,
       "aria-expanded": String(open),
-      "aria-label": `${open ? "Hide" : "Show"} the ${others.length} trainers before ${boss.name}`,
-      title: `${others.length} other trainers`,
-      disabled: others.length === 0,
-    }, el("span", { class: "chevron", "aria-hidden": "true" }, "▸"), String(others.length));
+    },
+      el("span", { class: "chevron", "aria-hidden": "true" }, "▸"),
+      el("span", { class: "group-name" }, `${boss.name} Split`),
+      el("span", { class: "battle-status", title: `${boss.name}: ${result ?? "not fought"}` },
+        { won: "✓", lost: "✗" }[result] ?? ""),
+      el("span", { class: "group-meta" }, `Level cap ${boss.level_cap} · ${battles.length} battles`));
     toggle.addEventListener("click", () => {
       if (openGroups.has(boss.id)) openGroups.delete(boss.id);
       else openGroups.add(boss.id);
       renderBattleList();
     });
     return el("li", { class: "battle-group" },
-      el("div", { class: "group-head" }, toggle, battleButton(boss, "boss-item")),
+      toggle,
       el("ol", { class: "trainer-list", hidden: !open },
-        ...shown.map((b) => el("li", {}, battleButton(b, "trainer-item")))));
+        ...shown.map((b) => el("li", {}, battleButton(b, b === boss ? "boss-item" : "trainer-item")))));
   }).filter(Boolean);
   $("#battle-list").replaceChildren(...groups);
   $("#no-matches").hidden = groups.length > 0;
@@ -299,8 +305,9 @@ function renderBattleList() {
 function battleButton(battle, className) {
   const fight = state.fights.get(battle.id);
   const count = fight?.members.length ?? 0;
-  const meta = [battle.level_cap ? `Lv ${battle.level_cap}` : battle.location,
-    count && `${count}/${TEAM_SIZE}`].filter(Boolean);
+  const meta = [battle.location, count && `${count}/${TEAM_SIZE}`].filter(Boolean);
+  const tags = battle.tags.filter((t) => !HIDDEN_TAGS.has(t));
+  if (battle.level_cap !== null) tags.unshift("Boss");
   const button = el("button", {
     type: "button",
     class: `${className} ${fight?.result ?? ""}`,
@@ -309,15 +316,15 @@ function battleButton(battle, className) {
     el("span", { class: "battle-status", title: fight?.result ?? "not fought" },
       { won: "✓", lost: "✗" }[fight?.result] ?? ""),
     el("span", { class: "battle-name" }, battle.name,
-      ...battle.tags.filter((t) => !HIDDEN_TAGS.has(t)).map((t) => el("span", { class: "tag" }, t))),
+      ...tags.map((t) => el("span", { class: t === "Boss" ? "tag boss" : "tag" }, t))),
     el("span", { class: "battle-meta" }, meta.join(" · ")));
   button.addEventListener("click", () => selectBattle(battle.id));
   return button;
 }
 
-/** Expand the group holding a battle so it's visible in the list. */
+/** Expand the split holding a battle so it's visible in the list. */
 function revealInList(battle) {
-  if (battle?.group_id) openGroups.add(battle.group_id);
+  if (battle) openGroups.add(battle.group_id ?? battle.id);
 }
 
 // --- focus: header, your team, box ---------------------------------------------
@@ -602,7 +609,7 @@ function showTab(name) {
     btn.setAttribute("aria-selected", active);
     $(`#tab-${btn.dataset.tab}`).hidden = !active;
   }
-  // Opening Boss Fights slides the battle list out (a CSS animation that replays
+  // Opening Trainer Battles slides the battle list out (a CSS animation that replays
   // whenever the tab goes from hidden to shown).
   if (name === "fights") {
     setDrawer(true);

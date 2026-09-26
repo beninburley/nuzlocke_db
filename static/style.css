@@ -90,7 +90,7 @@ main, #no-attempts { max-width: 1400px; margin: 0 auto; padding: 12px 16px 40px;
 .muted { color: var(--muted); font-weight: normal; }
 
 /* ---------------------------------------------------------------------------
-   Boss fights: drawer (battle list) + focus view
+   Trainer battles: drawer (split dropdowns) + focus view
    --------------------------------------------------------------------------- */
 
 .fights-view { display: flex; align-items: flex-start; }
@@ -141,23 +141,26 @@ main, #no-attempts { max-width: 1400px; margin: 0 auto; padding: 12px 16px 40px;
 .battle-list, .trainer-list { list-style: none; margin: 0; padding: 0; }
 .battle-list { padding: 4px; }
 .battle-group + .battle-group { border-top: 1px solid var(--border); }
-.group-head { display: flex; align-items: stretch; }
+/* Split dropdown header: "Route 104 Aqua Grunt Split" */
 .group-toggle {
-  flex: none;
-  display: flex;
+  display: grid;
+  grid-template-columns: 14px 1fr 16px;
+  gap: 0 6px;
   align-items: center;
-  gap: 2px;
-  width: 40px;
-  padding: 0 4px;
+  width: 100%;
+  padding: 7px 8px;
   border: 0;
+  border-radius: 6px;
   background: none;
-  color: var(--muted);
-  font-size: 11px;
+  text-align: left;
 }
-.group-toggle:disabled { visibility: hidden; }
-.group-toggle .chevron { display: inline-block; transition: transform 0.15s ease; }
+.group-toggle:hover { background: var(--row-alt); }
+.group-toggle .chevron { color: var(--muted); font-size: 11px; transition: transform 0.15s ease; }
 .group-toggle[aria-expanded="true"] .chevron { transform: rotate(90deg); }
-.trainer-list { margin: 0 0 6px 40px; border-left: 2px solid var(--border); }
+.group-name { font-weight: 600; }
+.group-toggle .battle-status { grid-row: auto; }
+.group-meta { grid-column: 2; font-size: 12px; color: var(--muted); }
+.trainer-list { margin: 0 0 6px 14px; border-left: 2px solid var(--border); }
 
 .boss-item, .trainer-item {
   display: grid;
@@ -180,6 +183,7 @@ main, #no-attempts { max-width: 1400px; margin: 0 auto; padding: 12px 16px 40px;
 .won .battle-status { color: var(--ok); }
 .lost .battle-status { color: var(--bad); }
 .boss-item .battle-name { font-weight: 600; }
+.tag.boss { border-color: #e3c9c9; background: #fbf3f3; color: var(--bad); }
 .battle-meta { grid-column: 2; font-size: 12px; color: var(--muted); }
 .tag {
   display: inline-block;

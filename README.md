@@ -5,8 +5,9 @@ A small web app that replaces the user-entered parts of the Run & Bun master she
 - **Attempts**: pick which run you're on, or start a new one.
 - **Encounters**: record what you caught on each route. The dropdown only offers
   Pokemon from that route's encounter table (from the sheet's *Encounters* tab).
-- **Boss Fights**: the slide-out list shows the 23 level-cap fights. Expand one
-  to see every other trainer you meet before it, or type in the filter box. Pick
+- **Trainer Battles**: the slide-out list has one dropdown per split, e.g.
+  "Route 104 Aqua Grunt Split". Each lists that split's trainers in game order,
+  ending with the level-cap boss. You can also type in the filter box. Pick
   any trainer to see their team: each Pokemon's level, held item, ability,
   nature and moves. Fights with several trainers get a switcher: the rival's
   starter variants, Museum grunts #1/#2, Tate & Liza, and tag-battle partners.
