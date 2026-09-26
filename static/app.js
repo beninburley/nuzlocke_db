@@ -139,60 +139,105 @@ async function deleteAttempt() {
 // Encounters tab
 // ---------------------------------------------------------------------------
 
-function optionLabel(opt) {
-  let label = opt.pokemon;
-  // Gift/fossil slots use descriptive "levels" like "Fossil" or "Badge 2".
-  if (opt.levels && /[a-z]/i.test(opt.levels)) label += ` [${opt.levels}]`;
-  if (opt.rate) label += ` (${opt.rate}%)`;
-  return label;
-}
-
-function buildRouteSelect(route) {
-  const select = el("select", { "aria-label": `Caught on ${route.name}` },
-    el("option", { value: "" }, "— none —"));
-  const groups = new Map();
-  for (const opt of route.options) {
-    if (!groups.has(opt.method)) groups.set(opt.method, el("optgroup", { label: opt.method }));
-    groups.get(opt.method).append(el("option", { value: opt.pokemon }, optionLabel(opt)));
-  }
-  select.append(...groups.values());
-  return select;
-}
+let pickerRoute = null;  // route whose catch picker is open
 
 function renderEncounters() {
-  const rows = state.routes.map((route) => {
-    const select = buildRouteSelect(route);
-    const current = state.catches.get(route.id);
-    select.value = current?.pokemon ?? "";
-    select.classList.toggle("filled", Boolean(current));
-    select.addEventListener("change", () => onCatchChange(route, select));
-    return el("tr", {}, el("td", {}, route.name), el("td", {}, select));
-  });
+  const rows = state.routes.map((route) =>
+    el("tr", { "data-route": route.id }, el("td", {}, route.name), el("td", {}, catchCell(route))));
   $("#encounters-body").replaceChildren(...rows);
   refreshAttemptLabel();
 }
 
-async function onCatchChange(route, select) {
+/** "+ Add catch", or the catch itself (click to change) with a remove button. */
+function catchCell(route) {
+  const current = state.catches.get(route.id);
+  if (!current) {
+    const add = el("button", { type: "button", class: "add-catch" }, "+ Add catch");
+    add.addEventListener("click", () => openCatchPicker(route));
+    return add;
+  }
+  const change = el("button", { type: "button", class: "catch-chip", title: `Change what you caught on ${route.name}` },
+    sprite(current.pokemon), el("span", { class: "mon-name" }, current.pokemon));
+  change.addEventListener("click", () => openCatchPicker(route));
+  const remove = el("button", { type: "button", class: "catch-remove", "aria-label": `Remove ${current.pokemon} from ${route.name}` }, "×");
+  remove.addEventListener("click", () => removeCatch(route));
+  return el("div", { class: "catch-cell" }, change, remove);
+}
+
+function refreshCatchCell(route) {
+  $(`#encounters-body tr[data-route="${route.id}"] td:last-child`)?.replaceChildren(catchCell(route));
+}
+
+// --- catch picker (popup) ----------------------------------------------------------
+
+function openCatchPicker(route) {
+  pickerRoute = route;
+  const current = state.catches.get(route.id)?.pokemon;
+  $("#picker-title").textContent = route.name;
+  $("#picker-sub").textContent = current ? `Caught: ${current}. Pick another to change it.` : "What did you catch here?";
+
+  // One grid per encounter method (Land, Fishing, Surf, ...), in the sheet's order.
+  const methods = new Map();
+  for (const opt of route.options) {
+    if (!methods.has(opt.method)) methods.set(opt.method, []);
+    methods.get(opt.method).push(opt);
+  }
+  $("#picker-body").replaceChildren(...[...methods].map(([method, options]) =>
+    el("section", { class: "picker-section" },
+      el("h3", {}, method),
+      el("div", { class: "picker-grid" }, ...options.map((opt) => pickerCard(route, opt, current))))));
+  $("#picker-remove").hidden = !current;
+  $("#catch-picker").showModal();
+}
+
+function pickerCard(route, opt, current) {
+  // Gift and fossil slots have descriptive "levels" ("Fossil", "Badge 2") instead of numbers.
+  const levels = opt.levels ? opt.levels.split(",").join(", ") : "";
+  const detail = /[a-z]/i.test(levels) ? levels : levels && `Lv ${levels}`;
+  const card = el("button", {
+    type: "button",
+    class: "pick-card",
+    "aria-pressed": String(opt.pokemon === current),
+  },
+    sprite(opt.pokemon),
+    el("span", { class: "mon-name" }, opt.pokemon),
+    el("span", { class: "pick-odds" }, opt.rate ? `${opt.rate}%` : "—"),
+    el("span", { class: "mon-route" }, detail));
+  card.addEventListener("click", () => {
+    $("#catch-picker").close();
+    if (opt.pokemon !== current) saveCatch(route, opt.pokemon);
+  });
+  return card;
+}
+
+async function removeCatch(route) {
+  const current = state.catches.get(route.id);
+  if (!current) return;
+  // Clearing a catch also takes it off every team it was on (the server cascades).
+  const teams = [...state.fights.values()].filter((f) => f.members.some((m) => m.catch_id === current.id)).length;
+  if (teams && !confirm(`${current.pokemon} is on ${teams} team${teams > 1 ? "s" : ""}. Removing it also takes it off ${teams > 1 ? "those teams" : "that team"}. Continue?`)) {
+    return;
+  }
+  await saveCatch(route, null);
+}
+
+async function saveCatch(route, pokemon) {
   const attemptId = state.attempt.id;
-  const previous = state.catches.get(route.id)?.pokemon ?? "";
   try {
     const { catch: saved } = await save(() =>
-      api("PUT", `/attempts/${attemptId}/catches/${route.id}`, { pokemon: select.value || null }));
+      api("PUT", `/attempts/${attemptId}/catches/${route.id}`, { pokemon }));
     if (state.attempt?.id !== attemptId) return;  // user switched attempts mid-save
     if (saved) {
       state.catches.set(route.id, saved);
     } else {
-      // Clearing a catch also removes it from any fight team (server cascades).
       state.catches.delete(route.id);
       const data = await api("GET", `/attempts/${attemptId}`);
       state.fights = new Map(data.fights.map((f) => [f.battle_id, f]));
     }
-    select.classList.toggle("filled", Boolean(saved));
+    refreshCatchCell(route);
     refreshAttemptLabel();
     renderFightView();
-  } catch {
-    select.value = previous;
-  }
+  } catch { /* save() already reported the error; the cell still shows the saved state */ }
 }
 
 // ---------------------------------------------------------------------------
@@ -642,6 +687,14 @@ async function boot() {
     $("#drawer-close").addEventListener("click", () => setDrawer(false));
     $("#drawer-scrim").addEventListener("click", () => setDrawer(false));
     $("#battle-filter").addEventListener("input", renderBattleList);
+    $("#picker-remove").addEventListener("click", () => {
+      $("#catch-picker").close();
+      removeCatch(pickerRoute).catch(() => {});
+    });
+    // Clicking the dimmed backdrop (outside .picker-inner) closes the picker.
+    $("#catch-picker").addEventListener("click", (e) => {
+      if (e.target === e.currentTarget) e.currentTarget.close();
+    });
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape" && mobileLayout.matches) setDrawer(false);
     });

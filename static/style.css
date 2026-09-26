@@ -13,6 +13,9 @@
 
 * { box-sizing: border-box; }
 
+/* The hidden attribute always wins over layout rules like `display: flex`. */
+[hidden] { display: none !important; }
+
 body {
   margin: 0;
   font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -39,7 +42,6 @@ select {
   background: var(--surface);
   max-width: 100%;
 }
-select.filled { background: var(--filled); border-color: #b9cdf5; }
 
 .topbar {
   position: sticky;
@@ -85,7 +87,70 @@ main, #no-attempts { max-width: 1400px; margin: 0 auto; padding: 12px 16px 40px;
 .grid tbody tr:nth-child(even) { background: var(--row-alt); }
 .grid td:first-child { white-space: nowrap; }
 
-#encounters-body select { width: 100%; max-width: 280px; }
+/* Encounters: "+ Add catch" or the catch itself */
+#encounters-body td { height: 46px; }
+.add-catch { color: var(--accent); border-style: dashed; }
+.catch-cell { display: inline-flex; align-items: center; gap: 4px; }
+.catch-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 10px 0 2px;
+  border-color: #b9cdf5;
+  background: var(--filled);
+}
+.catch-chip .sprite { width: 40px; height: 40px; }
+.catch-remove { width: 24px; height: 24px; padding: 0; border-radius: 50%; line-height: 1; color: var(--muted); }
+.catch-remove:hover { color: var(--bad); border-color: var(--bad); }
+@media (max-width: 600px) {
+  #encounters-body td:first-child { white-space: normal; }
+}
+
+/* Catch picker popup */
+.picker {
+  width: min(760px, calc(100vw - 32px));
+  max-height: 85vh;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 12px 40px rgb(0 0 0 / 0.2);
+}
+.picker::backdrop { background: rgb(0 0 0 / 0.35); }
+.picker-inner { display: flex; flex-direction: column; max-height: 85vh; }
+.picker-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.picker-head h2 { margin: 0; font-size: 18px; }
+.picker-head p { margin: 2px 0 0; font-size: 13px; }
+.picker-body { overflow-y: auto; padding: 8px 16px 16px; }
+.picker-section h3 {
+  margin: 10px 0 6px;
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.picker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
+.pick-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 4px 4px 8px;
+  border-radius: 10px;
+  text-align: center;
+}
+.pick-card:hover { background: var(--row-alt); }
+.pick-card[aria-pressed="true"] { border-color: var(--accent); background: var(--filled); box-shadow: 0 0 0 1px var(--accent); }
+.pick-odds { margin-top: 2px; font-size: 13px; font-weight: 700; color: var(--accent); }
+.picker-foot { padding: 10px 16px; border-top: 1px solid var(--border); text-align: right; }
+.picker-foot:has(> [hidden]:only-child) { display: none; }
 
 .muted { color: var(--muted); font-weight: normal; }
 
