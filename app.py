@@ -87,7 +87,8 @@ def game():
         })
     bosses = [dict(b) for b in conn.execute(
         "SELECT id, name, level_cap FROM bosses ORDER BY position")]
-    return jsonify(routes=routes, bosses=bosses)
+    sprites = {r["species"]: r["url"] for r in conn.execute("SELECT species, url FROM species_sprites")}
+    return jsonify(routes=routes, bosses=bosses, sprites=sprites)
 
 
 # ---------------------------------------------------------------------------

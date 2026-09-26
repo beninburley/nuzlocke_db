@@ -8,6 +8,7 @@ ROOT = Path(__file__).resolve().parent
 DB_PATH = Path(os.environ.get("NUZLOCKE_DB", ROOT / "instance" / "nuzlocke.db"))
 SCHEMA_PATH = ROOT / "schema.sql"
 GAME_DATA_PATH = ROOT / "data" / "game_data.json"
+SPRITES_PATH = ROOT / "data" / "sprites.json"
 
 
 def connect(path=None):
@@ -66,3 +67,11 @@ def load_game_data(conn, path=GAME_DATA_PATH):
             "INSERT OR IGNORE INTO species_families (species, family_id) VALUES (?, ?)",
             [(species, fid) for fid, family in enumerate(data["families"]) for species in family],
         )
+
+        conn.execute("DELETE FROM species_sprites")
+        if SPRITES_PATH.exists():
+            sprites = json.loads(SPRITES_PATH.read_text(encoding="utf-8"))
+            conn.executemany(
+                "INSERT INTO species_sprites (species, url) VALUES (?, ?)",
+                [(species, url) for species, url in sprites.items() if url],
+            )

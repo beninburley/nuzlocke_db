@@ -34,6 +34,12 @@ CREATE TABLE IF NOT EXISTS species_families (
     family_id INTEGER NOT NULL
 );
 
+-- Sprite image per species, from pokeapi.co (data/sprites.json).
+CREATE TABLE IF NOT EXISTS species_sprites (
+    species TEXT PRIMARY KEY,
+    url     TEXT NOT NULL
+);
+
 -- ---------------------------------------------------------------------------
 -- User data.
 -- ---------------------------------------------------------------------------
