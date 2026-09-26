@@ -5,8 +5,15 @@ A small web app that replaces the user-entered parts of the Run & Bun master she
 - **Attempts**: pick which run you're on, or start a new one.
 - **Encounters**: record what you caught on each route. The dropdown only offers
   Pokemon from that route's encounter table (from the sheet's *Encounters* tab).
-- **Boss Fights**: record the team (up to 6) you brought to each of the 23 boss
-  fights, plus won/lost. Slots only offer Pokemon caught during that attempt.
+- **Trainer Battles**: the slide-out list has one dropdown per split, e.g.
+  "Route 104 Aqua Grunt Split". Each lists that split's trainers in game order,
+  ending with the level-cap boss. You can also type in the filter box. Pick
+  any trainer to see their team: each Pokemon's level, held item, ability,
+  nature and moves. Fights with several trainers get a switcher: the rival's
+  starter variants, Museum grunts #1/#2, Tate & Liza, and tag-battle partners.
+  Drag Pokemon from your box (only this attempt's catches) into the six team
+  slots. You can also click a box Pokemon to add or remove it. Drag between
+  slots to swap, or back to the box to remove. Mark each fight won or lost.
 - **Notes**: free text per attempt.
 
 Everything saves automatically on change.
@@ -29,13 +36,30 @@ created on first start. Set `NUZLOCKE_DB` to use a different file.
 
 ## Data
 
-**Game data** (routes, encounter tables, bosses and level caps, dupe-clause
-evolution families) lives in `data/game_data.json`. It is extracted from the
-spreadsheet and synced into the DB on every app start. If you edit the
-spreadsheet's Encounters tab, re-extract it:
+**Game data** lives in `data/game_data.json`. It is extracted from the
+spreadsheet and synced into the DB on every app start. It covers:
+
+- routes and encounter tables (*Encounters* tab)
+- every trainer and their team (*Trainer Lookup* tab, the data behind the
+  *Trainers* tab)
+- the level-cap fights (*Past Boss Fights* header)
+- dupe-clause evolution families
+
+Level-cap fights are matched to their trainers by `LEVEL_CAP_TRAINERS` in
+`scripts/extract_game_data.py`. If you edit the spreadsheet, re-extract:
 
 ```powershell
 .venv\Scripts\python.exe scripts\extract_game_data.py
+```
+
+**Sprites** come from [PokeAPI](https://pokeapi.co/). `data/sprites.json` maps
+every species in the game data to its PokeAPI sprite URL, so the app never calls
+the API itself. Spreadsheet names are translated along the way (`Zigzagoon-G` ->
+`zigzagoon-galar`, `Deerling-A` -> `deerling-autumn`). Re-run the script after
+re-extracting game data if new species appear:
+
+```powershell
+.venv\Scripts\python.exe scripts\fetch_sprites.py
 ```
 
 **Past attempts** from the *Past Encounters* and *Past Boss Fights* tabs can be
@@ -54,6 +78,9 @@ skipped.
 
 To start over, stop the app and delete `instance/nuzlocke.db`.
 
+When a new version changes the schema, the app migrates the existing database
+on startup. It first saves a copy next to it (e.g. `nuzlocke.backup-v0.db`).
+
 ## Rules enforced
 
 Rules are checked in the API and again by SQLite triggers and constraints:
@@ -69,7 +96,8 @@ app.py                 Flask app: JSON API + serves static/
 db.py                  SQLite connection, schema setup, game-data sync
 schema.sql             Tables and integrity triggers
 data/game_data.json    Extracted game data
-scripts/               Spreadsheet extraction and history import
+data/sprites.json      Species -> PokeAPI sprite URL
+scripts/               Spreadsheet extraction, sprite lookup, history import
 static/                Frontend (plain HTML/CSS/JS, no build step)
 ```
 
@@ -77,14 +105,17 @@ static/                Frontend (plain HTML/CSS/JS, no build step)
 
 | Method | Path | Body |
 |---|---|---|
-| GET | `/api/game` | routes (with encounter options) and bosses |
+| GET | `/api/game` | routes (with encounter options), battles, sprites |
+| GET | `/api/battles/<id>` | a battle's trainers and their teams |
 | GET / POST | `/api/attempts` | `{number?}` |
 | GET / PATCH / DELETE | `/api/attempts/<id>` | `{number?, notes?}` |
 | PUT | `/api/attempts/<id>/catches/<route_id>` | `{pokemon}` (null clears) |
-| PUT | `/api/attempts/<id>/fights/<boss_id>` | `{members: [catch_id or null] x6, result: "won" or "lost" or null}` |
+| PUT | `/api/attempts/<id>/fights/<battle_id>` | `{members: [catch_id or null] x6, result: "won" or "lost" or null}` |
 
 ## Not in the MVP yet
 
+- Trainer portraits (the sheet's *Sprites* tab embeds images rather than linking them)
+- Tracking which trainers you've beaten or skipped (the *Trainers* tab's Status column)
 - Per-Pokemon details: evolved form at each fight, nature/ability, death (who killed it)
 - Failed or skipped encounters (a `-` in the old sheet)
 - Dupes-clause warnings (the family data is already in the DB)

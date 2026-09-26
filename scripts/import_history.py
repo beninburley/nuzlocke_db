@@ -200,7 +200,7 @@ def import_attempt(conn, number, enc, fights, names, ids, report):
         if not members and not won:
             continue
         result = "won" if won else "lost"
-        cur = conn.execute("INSERT INTO fights (attempt_id, boss_id, result) VALUES (?, ?, ?)",
+        cur = conn.execute("INSERT INTO fights (attempt_id, battle_id, result) VALUES (?, ?, ?)",
                            (attempt_id, ids["boss"][boss], result))
         conn.executemany("INSERT INTO fight_members (fight_id, slot, catch_id) VALUES (?, ?, ?)",
                          [(cur.lastrowid, slot, c) for slot, c in enumerate(members[:6], start=1)])
@@ -227,7 +227,8 @@ def main():
     names = Names(conn)
     ids = {
         "route": {r["name"]: r["id"] for r in conn.execute("SELECT id, name FROM routes")},
-        "boss": {r["name"]: r["id"] for r in conn.execute("SELECT id, name FROM bosses")},
+        "boss": {r["name"]: r["id"] for r in conn.execute(
+            "SELECT id, name FROM battles WHERE level_cap IS NOT NULL")},
     }
     route_options = defaultdict(list)
     for r in conn.execute("SELECT DISTINCT r.name, e.pokemon FROM route_encounters e "

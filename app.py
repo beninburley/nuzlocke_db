@@ -85,9 +85,44 @@ def game():
             "rate": round(row["rate"], 2) if row["rate"] is not None else None,
             "levels": row["levels"],
         })
-    bosses = [dict(b) for b in conn.execute(
-        "SELECT id, name, level_cap FROM bosses ORDER BY position")]
-    return jsonify(routes=routes, bosses=bosses)
+    battles = [dict(b, tags=[]) for b in conn.execute(
+        "SELECT id, name, location, level_cap, group_id FROM battles ORDER BY position")]
+    by_battle = {b["id"]: b for b in battles}
+    for trainer in conn.execute("SELECT battle_id, tags FROM trainers ORDER BY position"):
+        tags = by_battle[trainer["battle_id"]]["tags"]
+        tags.extend(t for t in trainer["tags"].split(",") if t and t not in tags)
+    sprites = {r["species"]: r["url"] for r in conn.execute("SELECT species, url FROM species_sprites")}
+    return jsonify(routes=routes, battles=battles, sprites=sprites)
+
+
+@app.get("/api/battles/<int:battle_id>")
+def battle_detail(battle_id):
+    """A battle's trainers and their full teams (item, ability, nature, moves)."""
+    conn = get_db()
+    battle = conn.execute(
+        "SELECT id, name, location, level_cap, group_id FROM battles WHERE id = ?",
+        (battle_id,)).fetchone()
+    if battle is None:
+        raise ApiError("battle not found", 404)
+    trainers = [dict(t, tags=[x for x in t["tags"].split(",") if x], pokemon=[])
+                for t in conn.execute(
+                    "SELECT id, name, location, tags FROM trainers "
+                    "WHERE battle_id = ? ORDER BY position", (battle_id,))]
+    by_trainer = {t["id"]: t for t in trainers}
+    for p in conn.execute(
+        "SELECT p.* FROM trainer_pokemon p JOIN trainers t ON t.id = p.trainer_id "
+        "WHERE t.battle_id = ? ORDER BY p.trainer_id, p.slot", (battle_id,)
+    ):
+        by_trainer[p["trainer_id"]]["pokemon"].append({
+            "slot": p["slot"],
+            "species": p["species"],
+            "level": p["level"],
+            "item": p["item"],
+            "ability": p["ability"],
+            "nature": p["nature"],
+            "moves": [m for m in (p["move1"], p["move2"], p["move3"], p["move4"]) if m],
+        })
+    return jsonify(battle=dict(battle), trainers=trainers)
 
 
 # ---------------------------------------------------------------------------
@@ -156,7 +191,7 @@ def delete_attempt(attempt_id):
 
 
 def fight_json(conn, fight_id):
-    fight = conn.execute("SELECT id, boss_id, result FROM fights WHERE id = ?",
+    fight = conn.execute("SELECT id, battle_id, result FROM fights WHERE id = ?",
                          (fight_id,)).fetchone()
     members = [dict(m) for m in conn.execute(
         "SELECT slot, catch_id FROM fight_members WHERE fight_id = ? ORDER BY slot",
@@ -214,12 +249,12 @@ def set_catch(attempt_id, route_id):
 # Fights: result + team of up to six catches from the same attempt
 # ---------------------------------------------------------------------------
 
-@app.put("/api/attempts/<int:attempt_id>/fights/<int:boss_id>")
-def set_fight(attempt_id, boss_id):
+@app.put("/api/attempts/<int:attempt_id>/fights/<int:battle_id>")
+def set_fight(attempt_id, battle_id):
     conn = get_db()
     get_attempt(conn, attempt_id)
-    if conn.execute("SELECT 1 FROM bosses WHERE id = ?", (boss_id,)).fetchone() is None:
-        raise ApiError("boss not found", 404)
+    if conn.execute("SELECT 1 FROM battles WHERE id = ?", (battle_id,)).fetchone() is None:
+        raise ApiError("battle not found", 404)
     data = body()
 
     result = data.get("result")
@@ -244,16 +279,16 @@ def set_fight(attempt_id, boss_id):
 
     with conn:
         if not chosen and result is None:
-            conn.execute("DELETE FROM fights WHERE attempt_id = ? AND boss_id = ?",
-                         (attempt_id, boss_id))
+            conn.execute("DELETE FROM fights WHERE attempt_id = ? AND battle_id = ?",
+                         (attempt_id, battle_id))
             return jsonify(fight=None)
         conn.execute(
-            "INSERT INTO fights (attempt_id, boss_id, result) VALUES (?, ?, ?) "
-            "ON CONFLICT (attempt_id, boss_id) DO UPDATE SET result = excluded.result",
-            (attempt_id, boss_id, result))
+            "INSERT INTO fights (attempt_id, battle_id, result) VALUES (?, ?, ?) "
+            "ON CONFLICT (attempt_id, battle_id) DO UPDATE SET result = excluded.result",
+            (attempt_id, battle_id, result))
         fight_id = conn.execute(
-            "SELECT id FROM fights WHERE attempt_id = ? AND boss_id = ?",
-            (attempt_id, boss_id)).fetchone()[0]
+            "SELECT id FROM fights WHERE attempt_id = ? AND battle_id = ?",
+            (attempt_id, battle_id)).fetchone()[0]
         conn.execute("DELETE FROM fight_members WHERE fight_id = ?", (fight_id,))
         conn.executemany(
             "INSERT INTO fight_members (fight_id, slot, catch_id) VALUES (?, ?, ?)",
