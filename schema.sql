@@ -21,11 +21,45 @@ CREATE TABLE IF NOT EXISTS route_encounters (
 );
 CREATE INDEX IF NOT EXISTS idx_route_encounters_route ON route_encounters(route_id);
 
-CREATE TABLE IF NOT EXISTS bosses (
+-- Everything you can fight. Level-cap battles (the 23 boss fights) have a
+-- level_cap and may involve several trainers: back-to-back or double battles,
+-- a tag partner, or alternative teams (the rival's depends on your starter).
+-- Every other trainer is a battle of its own, listed under (group_id) the
+-- level-cap battle that follows it.
+CREATE TABLE IF NOT EXISTS battles (
     id        INTEGER PRIMARY KEY,
-    name      TEXT    NOT NULL UNIQUE,
-    level_cap INTEGER,
+    key       TEXT    NOT NULL UNIQUE,   -- stable identity when game data is re-synced
+    name      TEXT    NOT NULL,
+    location  TEXT,
+    level_cap INTEGER,                   -- set only on level-cap battles
+    group_id  INTEGER REFERENCES battles(id) ON DELETE SET NULL,  -- NULL on level-cap battles
     position  INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS trainers (
+    id        INTEGER PRIMARY KEY,
+    battle_id INTEGER NOT NULL REFERENCES battles(id) ON DELETE CASCADE,
+    key       TEXT    NOT NULL UNIQUE,   -- sheet name + location
+    name      TEXT    NOT NULL,
+    location  TEXT,
+    tags      TEXT    NOT NULL DEFAULT '',  -- comma-separated: Optional, Double, Tag Partner, ...
+    position  INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_trainers_battle ON trainers(battle_id);
+
+CREATE TABLE IF NOT EXISTS trainer_pokemon (
+    trainer_id INTEGER NOT NULL REFERENCES trainers(id) ON DELETE CASCADE,
+    slot       INTEGER NOT NULL,
+    species    TEXT    NOT NULL,
+    level      INTEGER,
+    item       TEXT,
+    ability    TEXT,
+    nature     TEXT,
+    move1      TEXT,
+    move2      TEXT,
+    move3      TEXT,
+    move4      TEXT,
+    PRIMARY KEY (trainer_id, slot)
 );
 
 -- Dupes-clause groups (evolution lines + regional forms).
@@ -80,9 +114,9 @@ END;
 CREATE TABLE IF NOT EXISTS fights (
     id         INTEGER PRIMARY KEY,
     attempt_id INTEGER NOT NULL REFERENCES attempts(id) ON DELETE CASCADE,
-    boss_id    INTEGER NOT NULL REFERENCES bosses(id),
+    battle_id  INTEGER NOT NULL REFERENCES battles(id),
     result     TEXT CHECK (result IN ('won', 'lost')),  -- NULL = not recorded
-    UNIQUE (attempt_id, boss_id)
+    UNIQUE (attempt_id, battle_id)
 );
 
 -- The team brought to a fight: up to six catches from the same attempt.

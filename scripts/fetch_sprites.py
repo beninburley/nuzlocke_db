@@ -1,18 +1,21 @@
 """Map every species in data/game_data.json to its sprite on pokeapi.co.
 
 Writes data/sprites.json ({species: sprite url or null}); the app loads it at
-startup, so PokeAPI is only contacted when this script is (re)run.
+startup, so PokeAPI is only contacted when this script is (re)run. Species
+already in sprites.json are kept, so re-runs only look up new names.
 
 Spreadsheet names are translated to PokeAPI names:
   "Zigzagoon-G" -> zigzagoon-galar, "Deerling-A" -> deerling-autumn,
-  "Basculin-BS" -> basculin-blue-striped, "Farfetch'd-G" -> farfetchd-galar,
-  "Lycanroc" -> lycanroc-midday (default form), "Cyndaquill" -> cyndaquil (typo)
+  "Basculin-BS" -> basculin-blue-striped, "Farfetch’d-Galar" -> farfetchd-galar,
+  "Indeedee-F" -> indeedee-female, "Lycanroc" -> lycanroc-midday (default form),
+  "Cyndaquill" -> cyndaquil (typo)
 
 Usage:
-    python scripts/fetch_sprites.py
+    python scripts/fetch_sprites.py [--refresh]   # --refresh re-resolves every species
 """
 import difflib
 import json
+import sys
 import unicodedata
 import urllib.error
 import urllib.request
@@ -33,6 +36,8 @@ SUFFIXES = {
     "s": ["summer"],
     "w": ["winter"],
     "bs": ["blue-striped"],
+    "f": ["female"],
+    "t": ["therian"],
 }
 
 
@@ -53,7 +58,9 @@ def exists(url):
 
 def slugify(name):
     name = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode()
-    name = name.lower().replace("'", "").replace(".", "").replace(":", "")
+    name = name.lower()
+    for char in "'’.:%":
+        name = name.replace(char, "")
     return "-".join(name.split())
 
 
@@ -61,6 +68,7 @@ def species_names():
     data = json.loads(GAME_DATA.read_text(encoding="utf-8"))
     names = {e["pokemon"] for r in data["routes"] for e in r["encounters"]}
     names |= {s for family in data["families"] for s in family}
+    names |= {p["species"] for b in data["battles"] for t in b["trainers"] for p in t["pokemon"]}
     return sorted(names)
 
 
@@ -90,9 +98,15 @@ def main():
     pokemon_ids = {p["name"]: int(p["url"].rstrip("/").split("/")[-1]) for p in pokemon}
     forms = {f["name"]: f["url"] for f in get_json(f"{API}/pokemon-form?limit=100000")["results"]}
 
+    known = {}
+    if OUT.exists() and "--refresh" not in sys.argv:
+        known = {k: v for k, v in json.loads(OUT.read_text(encoding="utf-8")).items() if v}
+
     fixes, missing = {}, []
     resolved = {}
     for name in species_names():
+        if name in known:
+            continue
         api_name = resolve(name, pokemon_ids, forms, fixes)
         if api_name is None:
             missing.append(name)
@@ -121,12 +135,14 @@ def main():
     with ThreadPoolExecutor(max_workers=6) as pool:
         sprites = dict(pool.map(sprite, wanted))
 
-    result = {name: sprites.get(api_name) if api_name else None
-              for name, api_name in resolved.items()}
+    result = dict(known)
+    result.update({name: sprites.get(api_name) if api_name else None
+                   for name, api_name in resolved.items()})
     OUT.write_text(json.dumps(result, indent=1, ensure_ascii=False, sort_keys=True), encoding="utf-8")
 
     no_sprite = [n for n, url in result.items() if url is None and n not in missing]
-    print(f"Wrote {OUT}: {sum(1 for u in result.values() if u)}/{len(result)} species have sprites")
+    print(f"Wrote {OUT}: {sum(1 for u in result.values() if u)}/{len(result)} species have sprites "
+          f"({len(resolved)} looked up)")
     for name, api_name in sorted(fixes.items()):
         print(f"  corrected: {name} -> {api_name}")
     for name in missing:

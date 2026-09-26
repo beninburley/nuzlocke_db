@@ -6,13 +6,13 @@
 
 const state = {
   routes: [],            // [{id, name, options: [{method, pokemon, rate, levels}]}]
-  bosses: [],            // [{id, name, level_cap}]
+  battles: [],           // [{id, name, location, level_cap, group_id, tags}] in game order
   sprites: {},           // species -> sprite url (pokeapi.co)
   attempts: [],          // [{id, number, notes, catch_count}]
   attempt: null,         // currently selected attempt
   catches: new Map(),    // route_id -> {id, route_id, pokemon}
-  fights: new Map(),     // boss_id  -> {id, boss_id, result, members: [{slot, catch_id}]}
-  bossId: null,          // boss fight shown on the Boss Fights tab
+  fights: new Map(),     // battle_id -> {id, battle_id, result, members: [{slot, catch_id}]}
+  battleId: null,        // battle shown on the Boss Fights tab
 };
 
 const TEAM_SIZE = 6;
@@ -102,7 +102,7 @@ async function selectAttempt(id) {
   const data = await api("GET", `/attempts/${id}`);
   state.attempt = data.attempt;
   state.catches = new Map(data.catches.map((c) => [c.route_id, c]));
-  state.fights = new Map(data.fights.map((f) => [f.boss_id, f]));
+  state.fights = new Map(data.fights.map((f) => [f.battle_id, f]));
   $("#attempt-select").value = id;
   storageSet("attemptId", id);
   renderEncounters();
@@ -185,7 +185,7 @@ async function onCatchChange(route, select) {
       // Clearing a catch also removes it from any fight team (server cascades).
       state.catches.delete(route.id);
       const data = await api("GET", `/attempts/${attemptId}`);
-      state.fights = new Map(data.fights.map((f) => [f.boss_id, f]));
+      state.fights = new Map(data.fights.map((f) => [f.battle_id, f]));
     }
     select.classList.toggle("filled", Boolean(saved));
     refreshAttemptLabel();
@@ -196,13 +196,18 @@ async function onCatchChange(route, select) {
 }
 
 // ---------------------------------------------------------------------------
-// Boss fights tab: boss list drawer + focus view (enemy team, your team, box)
+// Boss fights tab: battle list drawer + focus view (enemy team, your team, box)
 // ---------------------------------------------------------------------------
 
 const mobileLayout = window.matchMedia("(max-width: 760px)");
+const HIDDEN_TAGS = new Set(["Boss", "Tag Partner"]);  // conveyed by the layout instead
 let dragging = null;                 // {catchId, fromSlot} while a drag is in progress
 let saveChain = Promise.resolve();   // fight saves run one at a time, in order
-const fightEdits = new Map();        // boss_id -> edit counter, to ignore stale responses
+const fightEdits = new Map();        // battle_id -> edit counter, to ignore stale responses
+const battleDetails = new Map();     // battle_id -> {battle, trainers} (loaded on demand)
+const openGroups = new Set();        // level-cap battle ids whose trainer list is expanded
+const trainerChoice = new Map();     // battle_id -> index of the trainer shown
+let renderedEnemy = null;            // "battleId:trainerIndex" currently drawn
 
 /** Caught Pokemon for this attempt, in route order. */
 function box() {
@@ -218,8 +223,9 @@ function teamSlots(fight) {
   return slots;
 }
 
-const currentBoss = () => state.bosses.find((b) => b.id === state.bossId);
-const currentSlots = () => teamSlots(state.fights.get(state.bossId));
+const currentBattle = () => state.battles.find((b) => b.id === state.battleId);
+const currentSlots = () => teamSlots(state.fights.get(state.battleId));
+const levelCapBattles = () => state.battles.filter((b) => b.level_cap !== null);
 
 function sprite(species) {
   const fallback = () => el("span", { class: "sprite sprite-missing", "aria-hidden": "true" }, species.slice(0, 2));
@@ -236,49 +242,99 @@ function monLabel(mon) {
     el("span", { class: "mon-route" }, mon.routeName)];
 }
 
-function defaultBossId() {
-  const stored = Number(storageGet("bossId"));
-  if (state.bosses.some((b) => b.id === stored)) return stored;
-  // Otherwise the first fight with nothing recorded yet.
-  return (state.bosses.find((b) => !state.fights.has(b.id)) ?? state.bosses[0]).id;
+function defaultBattleId() {
+  const stored = Number(storageGet("battleId"));
+  if (state.battles.some((b) => b.id === stored)) return stored;
+  // Otherwise the first level-cap fight with nothing recorded yet.
+  const bosses = levelCapBattles();
+  return (bosses.find((b) => !state.fights.has(b.id)) ?? bosses[0]).id;
 }
 
 function renderFightView() {
-  if (!state.attempt || !state.bosses.length) return;
-  state.bossId ??= defaultBossId();
-  renderBossList();
+  if (!state.attempt || !state.battles.length) return;
+  const first = state.battleId === null;
+  if (first) {
+    state.battleId = defaultBattleId();
+    revealInList(currentBattle());
+  }
+  renderBattleList();
+  if (first) $("#battle-list [aria-current]")?.scrollIntoView({ block: "nearest" });
   renderFocus();
+  renderEnemy();
 }
 
-function renderBossList() {
-  const items = state.bosses.map((boss) => {
-    const fight = state.fights.get(boss.id);
-    const count = fight?.members.length ?? 0;
-    const meta = [boss.level_cap && `Lv ${boss.level_cap}`, count && `${count}/${TEAM_SIZE}`].filter(Boolean);
-    const button = el("button", {
+// --- battle list (drawer) ------------------------------------------------------
+
+/** Level-cap battles, each followed by the other trainers leading up to it. */
+function renderBattleList() {
+  const query = $("#battle-filter").value.trim().toLowerCase();
+  const matches = (b) => !query || `${b.name} ${b.location ?? ""}`.toLowerCase().includes(query);
+  const groups = levelCapBattles().map((boss) => {
+    const others = state.battles.filter((b) => b.group_id === boss.id);
+    const shown = others.filter(matches);
+    if (query && !matches(boss) && !shown.length) return null;
+    const open = query ? shown.length > 0 : openGroups.has(boss.id);
+    const toggle = el("button", {
       type: "button",
-      class: `boss-item ${fight?.result ?? ""}`,
-      "aria-current": boss.id === state.bossId ? "true" : undefined,
-    },
-      el("span", { class: "boss-status", title: fight?.result ?? "not fought" },
-        { won: "✓", lost: "✗" }[fight?.result] ?? ""),
-      el("span", { class: "boss-name" }, boss.name),
-      el("span", { class: "boss-meta" }, meta.join(" · ")));
-    button.addEventListener("click", () => selectBoss(boss.id));
-    return el("li", {}, button);
-  });
-  $("#boss-list").replaceChildren(...items);
+      class: "group-toggle",
+      "aria-expanded": String(open),
+      "aria-label": `${open ? "Hide" : "Show"} the ${others.length} trainers before ${boss.name}`,
+      title: `${others.length} other trainers`,
+      disabled: others.length === 0,
+    }, el("span", { class: "chevron", "aria-hidden": "true" }, "▸"), String(others.length));
+    toggle.addEventListener("click", () => {
+      if (openGroups.has(boss.id)) openGroups.delete(boss.id);
+      else openGroups.add(boss.id);
+      renderBattleList();
+    });
+    return el("li", { class: "battle-group" },
+      el("div", { class: "group-head" }, toggle, battleButton(boss, "boss-item")),
+      el("ol", { class: "trainer-list", hidden: !open },
+        ...shown.map((b) => el("li", {}, battleButton(b, "trainer-item")))));
+  }).filter(Boolean);
+  $("#battle-list").replaceChildren(...groups);
+  $("#no-matches").hidden = groups.length > 0;
 }
+
+function battleButton(battle, className) {
+  const fight = state.fights.get(battle.id);
+  const count = fight?.members.length ?? 0;
+  const meta = [battle.level_cap ? `Lv ${battle.level_cap}` : battle.location,
+    count && `${count}/${TEAM_SIZE}`].filter(Boolean);
+  const button = el("button", {
+    type: "button",
+    class: `${className} ${fight?.result ?? ""}`,
+    "aria-current": battle.id === state.battleId ? "true" : undefined,
+  },
+    el("span", { class: "battle-status", title: fight?.result ?? "not fought" },
+      { won: "✓", lost: "✗" }[fight?.result] ?? ""),
+    el("span", { class: "battle-name" }, battle.name,
+      ...battle.tags.filter((t) => !HIDDEN_TAGS.has(t)).map((t) => el("span", { class: "tag" }, t))),
+    el("span", { class: "battle-meta" }, meta.join(" · ")));
+  button.addEventListener("click", () => selectBattle(battle.id));
+  return button;
+}
+
+/** Expand the group holding a battle so it's visible in the list. */
+function revealInList(battle) {
+  if (battle?.group_id) openGroups.add(battle.group_id);
+}
+
+// --- focus: header, your team, box ---------------------------------------------
 
 function renderFocus() {
-  const boss = currentBoss();
-  const fight = state.fights.get(boss.id);
+  const battle = currentBattle();
+  const fight = state.fights.get(battle.id);
   const slots = teamSlots(fight);
   const mons = box();
   const byId = new Map(mons.map((m) => [m.id, m]));
 
-  $("#focus-boss-name").textContent = boss.name;
-  $("#focus-boss-cap").textContent = boss.level_cap ? `Level cap ${boss.level_cap}` : "";
+  $("#focus-name").textContent = battle.name;
+  $("#focus-sub").textContent = [
+    battle.level_cap && `Level cap ${battle.level_cap}`,
+    battle.location,
+    ...battle.tags.filter((t) => !HIDDEN_TAGS.has(t)),
+  ].filter(Boolean).join(" · ");
   for (const btn of document.querySelectorAll(".result-toggle button")) {
     btn.setAttribute("aria-pressed", fight?.result === btn.dataset.result);
   }
@@ -290,6 +346,90 @@ function renderFocus() {
   $("#empty-box").hidden = mons.length > 0;
   $("#box-grid").replaceChildren(...mons.map((m) => boxMon(m, slots.indexOf(m.id))));
 }
+
+// --- focus: enemy team -----------------------------------------------------------
+
+async function loadBattle(battleId) {
+  if (!battleDetails.has(battleId)) {
+    battleDetails.set(battleId, await api("GET", `/battles/${battleId}`));
+  }
+  return battleDetails.get(battleId);
+}
+
+/** Short trainer names for the switcher: "Trainer Rival Cycling Road Sceptile" -> "Sceptile". */
+function trainerLabels(trainers) {
+  const enemies = trainers.filter((t) => !t.tags.includes("Tag Partner")).map((t) => t.name.split(" "));
+  let common = 0;
+  while (enemies.length > 1 && enemies.every((w) => w.length > common + 1 && w[common] === enemies[0][common])) {
+    common++;
+  }
+  return trainers.map((t) => {
+    if (t.tags.includes("Tag Partner")) return `${t.name} (ally)`;
+    const words = t.name.split(" ");
+    // Keep one word of context for bare numbers: "Museum #1" rather than "#1".
+    const start = /^#?\d+$/.test(words[common] ?? "") ? Math.max(common - 1, 0) : common;
+    return words.slice(start).join(" ");
+  });
+}
+
+function renderEnemy() {
+  const battleId = state.battleId;
+  const detail = battleDetails.get(battleId);
+  const index = Math.min(trainerChoice.get(battleId) ?? 0, (detail?.trainers.length ?? 1) - 1);
+  const key = `${battleId}:${index}`;
+  if (key === renderedEnemy) return;  // unchanged; avoid redrawing sprites on every team edit
+
+  if (!detail) {
+    renderedEnemy = null;
+    $("#trainer-tabs").replaceChildren();
+    $("#enemy-note").hidden = true;
+    $("#enemy-slots").replaceChildren(...Array.from({ length: TEAM_SIZE }, () => enemySlot(null, "…")));
+    loadBattle(battleId)
+      .then(() => { if (state.battleId === battleId) renderEnemy(); })
+      .catch((err) => setStatus(`Error: ${err.message}`, "error"));
+    return;
+  }
+  renderedEnemy = key;
+
+  const trainers = detail.trainers;
+  const labels = trainerLabels(trainers);
+  $("#trainer-tabs").replaceChildren(...(trainers.length > 1 ? trainers.map((t, i) => {
+    const tab = el("button", { type: "button", "aria-pressed": String(i === index), title: t.name }, labels[i]);
+    tab.addEventListener("click", () => {
+      trainerChoice.set(battleId, i);
+      renderEnemy();
+    });
+    return tab;
+  }) : []));
+
+  const trainer = trainers[index];
+  const ally = trainer.tags.includes("Tag Partner");
+  $("#enemy-heading").textContent = ally ? "Partner's team" : "Enemy team";
+  $("#enemy-note").hidden = !ally;
+  $("#enemy-note").textContent = ally ? `${trainer.name} fights on your side in this tag battle.` : "";
+  $("#enemy-slots").replaceChildren(...Array.from({ length: TEAM_SIZE }, (_, i) => enemySlot(trainer.pokemon[i])));
+}
+
+/** One enemy Pokemon: sprite, name and level, with its set listed underneath. */
+function enemySlot(mon, placeholder = "") {
+  if (!mon) {
+    return el("div", { class: "enemy-col" }, el("div", { class: "enemy-slot" }, placeholder));
+  }
+  const info = [["Item", mon.item], ["Ability", mon.ability], ["Nature", mon.nature]]
+    .flatMap(([label, value]) => [el("dt", {}, label), el("dd", {}, value ?? "—")]);
+  return el("div", { class: "enemy-col" },
+    el("div", { class: "enemy-slot filled" },
+      sprite(mon.species),
+      el("span", { class: "mon-name" }, mon.species),
+      el("span", { class: "mon-route" }, mon.level ? `Lv ${mon.level}` : "")),
+    el("dl", { class: "enemy-info" }, ...info,
+      el("dt", {}, "Moves"),
+      el("dd", {}, mon.moves.length
+        ? el("ul", { class: "moves" }, ...mon.moves.map((m) => el("li", {}, m)))
+        : "—")));
+}
+
+// --- focus: your team + box ------------------------------------------------------
 
 function teamSlot(index, mon) {
   const slot = el("div", { class: `team-slot${mon ? " filled" : ""}` });
@@ -376,60 +516,61 @@ function moveTo(catchId, index) {
   const displaced = slots[index];
   slots[index] = catchId;
   if (from !== -1) slots[from] = displaced;
-  saveFight(slots, state.fights.get(state.bossId)?.result ?? null);
+  saveFight(slots, state.fights.get(state.battleId)?.result ?? null);
 }
 
 function setSlot(index, catchId) {
   const slots = currentSlots();
   slots[index] = catchId;
-  saveFight(slots, state.fights.get(state.bossId)?.result ?? null);
+  saveFight(slots, state.fights.get(state.battleId)?.result ?? null);
 }
 
 function toggleResult(result) {
-  const current = state.fights.get(state.bossId)?.result ?? null;
+  const current = state.fights.get(state.battleId)?.result ?? null;
   saveFight(currentSlots(), current === result ? null : result);
 }
 
 /** Apply a fight change immediately, then save it in the background. */
 function saveFight(slots, result) {
   const attemptId = state.attempt.id;
-  const bossId = state.bossId;
+  const battleId = state.battleId;
   const members = slots.flatMap((catchId, i) => (catchId ? [{ slot: i + 1, catch_id: catchId }] : []));
   if (members.length || result) {
-    state.fights.set(bossId, { ...state.fights.get(bossId), boss_id: bossId, result, members });
+    state.fights.set(battleId, { ...state.fights.get(battleId), battle_id: battleId, result, members });
   } else {
-    state.fights.delete(bossId);
+    state.fights.delete(battleId);
   }
   renderFightView();
 
-  const edit = (fightEdits.get(bossId) ?? 0) + 1;
-  fightEdits.set(bossId, edit);
+  const edit = (fightEdits.get(battleId) ?? 0) + 1;
+  fightEdits.set(battleId, edit);
   saveChain = saveChain.then(async () => {
     try {
       const { fight } = await save(() =>
-        api("PUT", `/attempts/${attemptId}/fights/${bossId}`, { members: slots, result }));
+        api("PUT", `/attempts/${attemptId}/fights/${battleId}`, { members: slots, result }));
       // Keep the optimistic state if the user switched attempts or edited again since.
-      if (state.attempt?.id !== attemptId || fightEdits.get(bossId) !== edit) return;
-      if (fight) state.fights.set(bossId, fight);
-      else state.fights.delete(bossId);
+      if (state.attempt?.id !== attemptId || fightEdits.get(battleId) !== edit) return;
+      if (fight) state.fights.set(battleId, fight);
+      else state.fights.delete(battleId);
     } catch {
       // Save failed: resync with what the server actually has.
       if (state.attempt?.id !== attemptId) return;
       const data = await api("GET", `/attempts/${attemptId}`).catch(() => null);
       if (!data || state.attempt?.id !== attemptId) return;
       state.catches = new Map(data.catches.map((c) => [c.route_id, c]));
-      state.fights = new Map(data.fights.map((f) => [f.boss_id, f]));
+      state.fights = new Map(data.fights.map((f) => [f.battle_id, f]));
       renderEncounters();
       renderFightView();
     }
   });
 }
 
-// --- boss list drawer -----------------------------------------------------------
+// --- battle list drawer ---------------------------------------------------------
 
-function selectBoss(id) {
-  state.bossId = id;
-  storageSet("bossId", id);
+function selectBattle(id) {
+  state.battleId = id;
+  storageSet("battleId", id);
+  revealInList(currentBattle());
   if (mobileLayout.matches) setDrawer(false);
   renderFightView();
 }
@@ -461,9 +602,12 @@ function showTab(name) {
     btn.setAttribute("aria-selected", active);
     $(`#tab-${btn.dataset.tab}`).hidden = !active;
   }
-  // Opening Boss Fights slides the boss list out (a CSS animation that replays
+  // Opening Boss Fights slides the battle list out (a CSS animation that replays
   // whenever the tab goes from hidden to shown).
-  if (name === "fights") setDrawer(true);
+  if (name === "fights") {
+    setDrawer(true);
+    $("#battle-list [aria-current]")?.scrollIntoView({ block: "nearest" });
+  }
   storageSet("tab", name);
 }
 
@@ -471,7 +615,7 @@ async function boot() {
   try {
     const game = await api("GET", "/game");
     state.routes = game.routes;
-    state.bosses = game.bosses;
+    state.battles = game.battles;
     state.sprites = game.sprites;
 
     for (const btn of document.querySelectorAll(".tabs button")) {
@@ -483,6 +627,7 @@ async function boot() {
       setDrawer($("#tab-fights").classList.contains("drawer-closed")));
     $("#drawer-close").addEventListener("click", () => setDrawer(false));
     $("#drawer-scrim").addEventListener("click", () => setDrawer(false));
+    $("#battle-filter").addEventListener("input", renderBattleList);
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape" && mobileLayout.matches) setDrawer(false);
     });

@@ -1,15 +1,18 @@
 """Extract game-specific data from the Run & Bun master sheet into data/game_data.json.
 
 Game data = things that are the same for every attempt: the route list and each
-route's encounter table (Encounters tab), the boss fights and their level caps
-(header rows of the Past Boss Fights tab), and the dupes-clause evolution
-families (helper table at the bottom of the Encounters tab).
+route's encounter table (Encounters tab), every enemy trainer and their team
+(Trainer Lookup tab), the level-cap fights (header rows of the Past Boss Fights
+tab), and the dupes-clause evolution families (helper table at the bottom of
+the Encounters tab).
 
 Usage:
     python scripts/extract_game_data.py ["path/to/sheet.xlsx"]
 """
 import json
+import re
 import sys
+from collections import Counter
 from pathlib import Path
 
 import openpyxl
@@ -37,6 +40,49 @@ FAMILY_FIRST_COL = 3
 BOSS_LEVEL_ROW = 1
 BOSS_NAME_ROW = 2
 BOSS_FIRST_COL = 2
+
+# --- Trainer Lookup tab layout ---------------------------------------------
+# One trainer per row; each Pokemon cell is
+# "Species,Level,Item,Ability,Nature,Move1,Move2,Move3,Move4".
+TRAINER_FIRST_ROW = 2
+TRAINER_LOCATION_COL = 3
+TRAINER_NAME_COL = 4
+TRAINER_POKEMON_COLS = range(6, 12)
+
+# Level-cap fights (Past Boss Fights names) -> the Trainer Lookup rows fought
+# there, as (trainer name, location). Several rows means back-to-back or
+# double battles (Museum grunts, Tate & Liza) or alternative teams (the rival's
+# team depends on your starter).
+LEVEL_CAP_TRAINERS = {
+    "Route 104 Aqua Grunt": [("Team Aqua Grunt Petalburg Woods [Boss]", "Route 104")],
+    "Museum Aqua Grunts": [("Team Aqua Grunt Museum #1 [Boss]", "Slateport Museum"),
+                           ("Team Aqua Grunt Museum #2 [Boss]", "Slateport Museum")],
+    "Leader Brawly": [("Leader Brawly [Boss]", "Dewford Gym")],
+    "Leader Roxanne": [("Leader Roxanne [Boss]", "Rustboro Gym")],
+    "Route 117 Chelle": [("Trainer Chelle Daycare [Boss]", "Route 117")],
+    "Leader Wattson": [("Leader Wattson [Boss]", "Mauville Gym")],
+    "Cycling Road Rival": [(f"Trainer Rival Cycling Road {s} [Boss]", "Route 110")
+                           for s in ("Sceptile", "Blaziken", "Swampert")],
+    "Leader Norman": [("Leader Norman [Boss]", "Petalburg Gym")],
+    "Fallarbor Town Vito": [("Winstrate Vito [Boss]", "Fallarbor")],
+    "Mt. Chimney Maxie": [("Magma Leader Maxie [Boss]", "Mt. Chimney")],
+    "Leader Flannery": [("Leader Flannery [Double] [Boss]", "Lavaridge Gym")],
+    "Weather Institute Shelly": [("Aqua Admin Shelly Weather Institute [Boss]", "Weather Institute")],
+    "Route 119 Rival": [(f"Trainer Rival Bridge {s} [Double] [Boss]", "Route 119")
+                        for s in ("Sceptile", "Blaziken", "Swampert")],
+    "Leader Winona": [("Leader Winona [Boss]", "Fortree Gym")],
+    "Lilycove City Rival": [(f"Trainer Rival Lilycove {s} [Boss]", "Lilycove")
+                            for s in ("Sceptile", "Blaziken", "Swampert")],
+    "Mt. Pyre Archie": [("Aqua Leader Archie [Tag Battle] [Boss]", "Mt. Pyre")],
+    "Magma Hideout Maxie": [("Magma Leader Maxie [Boss]", "Magma Hideout")],
+    "Aqua Hideout Matt": [("Aqua Admin Matt [Boss]", "Aqua Hideout")],
+    "Leaders Tate & Liza": [("Leader Tate [Boss]", "Mossdeep Gym"),
+                            ("Leader Liza [Boss]", "Mossdeep Gym")],
+    "Seafloor Cavern Archie": [("Aqua Leader Archie [Boss]", "Seafloor Cavern")],
+    "Leader Juan": [("Leader Juan [Double] [Boss]", "Sootopolis Gym")],
+    "Victory Road Vito": [("Winstrate Vito [Boss]", "Victory Road")],
+    "Champion Wallace": [("Champion Wallace", "Pokémon League")],
+}
 
 
 def clean(value):
@@ -119,20 +165,108 @@ def extract_bosses(ws):
     return bosses
 
 
+def parse_trainer_pokemon(value):
+    """'Kubfu,20 ,Iapapa Berry,Inner Focus,Jolly,Brick Break,...' -> dict."""
+    species, level, item, ability, nature, *moves = [part.strip() for part in value.split(",")]
+    return {
+        "species": species,
+        "level": int(level) if level.isdigit() else None,
+        "item": item or None,
+        "ability": ability or None,
+        "nature": nature or None,
+        "moves": [m for m in moves if m],
+    }
+
+
+def extract_trainers(ws):
+    """Every trainer on the Trainer Lookup tab, in game order."""
+    trainers = []
+    for row in range(TRAINER_FIRST_ROW, ws.max_row + 1):
+        raw_name = clean(ws.cell(row, TRAINER_NAME_COL).value)
+        if raw_name is None:
+            continue
+        pokemon = [clean(ws.cell(row, col).value) for col in TRAINER_POKEMON_COLS]
+        trainers.append({
+            "name": re.sub(r"\s*\[[^\]]*\]", "", raw_name).strip(),
+            "raw_name": raw_name,
+            "location": clean(ws.cell(row, TRAINER_LOCATION_COL).value),
+            "key": f"{raw_name} @ {clean(ws.cell(row, TRAINER_LOCATION_COL).value)}",
+            "tags": re.findall(r"\[([^\]]+)\]", raw_name),
+            "pokemon": [parse_trainer_pokemon(p) for p in pokemon if p],
+        })
+    # Names can repeat once tags are stripped (Elite Four singles vs "[Double]"
+    # teams), so trainers are identified by their full sheet name + location.
+    keys = Counter(t["key"] for t in trainers)
+    duplicates = [k for k, n in keys.items() if n > 1]
+    if duplicates:
+        raise SystemExit(f"Trainer name + location must be unique: {duplicates}")
+    return trainers
+
+
+def build_battles(bosses, trainers):
+    """Group trainers into battles, in game order.
+
+    The level-cap fights use the trainers listed in LEVEL_CAP_TRAINERS. Every
+    other trainer is its own battle, listed under the next level-cap fight. A
+    "[Tag Partner]" (an ally) joins the battle of the trainer just before it.
+    """
+    by_key = {(t["raw_name"], t["location"]): t for t in trainers}
+    boss_of = {}
+    for boss in bosses:
+        for key in LEVEL_CAP_TRAINERS[boss["name"]]:
+            if key not in by_key:
+                raise SystemExit(f"{boss['name']}: no trainer {key} on the Trainer Lookup tab")
+            boss_of[key] = boss
+
+    battles, boss_battles, waiting = [], {}, []
+    for trainer in trainers:
+        boss = boss_of.get((trainer["raw_name"], trainer["location"]))
+        if "Tag Partner" in trainer["tags"] and battles:
+            battles[-1]["trainers"].append(trainer)
+        elif boss is None:
+            battle = {"name": trainer["name"], "location": trainer["location"],
+                      "level_cap": None, "group": None, "trainers": [trainer]}
+            battles.append(battle)
+            waiting.append(battle)
+        elif boss["name"] in boss_battles:
+            boss_battles[boss["name"]]["trainers"].append(trainer)
+        else:
+            battle = {"name": boss["name"], "location": trainer["location"],
+                      "level_cap": boss["level_cap"], "group": None, "trainers": [trainer]}
+            boss_battles[boss["name"]] = battle
+            battles.append(battle)
+            for other in waiting:
+                other["group"] = boss["name"]
+            waiting = []
+    if waiting:
+        raise SystemExit(f"Trainers after the last level-cap fight: {[b['name'] for b in waiting]}")
+    for battle in battles:
+        # Level-cap fights keep their Past Boss Fights name as their identity.
+        battle["key"] = (f"boss:{battle['name']}" if battle["level_cap"] is not None
+                         else f"trainer:{battle['trainers'][0]['key']}")
+        for trainer in battle["trainers"]:
+            del trainer["raw_name"]
+    return battles
+
+
 def main():
     xlsx = Path(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_XLSX
     wb = openpyxl.load_workbook(xlsx, data_only=True)
+    bosses = extract_bosses(wb["Past Boss Fights"])
+    trainers = extract_trainers(wb["Trainer Lookup"])
     data = {
         "source": xlsx.name,
         "routes": extract_routes(wb["Encounters"]),
-        "bosses": extract_bosses(wb["Past Boss Fights"]),
+        "battles": build_battles(bosses, trainers),
         "families": extract_families(wb["Encounters"]),
     }
     OUT.parent.mkdir(exist_ok=True)
     OUT.write_text(json.dumps(data, indent=1, ensure_ascii=False), encoding="utf-8")
     n_enc = sum(len(r["encounters"]) for r in data["routes"])
+    n_boss = sum(1 for b in data["battles"] if b["level_cap"] is not None)
     print(f"Wrote {OUT}: {len(data['routes'])} routes, {n_enc} encounter slots, "
-          f"{len(data['bosses'])} bosses, {len(data['families'])} families")
+          f"{len(data['battles'])} battles ({n_boss} level caps) from {len(trainers)} trainers, "
+          f"{len(data['families'])} families")
 
 
 if __name__ == "__main__":

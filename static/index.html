@@ -39,7 +39,11 @@
           <h2>Boss fights</h2>
           <button id="drawer-close" type="button" class="icon-button" aria-label="Hide boss list">&laquo;</button>
         </div>
-        <ol id="boss-list" class="boss-list"></ol>
+        <div class="drawer-filter">
+          <input id="battle-filter" type="search" placeholder="Filter trainers or places" aria-label="Filter trainers or places">
+        </div>
+        <ol id="battle-list" class="battle-list"></ol>
+        <p id="no-matches" class="hint drawer-empty" hidden>No trainers match.</p>
       </aside>
       <div id="drawer-scrim" class="drawer-scrim"></div>
 
@@ -47,8 +51,8 @@
         <header class="focus-head">
           <button id="drawer-open" type="button" aria-controls="boss-drawer" aria-expanded="true">&#9776; Fights</button>
           <div class="focus-title">
-            <h2 id="focus-boss-name"></h2>
-            <span id="focus-boss-cap" class="muted"></span>
+            <h2 id="focus-name"></h2>
+            <span id="focus-sub" class="muted"></span>
           </div>
           <div class="result-toggle" role="group" aria-label="Result">
             <button type="button" data-result="won" aria-pressed="false">Won</button>
@@ -56,12 +60,13 @@
           </div>
         </header>
 
-        <section class="enemy-team" aria-label="Enemy team">
-          <h3>Enemy team <span class="muted">(boss data coming later)</span></h3>
-          <div class="enemy-slots">
-            <div class="enemy-slot">?</div><div class="enemy-slot">?</div><div class="enemy-slot">?</div>
-            <div class="enemy-slot">?</div><div class="enemy-slot">?</div><div class="enemy-slot">?</div>
+        <section class="enemy-team" aria-labelledby="enemy-heading">
+          <div class="enemy-head">
+            <h3 id="enemy-heading">Enemy team</h3>
+            <div id="trainer-tabs" class="trainer-tabs" role="group" aria-label="Trainer"></div>
           </div>
+          <p id="enemy-note" class="hint" hidden></p>
+          <div id="enemy-slots" class="enemy-slots"></div>
         </section>
 
         <div class="focus-body">
