@@ -336,12 +336,16 @@ function renderFocus() {
   const mons = box();
   const byId = new Map(mons.map((m) => [m.id, m]));
 
+  // The split's level cap sits above the name, for regular trainers too.
+  const split = battle.level_cap !== null ? battle : state.battles.find((b) => b.id === battle.group_id);
+  $("#focus-cap").hidden = !split;
+  $("#focus-cap").replaceChildren(...(split ? [
+    el("strong", { class: "cap-badge" }, `Level cap ${split.level_cap}`),
+    el("span", { class: "muted" }, `${split.name} Split`),
+  ] : []));
   $("#focus-name").textContent = battle.name;
-  $("#focus-sub").textContent = [
-    battle.level_cap && `Level cap ${battle.level_cap}`,
-    battle.location,
-    ...battle.tags.filter((t) => !HIDDEN_TAGS.has(t)),
-  ].filter(Boolean).join(" · ");
+  $("#focus-sub").textContent = [battle.location, ...battle.tags.filter((t) => !HIDDEN_TAGS.has(t))]
+    .filter(Boolean).join(" · ");
   for (const btn of document.querySelectorAll(".result-toggle button")) {
     btn.setAttribute("aria-pressed", fight?.result === btn.dataset.result);
   }
@@ -417,23 +421,26 @@ function renderEnemy() {
   $("#enemy-slots").replaceChildren(...Array.from({ length: TEAM_SIZE }, (_, i) => enemySlot(trainer.pokemon[i])));
 }
 
-/** One enemy Pokemon: sprite, name and level, with its set listed underneath. */
+/**
+ * One enemy Pokemon as a card: sprite, name and level, then its item /
+ * ability / nature in one block and its moves as a 2x2 grid in another.
+ */
 function enemySlot(mon, placeholder = "") {
   if (!mon) {
     return el("div", { class: "enemy-col" }, el("div", { class: "enemy-slot" }, placeholder));
   }
-  const info = [["Item", mon.item], ["Ability", mon.ability], ["Nature", mon.nature]]
+  const stats = [["Item", mon.item], ["Ability", mon.ability], ["Nature", mon.nature]]
     .flatMap(([label, value]) => [el("dt", {}, label), el("dd", {}, value ?? "—")]);
-  return el("div", { class: "enemy-col" },
+  // Always four cells, so the grid keeps its 2x2 shape when a Pokemon knows fewer moves.
+  const moves = [...mon.moves, null, null, null, null].slice(0, 4);
+  return el("div", { class: "enemy-col filled" },
     el("div", { class: "enemy-slot filled" },
       sprite(mon.species),
       el("span", { class: "mon-name" }, mon.species),
       el("span", { class: "mon-route" }, mon.level ? `Lv ${mon.level}` : "")),
-    el("dl", { class: "enemy-info" }, ...info,
-      el("dt", {}, "Moves"),
-      el("dd", {}, mon.moves.length
-        ? el("ul", { class: "moves" }, ...mon.moves.map((m) => el("li", {}, m)))
-        : "—")));
+    el("dl", { class: "enemy-block enemy-stats" }, ...stats),
+    el("ul", { class: "enemy-block enemy-moves", "aria-label": `${mon.species}'s moves` },
+      ...moves.map((move) => el("li", { class: move ? "move" : "move empty" }, move ?? "—"))));
 }
 
 // --- focus: your team + box ------------------------------------------------------
