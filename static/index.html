@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nuzlocke Tracker</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>Run &amp; Bun Nuzlocke</h1>
+    <div class="attempt-controls">
+      <label for="attempt-select">Attempt</label>
+      <select id="attempt-select"></select>
+      <button id="new-attempt" type="button">+ New attempt</button>
+      <button id="delete-attempt" type="button" class="danger">Delete</button>
+    </div>
+    <span id="status" role="status" aria-live="polite"></span>
+  </header>
+
+  <main id="main" hidden>
+    <nav class="tabs" role="tablist">
+      <button type="button" role="tab" data-tab="encounters">Encounters <span id="catch-count" class="pill"></span></button>
+      <button type="button" role="tab" data-tab="fights">Boss Fights</button>
+      <button type="button" role="tab" data-tab="notes">Notes</button>
+    </nav>
+
+    <section id="tab-encounters" class="panel">
+      <p class="hint">Pick what you caught on each route. Only Pokemon from that route's encounter table are listed.</p>
+      <table class="grid">
+        <thead><tr><th>Route</th><th>Caught</th></tr></thead>
+        <tbody id="encounters-body"></tbody>
+      </table>
+    </section>
+
+    <section id="tab-fights" class="panel" hidden>
+      <p class="hint">Pick the team you brought to each fight. Only Pokemon caught during this attempt are listed.</p>
+      <p id="empty-box" class="hint warn" hidden>No catches yet &mdash; record some on the Encounters tab first.</p>
+      <div class="scroll-x">
+        <table class="grid fights">
+          <thead>
+            <tr><th>Fight</th><th>Cap</th><th colspan="6">Team</th><th>Result</th></tr>
+          </thead>
+          <tbody id="fights-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="tab-notes" class="panel" hidden>
+      <label for="notes">Notes for this attempt</label>
+      <textarea id="notes" rows="10" placeholder="How did it go? Deaths, rule decisions, how the run ended..."></textarea>
+    </section>
+  </main>
+
+  <section id="no-attempts" class="panel" hidden>
+    <p>No attempts yet. Click <strong>+ New attempt</strong> to start one.</p>
+  </section>
+
+  <script src="app.js"></script>
+</body>
+</html>

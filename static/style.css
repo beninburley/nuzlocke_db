@@ -1,0 +1,103 @@
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --text: #1d2330;
+  --muted: #667085;
+  --border: #d9dde4;
+  --accent: #2f6fdf;
+  --ok: #1f8a4c;
+  --bad: #c0392b;
+  --row-alt: #fafbfc;
+  --filled: #eef4ff;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+button, select, textarea, input { font: inherit; }
+
+button {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  cursor: pointer;
+}
+button:hover { border-color: var(--accent); }
+button.danger:hover { border-color: var(--bad); color: var(--bad); }
+
+select {
+  padding: 3px 4px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  max-width: 100%;
+}
+select.filled { background: var(--filled); border-color: #b9cdf5; }
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  padding: 10px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.topbar h1 { margin: 0; font-size: 18px; }
+.attempt-controls { display: flex; align-items: center; gap: 6px; }
+#status { margin-left: auto; font-size: 13px; color: var(--muted); }
+#status.ok { color: var(--ok); }
+#status.error { color: var(--bad); }
+
+main, #no-attempts { max-width: 1400px; margin: 0 auto; padding: 12px 16px 40px; }
+
+.tabs { display: flex; gap: 4px; margin-bottom: 12px; }
+.tabs button { border-radius: 6px 6px 0 0; }
+.tabs button[aria-selected="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.pill { font-size: 12px; opacity: 0.8; }
+
+.panel { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
+.hint { margin: 0 0 10px; color: var(--muted); }
+.hint.warn { color: var(--bad); }
+.scroll-x { overflow-x: auto; }
+
+.grid { border-collapse: collapse; width: 100%; }
+.grid th, .grid td {
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: middle;
+}
+.grid thead th { position: sticky; top: 0; background: var(--surface); font-weight: 600; }
+.grid tbody tr:nth-child(even) { background: var(--row-alt); }
+.grid td:first-child { white-space: nowrap; }
+
+#encounters-body select { width: 280px; }
+
+.fights td.cap { color: var(--muted); white-space: nowrap; }
+.fights select.slot { width: 150px; }
+.fights select.result.won { background: #e6f5ec; border-color: var(--ok); }
+.fights select.result.lost { background: #fbeaea; border-color: var(--bad); }
+
+#tab-notes label { display: block; font-weight: 600; margin-bottom: 6px; }
+#tab-notes textarea {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  resize: vertical;
+}
