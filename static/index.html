@@ -26,7 +26,7 @@
     </nav>
 
     <section id="tab-encounters" class="panel">
-      <p class="hint">Pick what you caught on each route. Only Pokemon from that route's encounter table are listed.</p>
+      <p class="hint">Click <strong>+ Add catch</strong> to record what you caught on a route. You can only pick from that route's encounter table. Click a catch to change it.</p>
       <table class="grid">
         <thead><tr><th>Route</th><th>Caught</th></tr></thead>
         <tbody id="encounters-body"></tbody>
@@ -90,6 +90,22 @@
       <textarea id="notes" rows="10" placeholder="How did it go? Deaths, rule decisions, how the run ended..."></textarea>
     </section>
   </main>
+
+  <dialog id="catch-picker" class="picker" aria-labelledby="picker-title">
+    <div class="picker-inner">
+      <header class="picker-head">
+        <div>
+          <h2 id="picker-title"></h2>
+          <p id="picker-sub" class="muted"></p>
+        </div>
+        <form method="dialog"><button class="icon-button" aria-label="Close">&times;</button></form>
+      </header>
+      <div id="picker-body" class="picker-body"></div>
+      <footer class="picker-foot">
+        <button id="picker-remove" type="button" class="danger">Remove catch</button>
+      </footer>
+    </div>
+  </dialog>
 
   <section id="no-attempts" class="panel" hidden>
     <p>No attempts yet. Click <strong>+ New attempt</strong> to start one.</p>
