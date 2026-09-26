@@ -5,8 +5,11 @@ A small web app that replaces the user-entered parts of the Run & Bun master she
 - **Attempts**: pick which run you're on, or start a new one.
 - **Encounters**: record what you caught on each route. The dropdown only offers
   Pokemon from that route's encounter table (from the sheet's *Encounters* tab).
-- **Boss Fights**: record the team (up to 6) you brought to each of the 23 boss
-  fights, plus won/lost. Slots only offer Pokemon caught during that attempt.
+- **Boss Fights**: pick one of the 23 boss fights from the slide-out list, then
+  drag Pokemon from your box (only this attempt's catches) into the six team
+  slots. You can also click a box Pokemon to add or remove it. Drag between
+  slots to swap, or back to the box to remove. Mark each fight won or lost. The
+  row of six grey slots at the top is reserved for the boss's team.
 - **Notes**: free text per attempt.
 
 Everything saves automatically on change.
@@ -36,6 +39,16 @@ spreadsheet's Encounters tab, re-extract it:
 
 ```powershell
 .venv\Scripts\python.exe scripts\extract_game_data.py
+```
+
+**Sprites** come from [PokeAPI](https://pokeapi.co/). `data/sprites.json` maps
+every species in the game data to its PokeAPI sprite URL, so the app never calls
+the API itself. Spreadsheet names are translated along the way (`Zigzagoon-G` ->
+`zigzagoon-galar`, `Deerling-A` -> `deerling-autumn`). Re-run the script after
+re-extracting game data if new species appear:
+
+```powershell
+.venv\Scripts\python.exe scripts\fetch_sprites.py
 ```
 
 **Past attempts** from the *Past Encounters* and *Past Boss Fights* tabs can be
@@ -69,7 +82,8 @@ app.py                 Flask app: JSON API + serves static/
 db.py                  SQLite connection, schema setup, game-data sync
 schema.sql             Tables and integrity triggers
 data/game_data.json    Extracted game data
-scripts/               Spreadsheet extraction and history import
+data/sprites.json      Species -> PokeAPI sprite URL
+scripts/               Spreadsheet extraction, sprite lookup, history import
 static/                Frontend (plain HTML/CSS/JS, no build step)
 ```
 
@@ -77,7 +91,7 @@ static/                Frontend (plain HTML/CSS/JS, no build step)
 
 | Method | Path | Body |
 |---|---|---|
-| GET | `/api/game` | routes (with encounter options) and bosses |
+| GET | `/api/game` | routes (with encounter options), bosses, sprites |
 | GET / POST | `/api/attempts` | `{number?}` |
 | GET / PATCH / DELETE | `/api/attempts/<id>` | `{number?, notes?}` |
 | PUT | `/api/attempts/<id>/catches/<route_id>` | `{pokemon}` (null clears) |
@@ -85,6 +99,7 @@ static/                Frontend (plain HTML/CSS/JS, no build step)
 
 ## Not in the MVP yet
 
+- Boss teams (the enemy slots on the Boss Fights tab are placeholders)
 - Per-Pokemon details: evolved form at each fight, nature/ability, death (who killed it)
 - Failed or skipped encounters (a `-` in the old sheet)
 - Dupes-clause warnings (the family data is already in the DB)

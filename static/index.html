@@ -33,16 +33,49 @@
       </table>
     </section>
 
-    <section id="tab-fights" class="panel" hidden>
-      <p class="hint">Pick the team you brought to each fight. Only Pokemon caught during this attempt are listed.</p>
-      <p id="empty-box" class="hint warn" hidden>No catches yet &mdash; record some on the Encounters tab first.</p>
-      <div class="scroll-x">
-        <table class="grid fights">
-          <thead>
-            <tr><th>Fight</th><th>Cap</th><th colspan="6">Team</th><th>Result</th></tr>
-          </thead>
-          <tbody id="fights-body"></tbody>
-        </table>
+    <section id="tab-fights" class="fights-view" hidden>
+      <aside id="boss-drawer" class="drawer" aria-label="Boss fights">
+        <div class="drawer-head">
+          <h2>Boss fights</h2>
+          <button id="drawer-close" type="button" class="icon-button" aria-label="Hide boss list">&laquo;</button>
+        </div>
+        <ol id="boss-list" class="boss-list"></ol>
+      </aside>
+      <div id="drawer-scrim" class="drawer-scrim"></div>
+
+      <div class="fight-focus">
+        <header class="focus-head">
+          <button id="drawer-open" type="button" aria-controls="boss-drawer" aria-expanded="true">&#9776; Fights</button>
+          <div class="focus-title">
+            <h2 id="focus-boss-name"></h2>
+            <span id="focus-boss-cap" class="muted"></span>
+          </div>
+          <div class="result-toggle" role="group" aria-label="Result">
+            <button type="button" data-result="won" aria-pressed="false">Won</button>
+            <button type="button" data-result="lost" aria-pressed="false">Lost</button>
+          </div>
+        </header>
+
+        <section class="enemy-team" aria-label="Enemy team">
+          <h3>Enemy team <span class="muted">(boss data coming later)</span></h3>
+          <div class="enemy-slots">
+            <div class="enemy-slot">?</div><div class="enemy-slot">?</div><div class="enemy-slot">?</div>
+            <div class="enemy-slot">?</div><div class="enemy-slot">?</div><div class="enemy-slot">?</div>
+          </div>
+        </section>
+
+        <div class="focus-body">
+          <section class="team-panel" aria-label="Your team">
+            <h3>Your team <span id="team-count" class="muted"></span></h3>
+            <div id="team-grid" class="team-grid"></div>
+          </section>
+          <section id="box-panel" class="box-panel" aria-label="Box">
+            <h3>Box <span id="box-count" class="muted"></span></h3>
+            <p class="hint">Drag a Pok&eacute;mon onto a slot, or click it to add/remove. Drag a team member back here to remove it.</p>
+            <p id="empty-box" class="hint warn" hidden>No catches yet &mdash; record some on the Encounters tab first.</p>
+            <div id="box-grid" class="box-grid"></div>
+          </section>
+        </div>
       </div>
     </section>
 
