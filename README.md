@@ -34,6 +34,37 @@ python -m venv .venv
 Then open http://127.0.0.1:5000. The database (`instance/nuzlocke.db`) is
 created on first start. Set `NUZLOCKE_DB` to use a different file.
 
+## Deploying (PythonAnywhere, free)
+
+The live site runs on a free PythonAnywhere "Beginner" account. That plan
+keeps the SQLite database on a persistent disk, serves HTTPS at
+`<username>.pythonanywhere.com`, and has built-in password protection.
+
+First-time setup:
+
+1. On the **Web** tab, *Add a new web app* → *Manual configuration* → *Python 3.11*.
+2. Open a **Bash console** and run:
+
+   ```bash
+   git clone https://github.com/beninburley/nuzlocke_db.git ~/nuzlocke_db
+   bash ~/nuzlocke_db/deploy/pythonanywhere_setup.sh
+   ```
+
+3. Back on the **Web** tab, set *Source code* to `/home/<username>/nuzlocke_db` and
+   *Virtualenv* to `/home/<username>/.virtualenvs/nuzlocke`. Turn on **Force HTTPS**
+   and **Password protection**. The app has no login of its own, so without
+   password protection anyone with the URL could edit your data. Click **Reload**.
+4. To bring your existing data along, upload your local `instance/nuzlocke.db` on
+   the **Files** tab into `/home/<username>/nuzlocke_db/instance/`, replacing the
+   file there. Then click **Reload**. From then on, the live site's database is the
+   one to use.
+
+To deploy an update after merging to `main`, re-run the setup script in a Bash
+console. It pulls, installs dependencies and reloads the site.
+
+Free web apps must be renewed monthly: click *Run until 1 month from today* on
+the **Web** tab, or the site gets disabled.
+
 ## Data
 
 **Game data** lives in `data/game_data.json`. It is extracted from the
