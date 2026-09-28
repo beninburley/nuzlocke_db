@@ -370,7 +370,8 @@ main, #no-attempts { max-width: 1400px; margin: 0 auto; padding: 12px 16px 40px;
   font-size: 11px;
   line-height: 1.2;
   text-align: center;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  hyphens: auto;
 }
 .enemy-moves .move.empty { color: var(--muted); background: none; border-style: dashed; }
 
@@ -499,4 +500,106 @@ main, #no-attempts { max-width: 1400px; margin: 0 auto; padding: 12px 16px 40px;
   border: 1px solid var(--border);
   border-radius: 6px;
   resize: vertical;
+}
+
+/* ---------------------------------------------------------------------------
+   Box tab: selected Pokemon's details on the left, the box on the right
+   --------------------------------------------------------------------------- */
+
+.box-view {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+.box-detail { position: sticky; top: 64px; }
+.box-list h2 { margin: 0 0 8px; font-size: 16px; }
+.box-list .box-grid { max-height: none; }
+button.box-mon { background: none; font: inherit; }
+.box-mon[aria-current="true"] { border-color: var(--accent); background: var(--filled); }
+.box-mon.fainted .sprite, .team-slot.filled .status-badge.fainted ~ .sprite { filter: grayscale(1); opacity: 0.6; }
+
+@media (max-width: 900px) {
+  .box-view { grid-template-columns: 1fr; }
+  .box-detail { position: static; }
+}
+
+/* Pokemon details editor (Box tab, new-catch popup, battle copies) */
+.pokemon-editor { display: flex; flex-direction: column; gap: 12px; }
+.editor-head { display: flex; align-items: center; gap: 10px; }
+.editor-sprite .sprite { width: 96px; height: 96px; }
+.editor-title { flex: 1; min-width: 0; }
+.editor-species { margin: 0; font-size: 20px; }
+.editor-title p { margin: 2px 0 0; font-size: 13px; }
+.evolve-button { align-self: flex-start; }
+.editor-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
+.field { display: flex; flex-direction: column; gap: 3px; min-width: 0; margin: 0; }
+.field-label {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.pokemon-editor input, .pokemon-editor select {
+  width: 100%;
+  padding: 5px 7px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+}
+.pokemon-editor input:invalid { border-color: var(--bad); }
+.moves-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--row-alt);
+}
+.ivs-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+.iv { display: flex; flex-direction: column; align-items: center; gap: 2px; color: var(--muted); font-size: 11px; }
+.iv input { padding: 5px 2px; text-align: center; }
+.editor-actions { display: flex; justify-content: flex-end; gap: 8px; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button.primary:disabled { opacity: 0.6; }
+.details-dialog { width: min(560px, calc(100vw - 32px)); }
+
+/* Status, and battle copies that differ from the box */
+.status-badge {
+  display: inline-block;
+  padding: 0 6px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.status-badge.burn { background: #fde4d8; color: #b4441c; }
+.status-badge.sleep { background: #e5e7f8; color: #4b56a8; }
+.status-badge.fainted { background: #e4e6ea; color: #50555e; }
+.catch-chip .status-badge { margin-left: 2px; }
+.catch-chip .mon-route { margin-left: 2px; }
+.changed-tag {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  padding: 0 5px;
+  border: 1px solid #f0c36d;
+  border-radius: 8px;
+  background: #fff4d6;
+  color: #7a4b00;
+  font-size: 10px;
+}
+.team-slot.filled { cursor: pointer; }
+.team-slot.filled:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.changed-banner {
+  margin: 0 0 14px;
+  padding: 8px 12px;
+  border: 1px solid #f0c36d;
+  border-radius: 8px;
+  background: #fff8e6;
+  color: #7a4b00;
+  font-size: 13px;
 }

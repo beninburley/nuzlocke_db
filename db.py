@@ -9,10 +9,22 @@ DB_PATH = Path(os.environ.get("NUZLOCKE_DB", ROOT / "instance" / "nuzlocke.db"))
 SCHEMA_PATH = ROOT / "schema.sql"
 GAME_DATA_PATH = ROOT / "data" / "game_data.json"
 SPRITES_PATH = ROOT / "data" / "sprites.json"
+EVOLUTIONS_PATH = ROOT / "data" / "evolutions.json"
 
 # Bump when schema.sql changes in a way existing databases need migrating for,
 # and add a step to migrate().
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
+
+# A Pokemon's details, as stored on box Pokemon (catches) and on the copies in
+# battle teams (fight_members).
+IV_STATS = ("hp", "atk", "def", "spa", "spd", "spe")
+DETAIL_COLUMNS = ("level", "ability", "nature", "item", "move1", "move2", "move3", "move4",
+                  *(f"iv_{stat}" for stat in IV_STATS), "status")
+POKEMON_COLUMNS = ("species", *DETAIL_COLUMNS)
+STATUSES = ("OK", "Burn", "Sleep", "Fainted")
+NATURES = ("Hardy", "Lonely", "Brave", "Adamant", "Naughty", "Bold", "Docile", "Relaxed", "Impish",
+           "Lax", "Timid", "Hasty", "Serious", "Jolly", "Naive", "Modest", "Mild", "Quiet", "Bashful",
+           "Rash", "Calm", "Gentle", "Sassy", "Careful", "Quirky")
 
 
 def connect(path=None):
@@ -38,9 +50,16 @@ def schema_sql():
 def migrate(conn):
     version = conn.execute("PRAGMA user_version").fetchone()[0]
     tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+    if "catches" not in tables:  # new database: schema.sql creates everything
+        conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+        return
     if version < 1 and "bosses" in tables:
         backup(conn, "v0")
         migrate_bosses_to_battles(conn)
+        version = 1
+    if version < 2:
+        backup(conn, "v1")
+        migrate_box_details(conn)
     conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
 
 
@@ -53,31 +72,19 @@ def backup(conn, label):
     target.close()
 
 
-def migrate_bosses_to_battles(conn):
-    """v0 -> v1: `bosses` (23 level-cap fights) becomes `battles` (every trainer).
+def rebuild_tables(conn, move_aside, copy_back):
+    """SQLite's table-rebuild procedure, in one transaction.
 
-    Uses SQLite's table-rebuild procedure: with foreign keys off and legacy
-    renames (so fight_members keeps pointing at the name "fights"), move the
-    old tables aside, create the new ones from schema.sql, and copy rows over
-    with the same ids so recorded fights stay attached to their boss.
+    With foreign keys off and legacy renames (so other tables' references keep
+    pointing at the original names), `move_aside` renames the old tables,
+    schema.sql creates the new ones, and `copy_back` copies rows over (keeping
+    ids) and drops the old tables. Triggers on or about the rebuilt tables must
+    be dropped in `move_aside`; schema.sql recreates them.
     """
     conn.execute("PRAGMA foreign_keys = OFF")
     conn.execute("PRAGMA legacy_alter_table = ON")
     try:
-        conn.executescript(
-            "BEGIN;"
-            "DROP TRIGGER IF EXISTS fight_members_same_attempt;"
-            "ALTER TABLE fights RENAME TO fights_v0;"
-            "ALTER TABLE bosses RENAME TO bosses_v0;"
-            + schema_sql() +
-            "INSERT INTO battles (id, key, name, level_cap, position)"
-            "  SELECT id, 'boss:' || name, name, level_cap, position FROM bosses_v0;"
-            "INSERT INTO fights (id, attempt_id, battle_id, result)"
-            "  SELECT id, attempt_id, boss_id, result FROM fights_v0;"
-            "DROP TABLE fights_v0;"
-            "DROP TABLE bosses_v0;"
-            "COMMIT;"
-        )
+        conn.executescript("BEGIN;" + move_aside + schema_sql() + copy_back + "COMMIT;")
     except sqlite3.Error:
         if conn.in_transaction:
             conn.execute("ROLLBACK")
@@ -88,6 +95,51 @@ def migrate_bosses_to_battles(conn):
     problems = conn.execute("PRAGMA foreign_key_check").fetchall()
     if problems:
         raise RuntimeError(f"migration left broken references: {[tuple(p) for p in problems]}")
+
+
+def migrate_bosses_to_battles(conn):
+    """v0 -> v1: `bosses` (23 level-cap fights) becomes `battles` (every trainer).
+
+    Rows keep their ids, so recorded fights stay attached to their boss.
+    """
+    rebuild_tables(
+        conn,
+        move_aside="DROP TRIGGER IF EXISTS fight_members_same_attempt;"
+                   "ALTER TABLE fights RENAME TO fights_v0;"
+                   "ALTER TABLE bosses RENAME TO bosses_v0;",
+        copy_back="INSERT INTO battles (id, key, name, level_cap, position)"
+                  "  SELECT id, 'boss:' || name, name, level_cap, position FROM bosses_v0;"
+                  "INSERT INTO fights (id, attempt_id, battle_id, result)"
+                  "  SELECT id, attempt_id, boss_id, result FROM fights_v0;"
+                  "DROP TABLE fights_v0;"
+                  "DROP TABLE bosses_v0;",
+    )
+
+
+def migrate_box_details(conn):
+    """v1 -> v2: box Pokemon get details, and battle teams hold copies of them.
+
+    Each catch's current species starts as what was caught. Each team member
+    becomes a copy of its catch as it is now (just the species, since no
+    details exist yet); scripts/backfill_forms.py can then fill in the evolved
+    forms the spreadsheet recorded.
+    """
+    rebuild_tables(
+        conn,
+        move_aside="DROP TRIGGER IF EXISTS catches_valid_insert;"
+                   "DROP TRIGGER IF EXISTS catches_valid_update;"
+                   "DROP TRIGGER IF EXISTS fight_members_same_attempt;"
+                   "ALTER TABLE catches RENAME TO catches_v1;"
+                   "ALTER TABLE fight_members RENAME TO fight_members_v1;",
+        copy_back="INSERT INTO catches (id, attempt_id, route_id, pokemon, species)"
+                  "  SELECT id, attempt_id, route_id, pokemon, pokemon FROM catches_v1;"
+                  "INSERT INTO fight_members (fight_id, slot, catch_id, species)"
+                  "  SELECT m.fight_id, m.slot, m.catch_id, c.pokemon"
+                  "  FROM fight_members_v1 m JOIN catches_v1 c ON c.id = m.catch_id"
+                  "  ORDER BY m.fight_id, m.slot;"
+                  "DROP TABLE fight_members_v1;"
+                  "DROP TABLE catches_v1;",
+    )
 
 
 def load_game_data(conn, path=GAME_DATA_PATH):
@@ -132,6 +184,14 @@ def load_game_data(conn, path=GAME_DATA_PATH):
             conn.executemany(
                 "INSERT INTO species_sprites (species, url) VALUES (?, ?)",
                 [(species, url) for species, url in sprites.items() if url],
+            )
+
+        conn.execute("DELETE FROM evolution_lines")
+        if EVOLUTIONS_PATH.exists():
+            lines = json.loads(EVOLUTIONS_PATH.read_text(encoding="utf-8"))
+            conn.executemany(
+                "INSERT INTO evolution_lines (species, members) VALUES (?, ?)",
+                [(species, json.dumps(members)) for species, members in lines.items()],
             )
 
 

@@ -3,8 +3,15 @@
 A small web app that replaces the user-entered parts of the Run & Bun master sheet:
 
 - **Attempts**: pick which run you're on, or start a new one.
-- **Encounters**: record what you caught on each route. The dropdown only offers
-  Pokemon from that route's encounter table (from the sheet's *Encounters* tab).
+- **Encounters**: record what you caught on each route. *+ Add catch* only
+  offers Pokemon from that route's encounter table (from the sheet's
+  *Encounters* tab). Picking one opens a details popup; fill it in, or *Skip*
+  and do it later on the Box tab.
+- **Box**: every Pokemon caught this attempt, on the right. The selected one's
+  details are on the left: level, status (OK / Burn / Sleep / Fainted),
+  nature, ability, held item, four moves and IVs. Ability, item and move boxes
+  suggest the names Run & Bun's trainers use. *Evolve…* shows the whole
+  evolutionary line (from PokeAPI) and evolves or devolves in one click.
 - **Trainer Battles**: the slide-out list has one dropdown per split, e.g.
   "Route 104 Aqua Grunt Split". Each lists that split's trainers in game order,
   ending with the level-cap boss. You can also type in the filter box. Pick
@@ -14,6 +21,11 @@ A small web app that replaces the user-entered parts of the Run & Bun master she
   Drag Pokemon from your box (only this attempt's catches) into the six team
   slots. You can also click a box Pokemon to add or remove it. Drag between
   slots to swap, or back to the box to remove. Mark each fight won or lost.
+  A team stores **copies**: adding a Pokemon copies it as it is right then, so
+  evolving or editing it in the Box later doesn't rewrite past fights (and
+  editing a copy doesn't touch the box). Click a team member to see or edit
+  that fight's copy. If any copy differs from the box, the fight shows *This
+  fight used Pokémon that have since been changed*.
 - **Notes**: free text per attempt.
 
 Everything saves automatically on change.
@@ -93,6 +105,14 @@ re-extracting game data if new species appear:
 .venv\Scripts\python.exe scripts\fetch_sprites.py
 ```
 
+**Evolution lines** come from PokeAPI's evolution chains, cached in
+`data/evolutions.json`. Regional forms keep their line (Growlithe-H ->
+Arcanine-H). Re-run after re-extracting game data:
+
+```powershell
+.venv\Scripts\python.exe scripts\fetch_evolutions.py
+```
+
 **Past attempts** from the *Past Encounters* and *Past Boss Fights* tabs can be
 imported (best effort):
 
@@ -103,22 +123,35 @@ imported (best effort):
 
 The import strips ability markers (`Lillipup-`), matches evolved or shorthand
 names to catches through evolution families (`Grotle` -> the Turtwig starter,
-`Zigzagoon` -> `Zigzagoon-G`), and fixes small typos. It puts "Killed:" rows and
-free-text notes into each attempt's notes. It prints everything it corrected or
-skipped.
+`Zigzagoon` -> `Zigzagoon-G`), and fixes small typos. Battle copies get the
+form the sheet lists for that fight, and each box Pokemon gets the latest form
+it reached. It puts "Killed:" rows and free-text notes into each attempt's
+notes. It prints everything it corrected or skipped.
+
+Databases imported before battle copies existed can get those forms
+afterwards. The script only changes copies and box Pokemon still showing their
+caught species, so edits made in the app are kept:
+
+```powershell
+.venv\Scripts\python.exe scripts\backfill_forms.py --dry-run   # show what would change
+.venv\Scripts\python.exe scripts\backfill_forms.py
+```
 
 To start over, stop the app and delete `instance/nuzlocke.db`.
 
 When a new version changes the schema, the app migrates the existing database
-on startup. It first saves a copy next to it (e.g. `nuzlocke.backup-v0.db`).
+on startup. It first saves a copy next to it (e.g. `nuzlocke.backup-v1.db`).
 
 ## Rules enforced
 
 Rules are checked in the API and again by SQLite triggers and constraints:
 
-- one catch per route per attempt, and it must be in that route's encounter table
-- a team member must be a catch from the same attempt, with no duplicates and at most 6
-- clearing a route's catch removes it from any team; changing the species keeps it on the team
+- one catch per route per attempt, and what was caught must be in that route's encounter table
+  (its current species can then evolve freely)
+- level 1-100, IVs 0-31, status one of OK / Burn / Sleep / Fainted, nature one of the 25
+- a team member must be a copy of a catch from the same attempt, with no duplicates and at most 6
+- removing a route's catch keeps the battle copies made from it (they show as "no longer in box");
+  changing the Pokemon caught on a route resets its current species
 
 ## Layout
 
@@ -128,7 +161,8 @@ db.py                  SQLite connection, schema setup, game-data sync
 schema.sql             Tables and integrity triggers
 data/game_data.json    Extracted game data
 data/sprites.json      Species -> PokeAPI sprite URL
-scripts/               Spreadsheet extraction, sprite lookup, history import
+data/evolutions.json   Species -> its evolutionary line (PokeAPI)
+scripts/               Spreadsheet extraction, PokeAPI lookups, history import/backfill
 static/                Frontend (plain HTML/CSS/JS, no build step)
 ```
 
@@ -136,18 +170,20 @@ static/                Frontend (plain HTML/CSS/JS, no build step)
 
 | Method | Path | Body |
 |---|---|---|
-| GET | `/api/game` | routes (with encounter options), battles, sprites |
+| GET | `/api/game` | routes (with encounter options), battles, sprites, evolution lines, natures, statuses, suggestions |
 | GET | `/api/battles/<id>` | a battle's trainers and their teams |
 | GET / POST | `/api/attempts` | `{number?}` |
 | GET / PATCH / DELETE | `/api/attempts/<id>` | `{number?, notes?}` |
 | PUT | `/api/attempts/<id>/catches/<route_id>` | `{pokemon}` (null clears) |
-| PUT | `/api/attempts/<id>/fights/<battle_id>` | `{members: [catch_id or null] x6, result: "won" or "lost" or null}` |
+| PATCH | `/api/catches/<id>` | any of `{species, level, ability, nature, item, moves: [4], ivs: {hp, atk, def, spa, spd, spe}, status}` |
+| PUT | `/api/attempts/<id>/fights/<battle_id>` | `{members: [slot] x6, result: "won" or "lost" or null}`; each slot is `null`, `{"id": copy}` (keep) or `{"catch_id": n}` (new copy) |
+| PATCH | `/api/fight-members/<id>` | same fields as a catch; edits that battle's copy only |
 
 ## Not in the MVP yet
 
 - Trainer portraits (the sheet's *Sprites* tab embeds images rather than linking them)
 - Tracking which trainers you've beaten or skipped (the *Trainers* tab's Status column)
-- Per-Pokemon details: evolved form at each fight, nature/ability, death (who killed it)
+- Who killed a Pokemon (the old sheet's "Killed:" rows are only in each attempt's notes)
 - Failed or skipped encounters (a `-` in the old sheet)
 - Dupes-clause warnings (the family data is already in the DB)
 - User accounts (it's single-user right now)
