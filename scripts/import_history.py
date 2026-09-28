@@ -15,10 +15,11 @@ Reads the "Past Encounters" and "Past Boss Fights" tabs:
 Anything that can't be matched is skipped and listed in the report.
 
 Usage:
-    python scripts/import_history.py ["path/to/sheet.xlsx"] [--replace]
+    python scripts/import_history.py ["path/to/sheet.xlsx"] [--replace] [--user=NAME]
 
-Attempts that already exist in the DB are skipped unless --replace is given,
-which deletes and re-imports them.
+The attempts go to account NAME (default: the site owner, db.SITE_OWNER),
+which must exist. Its attempts that are already in the DB are skipped unless
+--replace is given, which deletes and re-imports them.
 """
 import difflib
 import re
@@ -191,9 +192,19 @@ def read_boss_fights(ws, bosses):
     return attempts
 
 
-def import_attempt(conn, number, enc, fights, names, ids, report):
+def account_id(conn):
+    """The account named by --user=NAME (default: the site owner)."""
+    name = next((a.split("=", 1)[1] for a in sys.argv[1:] if a.startswith("--user=")), db.SITE_OWNER)
+    user = conn.execute("SELECT id FROM users WHERE username = ?", (name,)).fetchone()
+    if user is None:
+        sys.exit(f"No account named {name!r}. Create it first:\n"
+                 f"  python scripts/manage_account.py {name} --create --password")
+    return user["id"]
+
+
+def import_attempt(conn, user_id, number, enc, fights, names, ids, report):
     notes = ["Imported from spreadsheet."]
-    cur = conn.execute("INSERT INTO attempts (number) VALUES (?)", (number,))
+    cur = conn.execute("INSERT INTO attempts (user_id, number) VALUES (?, ?)", (user_id, number))
     attempt_id = cur.lastrowid
 
     box = []  # (catch_id, pokemon)
@@ -245,6 +256,7 @@ def main():
 
     conn = db.connect()
     db.init_db(conn)
+    user_id = account_id(conn)
     names = Names(conn)
     ids = {
         "route": {r["name"]: r["id"] for r in conn.execute("SELECT id, name FROM routes")},
@@ -260,7 +272,7 @@ def main():
     encounters = read_encounters(wb["Past Encounters"], names, route_options, report)
     fights = read_boss_fights(wb["Past Boss Fights"], ids["boss"])
 
-    existing = {r["number"] for r in conn.execute("SELECT number FROM attempts")}
+    existing = {r["number"] for r in conn.execute("SELECT number FROM attempts WHERE user_id = ?", (user_id,))}
     imported, skipped = [], []
     with conn:
         for number in sorted(set(encounters) | set(fights)):
@@ -268,8 +280,8 @@ def main():
                 if not replace:
                     skipped.append(number)
                     continue
-                conn.execute("DELETE FROM attempts WHERE number = ?", (number,))
-            import_attempt(conn, number, encounters.get(number), fights.get(number), names, ids, report)
+                conn.execute("DELETE FROM attempts WHERE user_id = ? AND number = ?", (user_id, number))
+            import_attempt(conn, user_id, number, encounters.get(number), fights.get(number), names, ids, report)
             imported.append(number)
     conn.close()
 

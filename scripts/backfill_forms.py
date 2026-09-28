@@ -9,7 +9,9 @@ Only copies and box Pokemon still showing their caught species are changed, so
 anything edited in the app since is left alone. Safe to re-run.
 
 Usage:
-    python scripts/backfill_forms.py ["path/to/sheet.xlsx"] [--dry-run]
+    python scripts/backfill_forms.py ["path/to/sheet.xlsx"] [--dry-run] [--user=NAME]
+
+It works on account NAME's attempts (default: the site owner, db.SITE_OWNER).
 """
 import sys
 from pathlib import Path
@@ -18,7 +20,7 @@ import openpyxl
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import db  # noqa: E402
-from import_history import DEFAULT_XLSX, Names, match_team, read_boss_fights  # noqa: E402
+from import_history import DEFAULT_XLSX, Names, account_id, match_team, read_boss_fights  # noqa: E402
 
 
 def main():
@@ -28,13 +30,15 @@ def main():
 
     conn = db.connect()
     db.init_db(conn)
+    user_id = account_id(conn)
     names = Names(conn)
     bosses = db.level_cap_battles(conn)  # Past Boss Fights name -> battle ids
     sheet = read_boss_fights(openpyxl.load_workbook(xlsx, data_only=True)["Past Boss Fights"], bosses)
 
     copies, box, examples = 0, 0, []
     for number, fights in sorted(sheet.items()):
-        attempt = conn.execute("SELECT id FROM attempts WHERE number = ?", (number,)).fetchone()
+        attempt = conn.execute("SELECT id FROM attempts WHERE user_id = ? AND number = ?",
+                               (user_id, number)).fetchone()
         if attempt is None:
             continue
         caught = {r["id"]: r["pokemon"] for r in conn.execute(
