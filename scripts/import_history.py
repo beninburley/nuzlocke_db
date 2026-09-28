@@ -91,6 +91,30 @@ def pick(candidates, species, names):
     return family[0] if family else None
 
 
+def match_team(cells, box, names):
+    """One boss column's cells -> (members, unmatched, free text).
+
+    members is [(catch_id, species used)] in slot order, matched to the box
+    [(catch_id, caught species)] through evolution families, so "Grotle" is the
+    Turtwig caught as the starter, used as a Grotle in that fight.
+    """
+    members, unmatched, free_text = [], [], []
+    for cell in cells:
+        if not cell:
+            continue
+        species = names.resolve(cell)
+        if species is None:
+            free_text.append(cell)
+            continue
+        used = {catch_id for catch_id, _ in members}
+        match = pick([b for b in box if b[0] not in used], species, names)
+        if match:
+            members.append((match[0], species))
+        else:
+            unmatched.append(cell)
+    return members[:6], unmatched, free_text
+
+
 def read_encounters(ws, names, route_options, report):
     """-> {attempt: {"catches": {route: pokemon}, "deaths": [str]}}"""
     blocks = [(ENC_STARTER_COL, ENC_FIRST_ROUTE_COL)]
@@ -172,28 +196,17 @@ def import_attempt(conn, number, enc, fights, names, ids, report):
 
     box = []  # (catch_id, pokemon)
     for route, pokemon in (enc or {}).get("catches", {}).items():
-        cur = conn.execute("INSERT INTO catches (attempt_id, route_id, pokemon) VALUES (?, ?, ?)",
-                           (attempt_id, ids["route"][route], pokemon))
+        cur = conn.execute("INSERT INTO catches (attempt_id, route_id, pokemon, species) VALUES (?, ?, ?, ?)",
+                           (attempt_id, ids["route"][route], pokemon, pokemon))
         box.append((cur.lastrowid, pokemon))
 
-    free_text = []
+    free_text, latest_form = [], {}
     for col, cells in (fights or {}).get("columns", {}).items():
         boss = fights["boss_cols"].get(col)
-        members = []
-        for cell in cells:
-            if not cell:
-                continue
-            species = names.resolve(cell)
-            if species is None:
-                if cell not in free_text:
-                    free_text.append(cell)
-                continue
-            available = [b for b in box if b[0] not in members]
-            match = pick(available, species, names)
-            if match:
-                members.append(match[0])
-            else:
-                report["team"].append(f"#{number} {boss or 'col ' + str(col)}: '{cell}' not in this attempt's box")
+        members, unmatched, text = match_team(cells, box, names)
+        free_text += [t for t in text if t not in free_text]
+        for cell in unmatched:
+            report["team"].append(f"#{number} {boss or 'col ' + str(col)}: '{cell}' not in this attempt's box")
         if boss is None:
             continue
         won = fights["won"].get(col, False)
@@ -202,11 +215,16 @@ def import_attempt(conn, number, enc, fights, names, ids, report):
         result = "won" if won else "lost"
         cur = conn.execute("INSERT INTO fights (attempt_id, battle_id, result) VALUES (?, ?, ?)",
                            (attempt_id, ids["boss"][boss], result))
-        conn.executemany("INSERT INTO fight_members (fight_id, slot, catch_id) VALUES (?, ?, ?)",
-                         [(cur.lastrowid, slot, c) for slot, c in enumerate(members[:6], start=1)])
+        # Each team member is a copy with the form the sheet lists for this fight.
+        conn.executemany("INSERT INTO fight_members (fight_id, slot, catch_id, species) VALUES (?, ?, ?, ?)",
+                         [(cur.lastrowid, slot, c, species) for slot, (c, species) in enumerate(members, start=1)])
+        latest_form.update(members)
         report["fights"][result] += 1
         if result == "lost":
             report["lost"].append(f"#{number} lost to {boss}")
+    # The box holds each Pokemon in the latest form the sheet shows it in.
+    conn.executemany("UPDATE catches SET species = ? WHERE id = ?",
+                     [(species, catch_id) for catch_id, species in latest_form.items()])
 
     if free_text:
         notes.append("Run notes: " + " — ".join(free_text))

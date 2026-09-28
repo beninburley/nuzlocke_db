@@ -21,6 +21,7 @@
   <main id="main" hidden>
     <nav class="tabs" role="tablist">
       <button type="button" role="tab" data-tab="encounters">Encounters <span id="catch-count" class="pill"></span></button>
+      <button type="button" role="tab" data-tab="box">Box</button>
       <button type="button" role="tab" data-tab="fights">Trainer Battles</button>
       <button type="button" role="tab" data-tab="notes">Notes</button>
     </nav>
@@ -31,6 +32,15 @@
         <thead><tr><th>Route</th><th>Caught</th></tr></thead>
         <tbody id="encounters-body"></tbody>
       </table>
+    </section>
+
+    <section id="tab-box" class="box-view" hidden>
+      <section id="box-detail" class="panel box-detail" aria-label="Selected Pokémon"></section>
+      <section class="panel box-list" aria-labelledby="box-list-heading">
+        <h2 id="box-list-heading">Box <span id="box-tab-count" class="muted"></span></h2>
+        <p id="box-tab-empty" class="hint" hidden>No catches yet &mdash; add some on the Encounters tab.</p>
+        <div id="box-tab-grid" class="box-grid"></div>
+      </section>
     </section>
 
     <section id="tab-fights" class="fights-view" hidden>
@@ -60,6 +70,11 @@
             <button type="button" data-result="lost" aria-pressed="false">Lost</button>
           </div>
         </header>
+
+        <p id="team-changed" class="changed-banner" role="note" hidden>
+          This fight used Pok&eacute;mon that have since been changed. Its team shows them as they were;
+          click one to see or edit that copy.
+        </p>
 
         <section class="enemy-team" aria-labelledby="enemy-heading">
           <div class="enemy-head">
@@ -106,6 +121,33 @@
       </footer>
     </div>
   </dialog>
+
+  <dialog id="details-dialog" class="picker details-dialog" aria-labelledby="details-title">
+    <div class="picker-inner">
+      <header class="picker-head">
+        <h2 id="details-title"></h2>
+        <form method="dialog"><button class="icon-button" aria-label="Close">&times;</button></form>
+      </header>
+      <div id="details-body" class="picker-body"></div>
+    </div>
+  </dialog>
+
+  <dialog id="evolve-picker" class="picker" aria-labelledby="evolve-title">
+    <div class="picker-inner">
+      <header class="picker-head">
+        <div>
+          <h2 id="evolve-title"></h2>
+          <p class="muted">Pick any member of its evolutionary line.</p>
+        </div>
+        <form method="dialog"><button class="icon-button" aria-label="Close">&times;</button></form>
+      </header>
+      <div id="evolve-body" class="picker-body"></div>
+    </div>
+  </dialog>
+
+  <datalist id="dl-moves"></datalist>
+  <datalist id="dl-abilities"></datalist>
+  <datalist id="dl-items"></datalist>
 
   <section id="no-attempts" class="panel" hidden>
     <p>No attempts yet. Click <strong>+ New attempt</strong> to start one.</p>

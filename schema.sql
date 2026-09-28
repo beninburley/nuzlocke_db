@@ -74,6 +74,13 @@ CREATE TABLE IF NOT EXISTS species_sprites (
     url     TEXT NOT NULL
 );
 
+-- Each species' evolutionary line, from pokeapi.co (data/evolutions.json):
+-- a JSON list of the species it can evolve or devolve into, itself included.
+CREATE TABLE IF NOT EXISTS evolution_lines (
+    species TEXT PRIMARY KEY,
+    members TEXT NOT NULL
+);
+
 -- ---------------------------------------------------------------------------
 -- User data.
 -- ---------------------------------------------------------------------------
@@ -85,12 +92,32 @@ CREATE TABLE IF NOT EXISTS attempts (
     created_at TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- What was caught on each route during an attempt (at most one per route).
+-- The attempt's box: what was caught on each route (at most one per route).
+-- `pokemon` is what was caught, checked against the route's encounter table;
+-- `species` is what it is now, after evolving. The other columns are its
+-- details, NULL until filled in.
 CREATE TABLE IF NOT EXISTS catches (
     id         INTEGER PRIMARY KEY,
     attempt_id INTEGER NOT NULL REFERENCES attempts(id) ON DELETE CASCADE,
     route_id   INTEGER NOT NULL REFERENCES routes(id),
     pokemon    TEXT    NOT NULL,
+    species    TEXT    NOT NULL,
+    level      INTEGER CHECK (level BETWEEN 1 AND 100),
+    ability    TEXT,
+    nature     TEXT,
+    item       TEXT,
+    move1      TEXT,
+    move2      TEXT,
+    move3      TEXT,
+    move4      TEXT,
+    iv_hp      INTEGER CHECK (iv_hp  BETWEEN 0 AND 31),
+    iv_atk     INTEGER CHECK (iv_atk BETWEEN 0 AND 31),
+    iv_def     INTEGER CHECK (iv_def BETWEEN 0 AND 31),
+    iv_spa     INTEGER CHECK (iv_spa BETWEEN 0 AND 31),
+    iv_spd     INTEGER CHECK (iv_spd BETWEEN 0 AND 31),
+    iv_spe     INTEGER CHECK (iv_spe BETWEEN 0 AND 31),
+    status     TEXT    NOT NULL DEFAULT 'OK'
+               CHECK (status IN ('OK', 'Burn', 'Sleep', 'Fainted')),
     UNIQUE (attempt_id, route_id)
 );
 
@@ -119,21 +146,45 @@ CREATE TABLE IF NOT EXISTS fights (
     UNIQUE (attempt_id, battle_id)
 );
 
--- The team brought to a fight: up to six catches from the same attempt.
--- Clearing a route's catch removes it from any team it was on.
+-- The team brought to a fight: up to six copies of box Pokemon, each taken
+-- when it was added to the team. Evolving or editing the box Pokemon later
+-- doesn't change the copy, and editing the copy doesn't change the box.
+-- catch_id links a copy to its box Pokemon; it becomes NULL if that catch is
+-- removed, and the copy stays as the record of what was used.
 CREATE TABLE IF NOT EXISTS fight_members (
-    fight_id INTEGER NOT NULL REFERENCES fights(id) ON DELETE CASCADE,
-    slot     INTEGER NOT NULL CHECK (slot BETWEEN 1 AND 6),
-    catch_id INTEGER NOT NULL REFERENCES catches(id) ON DELETE CASCADE,
-    PRIMARY KEY (fight_id, slot),
+    -- AUTOINCREMENT: a copy's id is never reused after it's deleted, so a
+    -- stale id can't end up pointing at a different copy.
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    fight_id   INTEGER NOT NULL REFERENCES fights(id) ON DELETE CASCADE,
+    slot       INTEGER NOT NULL CHECK (slot BETWEEN 1 AND 6),
+    catch_id   INTEGER REFERENCES catches(id) ON DELETE SET NULL,
+    species    TEXT    NOT NULL,
+    level      INTEGER CHECK (level BETWEEN 1 AND 100),
+    ability    TEXT,
+    nature     TEXT,
+    item       TEXT,
+    move1      TEXT,
+    move2      TEXT,
+    move3      TEXT,
+    move4      TEXT,
+    iv_hp      INTEGER CHECK (iv_hp  BETWEEN 0 AND 31),
+    iv_atk     INTEGER CHECK (iv_atk BETWEEN 0 AND 31),
+    iv_def     INTEGER CHECK (iv_def BETWEEN 0 AND 31),
+    iv_spa     INTEGER CHECK (iv_spa BETWEEN 0 AND 31),
+    iv_spd     INTEGER CHECK (iv_spd BETWEEN 0 AND 31),
+    iv_spe     INTEGER CHECK (iv_spe BETWEEN 0 AND 31),
+    status     TEXT    NOT NULL DEFAULT 'OK'
+               CHECK (status IN ('OK', 'Burn', 'Sleep', 'Fainted')),
+    UNIQUE (fight_id, slot),
     UNIQUE (fight_id, catch_id)
 );
 
 -- A team member must have been caught during the same attempt as the fight.
 CREATE TRIGGER IF NOT EXISTS fight_members_same_attempt
 BEFORE INSERT ON fight_members
-WHEN (SELECT attempt_id FROM fights WHERE id = NEW.fight_id)
-  IS NOT (SELECT attempt_id FROM catches WHERE id = NEW.catch_id)
+WHEN NEW.catch_id IS NOT NULL
+ AND (SELECT attempt_id FROM fights WHERE id = NEW.fight_id)
+     IS NOT (SELECT attempt_id FROM catches WHERE id = NEW.catch_id)
 BEGIN
     SELECT RAISE(ABORT, 'team member was not caught during this attempt');
 END;

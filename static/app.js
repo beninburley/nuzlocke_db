@@ -8,11 +8,18 @@ const state = {
   routes: [],            // [{id, name, options: [{method, pokemon, rate, levels}]}]
   battles: [],           // [{id, name, location, level_cap, group_id, tags}] in game order
   sprites: {},           // species -> sprite url (pokeapi.co)
+  evolutions: {},        // species -> its evolutionary line (species names)
+  natures: [],
+  statuses: [],
+  ivStats: [],           // ["hp", "atk", "def", "spa", "spd", "spe"]
   attempts: [],          // [{id, number, notes, catch_count}]
   attempt: null,         // currently selected attempt
-  catches: new Map(),    // route_id -> {id, route_id, pokemon}
-  fights: new Map(),     // battle_id -> {id, battle_id, result, members: [{slot, catch_id}]}
+  // Box Pokemon and battle copies share one shape:
+  // {species, level, ability, nature, item, moves: [4], ivs: {hp, ...}, status}
+  catches: new Map(),    // route_id -> box Pokemon + {id, route_id, pokemon (what was caught)}
+  fights: new Map(),     // battle_id -> {id, battle_id, result, members: [copy + {id, slot, catch_id}]}
   battleId: null,        // battle shown on the Trainer Battles tab
+  boxId: null,           // box Pokemon shown on the Box tab
 };
 
 const TEAM_SIZE = 6;
@@ -106,6 +113,7 @@ async function selectAttempt(id) {
   $("#attempt-select").value = id;
   storageSet("attemptId", id);
   renderEncounters();
+  renderBox();
   renderFightView();
   $("#notes").value = state.attempt.notes;
 }
@@ -157,9 +165,11 @@ function catchCell(route) {
     return add;
   }
   const change = el("button", { type: "button", class: "catch-chip", title: `Change what you caught on ${route.name}` },
-    sprite(current.pokemon), el("span", { class: "mon-name" }, current.pokemon));
+    sprite(current.species), el("span", { class: "mon-name" }, current.species),
+    current.species !== current.pokemon ? el("span", { class: "mon-route" }, `caught as ${current.pokemon}`) : "",
+    statusBadge(current.status));
   change.addEventListener("click", () => openCatchPicker(route));
-  const remove = el("button", { type: "button", class: "catch-remove", "aria-label": `Remove ${current.pokemon} from ${route.name}` }, "×");
+  const remove = el("button", { type: "button", class: "catch-remove", "aria-label": `Remove ${current.species} from ${route.name}` }, "×");
   remove.addEventListener("click", () => removeCatch(route));
   return el("div", { class: "catch-cell" }, change, remove);
 }
@@ -205,39 +215,288 @@ function pickerCard(route, opt, current) {
     el("span", { class: "mon-route" }, detail));
   card.addEventListener("click", () => {
     $("#catch-picker").close();
-    if (opt.pokemon !== current) saveCatch(route, opt.pokemon);
+    pickCatch(route, opt.pokemon);
   });
   return card;
+}
+
+/** Record the catch (if it changed), then offer its details popup. */
+async function pickCatch(route, pokemon) {
+  let mon = state.catches.get(route.id);
+  if (mon?.pokemon !== pokemon) mon = await saveCatch(route, pokemon);
+  if (!mon) return;
+  openDetailsDialog({
+    title: `${route.name}: ${mon.species}`,
+    subtitle: "Fill in what you know, or skip and do it later on the Box tab.",
+    mon,
+    saveLabel: "Save",
+    cancelLabel: "Skip",
+    onSave: (fields) => saveCatchDetails(mon.id, fields),
+  });
 }
 
 async function removeCatch(route) {
   const current = state.catches.get(route.id);
   if (!current) return;
-  // Clearing a catch also takes it off every team it was on (the server cascades).
   const teams = [...state.fights.values()].filter((f) => f.members.some((m) => m.catch_id === current.id)).length;
-  if (teams && !confirm(`${current.pokemon} is on ${teams} team${teams > 1 ? "s" : ""}. Removing it also takes it off ${teams > 1 ? "those teams" : "that team"}. Continue?`)) {
+  const hasDetails = !sameDetails(current, { ...emptyDetails(), species: current.species });
+  if ((teams || hasDetails) && !confirm(
+    `Remove ${current.species} from ${route.name}? Its box details are deleted.` +
+    (teams ? ` The ${teams} battle${teams > 1 ? "s" : ""} it was used in keep their copy.` : ""))) {
     return;
   }
   await saveCatch(route, null);
 }
 
+/** Set (or clear, with null) a route's catch. Returns the saved box Pokemon, or null. */
 async function saveCatch(route, pokemon) {
   const attemptId = state.attempt.id;
   try {
     const { catch: saved } = await save(() =>
       api("PUT", `/attempts/${attemptId}/catches/${route.id}`, { pokemon }));
-    if (state.attempt?.id !== attemptId) return;  // user switched attempts mid-save
-    if (saved) {
-      state.catches.set(route.id, saved);
-    } else {
-      state.catches.delete(route.id);
+    if (state.attempt?.id !== attemptId) return null;  // user switched attempts mid-save
+    if (saved) state.catches.set(route.id, saved);
+    else state.catches.delete(route.id);  // battles keep their copies (catch_id becomes null)
+    if (!saved) {
       const data = await api("GET", `/attempts/${attemptId}`);
       state.fights = new Map(data.fights.map((f) => [f.battle_id, f]));
     }
     refreshCatchCell(route);
     refreshAttemptLabel();
+    renderBox();
     renderFightView();
-  } catch { /* save() already reported the error; the cell still shows the saved state */ }
+    return saved;
+  } catch {
+    return null;  // save() already reported the error; the cell still shows the saved state
+  }
+}
+
+/** Save a box Pokemon's details (or evolve it). Battle copies are unaffected. */
+async function saveCatchDetails(catchId, fields) {
+  const attemptId = state.attempt.id;
+  const { catch: saved } = await save(() => api("PATCH", `/catches/${catchId}`, fields));
+  if (state.attempt?.id !== attemptId) return saved;
+  state.catches.set(saved.route_id, saved);
+  refreshCatchCell(state.routes.find((r) => r.id === saved.route_id));
+  renderBoxGrid();
+  // Refresh the Box tab's editor too, unless it's holding unsaved edits.
+  if (saved.id === state.boxId && !boxEditor?.isDirty()) renderBoxDetail();
+  renderFightView();
+  return saved;
+}
+
+// ---------------------------------------------------------------------------
+// Pokemon details: the editor shared by the Box tab, the new-catch popup and
+// battle copies, plus the Evolve popup
+// ---------------------------------------------------------------------------
+
+const IV_LABELS = { hp: "HP", atk: "Atk", def: "Def", spa: "SpA", spd: "SpD", spe: "Spe" };
+
+function emptyDetails() {
+  return {
+    level: null, ability: null, nature: null, item: null, status: "OK",
+    moves: [null, null, null, null], ivs: Object.fromEntries(state.ivStats.map((s) => [s, null])),
+  };
+}
+
+/** Whether two Pokemon (box or copy) have identical details, species included. */
+function sameDetails(a, b) {
+  return a.species === b.species && a.level === b.level && a.ability === b.ability
+    && a.nature === b.nature && a.item === b.item && a.status === b.status
+    && a.moves.every((m, i) => m === b.moves[i])
+    && state.ivStats.every((stat) => a.ivs[stat] === b.ivs[stat]);
+}
+
+function catchById(id) {
+  for (const mon of state.catches.values()) if (mon.id === id) return mon;
+  return null;
+}
+
+const routeName = (routeId) => state.routes.find((r) => r.id === routeId)?.name ?? "";
+
+function statusBadge(status) {
+  return status && status !== "OK" ? el("span", { class: `status-badge ${status.toLowerCase()}` }, status) : "";
+}
+
+/**
+ * A form for a Pokemon's details. `onSave(fields)` and `onEvolve(species)`
+ * return promises; evolving saves straight away, other edits wait for Save.
+ */
+function pokemonEditor(mon, { subtitle, saveLabel = "Save", onSave, onEvolve, onCancel, cancelLabel }) {
+  let species = mon.species;
+  const text = (value, list, placeholder) =>
+    el("input", { type: "text", value: value ?? "", list, placeholder, maxlength: "40", autocomplete: "off" });
+  const number = (value, min, max, placeholder) =>
+    el("input", { type: "number", value: value ?? "", min: String(min), max: String(max), step: "1", placeholder });
+  const select = (options, value, blank) => {
+    const node = el("select", {},
+      ...(blank ? [el("option", { value: "" }, blank)] : []),
+      ...options.map((o) => el("option", { value: o }, o)));
+    node.value = value ?? "";
+    return node;
+  };
+  const field = (label, input, className = "") =>
+    el("label", { class: `field ${className}` }, el("span", { class: "field-label" }, label), input);
+
+  const level = number(mon.level, 1, 100, "?");
+  const status = select(state.statuses, mon.status);
+  const nature = select(state.natures, mon.nature, "—");
+  const ability = text(mon.ability, "dl-abilities", "Ability");
+  const item = text(mon.item, "dl-items", "None");
+  const moves = mon.moves.map((m, i) => text(m, "dl-moves", `Move ${i + 1}`));
+  const ivs = Object.fromEntries(state.ivStats.map((stat) => [stat, number(mon.ivs[stat], 0, 31, "?")]));
+
+  const headSprite = el("span", { class: "editor-sprite" }, sprite(species));
+  const headName = el("h3", { class: "editor-species" }, species);
+  const evolve = el("button", { type: "button", class: "evolve-button" }, "Evolve…");
+  const refreshHead = () => {
+    headSprite.replaceChildren(sprite(species));
+    headName.textContent = species;
+    evolve.hidden = (state.evolutions[species] ?? []).length < 2;
+  };
+  evolve.addEventListener("click", () => openEvolvePicker(species, async (next) => {
+    await onEvolve(next);
+    species = next;
+    refreshHead();
+  }));
+  refreshHead();
+
+  const values = () => {
+    const int = (input) => (input.value === "" ? null : Number(input.value));
+    return {
+      level: int(level),
+      status: status.value,
+      nature: nature.value || null,
+      ability: ability.value.trim() || null,
+      item: item.value.trim() || null,
+      moves: moves.map((m) => m.value.trim() || null),
+      ivs: Object.fromEntries(Object.entries(ivs).map(([stat, input]) => [stat, int(input)])),
+    };
+  };
+  const initial = JSON.stringify(values());
+
+  const saveButton = el("button", { type: "submit", class: "primary" }, saveLabel);
+  const form = el("form", { class: "pokemon-editor" },
+    el("div", { class: "editor-head" }, headSprite,
+      el("div", { class: "editor-title" }, headName, subtitle ? el("p", { class: "muted" }, subtitle) : ""),
+      evolve),
+    el("div", { class: "editor-row" },
+      field("Level", level, "narrow"), field("Status", status), field("Nature", nature)),
+    el("div", { class: "editor-row" }, field("Ability", ability), field("Held item", item)),
+    el("div", { class: "field" }, el("span", { class: "field-label" }, "Moves"),
+      el("div", { class: "moves-grid" }, ...moves)),
+    el("div", { class: "field" }, el("span", { class: "field-label" }, "IVs"),
+      el("div", { class: "ivs-grid" }, ...state.ivStats.map((stat) =>
+        el("label", { class: "iv" }, el("span", {}, IV_LABELS[stat]), ivs[stat])))),
+    el("div", { class: "editor-actions" },
+      onCancel ? (() => {
+        const cancel = el("button", { type: "button" }, cancelLabel ?? "Cancel");
+        cancel.addEventListener("click", onCancel);
+        return cancel;
+      })() : "",
+      saveButton));
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();  // only fires once the inputs pass their min/max checks
+    saveButton.disabled = true;
+    try {
+      await onSave(values());
+    } catch { /* save() already showed the error */ } finally {
+      saveButton.disabled = false;
+    }
+  });
+  return { node: form, isDirty: () => JSON.stringify(values()) !== initial };
+}
+
+/** The details popup: a new catch (Save / Skip) or a battle copy (Save / Cancel). */
+function openDetailsDialog({ title, subtitle, mon, saveLabel, cancelLabel, onSave, onEvolve }) {
+  const dialog = $("#details-dialog");
+  const editor = pokemonEditor(mon, {
+    subtitle,
+    saveLabel,
+    cancelLabel,
+    onCancel: () => dialog.close(),
+    onEvolve: onEvolve ?? ((species) => onSave({ species })),
+    onSave: async (fields) => {
+      await onSave(fields);
+      dialog.close();
+    },
+  });
+  $("#details-title").textContent = title;
+  $("#details-body").replaceChildren(editor.node);
+  dialog.showModal();
+}
+
+/** Pick any member of `species`' evolutionary line. */
+function openEvolvePicker(species, onPick) {
+  const dialog = $("#evolve-picker");
+  const line = state.evolutions[species] ?? [species];
+  $("#evolve-title").textContent = `Evolve or devolve ${species}`;
+  $("#evolve-body").replaceChildren(el("div", { class: "picker-grid" }, ...line.map((member) => {
+    const card = el("button", { type: "button", class: "pick-card", "aria-pressed": String(member === species) },
+      sprite(member), el("span", { class: "mon-name" }, member),
+      el("span", { class: "mon-route" }, member === species ? "current" : ""));
+    card.addEventListener("click", async () => {
+      dialog.close();
+      if (member !== species) await onPick(member).catch(() => {});
+    });
+    return card;
+  })));
+  dialog.showModal();
+}
+
+// ---------------------------------------------------------------------------
+// Box tab: the box on the right, the selected Pokemon's details on the left
+// ---------------------------------------------------------------------------
+
+let boxEditor = null;  // the open editor, to warn before discarding unsaved edits
+
+function renderBox() {
+  if (!state.attempt) return;
+  renderBoxGrid();
+  renderBoxDetail();
+}
+
+function renderBoxGrid() {
+  const mons = box();
+  if (!mons.some((m) => m.id === state.boxId)) state.boxId = mons[0]?.id ?? null;
+  $("#box-tab-count").textContent = `(${mons.length} caught)`;
+  $("#box-tab-empty").hidden = mons.length > 0;
+  $("#box-tab-grid").replaceChildren(...mons.map((mon) => {
+    const node = el("button", {
+      type: "button",
+      class: `box-mon${mon.status === "Fainted" ? " fainted" : ""}`,
+      "aria-current": mon.id === state.boxId ? "true" : undefined,
+      title: `${mon.species} (${mon.routeName})`,
+    }, ...monLabel(mon), statusBadge(mon.status));
+    node.addEventListener("click", () => selectBoxMon(mon.id));
+    return node;
+  }));
+}
+
+function selectBoxMon(id) {
+  if (id === state.boxId) return;
+  if (boxEditor?.isDirty() && !confirm("Discard your unsaved changes?")) return;
+  state.boxId = id;
+  renderBox();
+}
+
+function renderBoxDetail() {
+  const mon = catchById(state.boxId);
+  if (!mon) {
+    boxEditor = null;
+    $("#box-detail").replaceChildren(el("p", { class: "hint" }, "Pick a Pokémon from your box to see and edit its details."));
+    return;
+  }
+  boxEditor = pokemonEditor(mon, {
+    subtitle: [mon.species !== mon.pokemon && `Caught as ${mon.pokemon}`, routeName(mon.route_id)]
+      .filter(Boolean).join(" · "),
+    onEvolve: (species) => saveCatchDetails(mon.id, { species }),
+    onSave: async (fields) => {
+      await saveCatchDetails(mon.id, fields);
+      renderBoxDetail();  // start fresh from what was saved
+    },
+  });
+  $("#box-detail").replaceChildren(boxEditor.node);
 }
 
 // ---------------------------------------------------------------------------
@@ -261,11 +520,23 @@ function box() {
     .map((r) => ({ ...state.catches.get(r.id), routeName: r.name }));
 }
 
-/** A fight's team as six slots of catch ids (null = empty). */
+/** A fight's team as six slots of battle copies (null = empty). */
 function teamSlots(fight) {
   const slots = Array(TEAM_SIZE).fill(null);
-  for (const m of fight?.members ?? []) slots[m.slot - 1] = m.catch_id;
+  for (const m of fight?.members ?? []) slots[m.slot - 1] = m;
   return slots;
+}
+
+/** A new battle copy of a box Pokemon, as it is now (saved when the team is). */
+function freshCopy(mon) {
+  const { id, route_id, pokemon, routeName: _, ...details } = mon;
+  return { ...details, catch_id: id };
+}
+
+/** Whether a battle copy no longer matches its box Pokemon (or that is gone). */
+function copyChanged(member) {
+  const source = member.catch_id === null ? null : catchById(member.catch_id);
+  return !source || !sameDetails(member, source);
 }
 
 const currentBattle = () => state.battles.find((b) => b.id === state.battleId);
@@ -282,9 +553,9 @@ function sprite(species) {
 }
 
 function monLabel(mon) {
-  return [sprite(mon.pokemon),
-    el("span", { class: "mon-name" }, mon.pokemon),
-    el("span", { class: "mon-route" }, mon.routeName)];
+  return [sprite(mon.species),
+    el("span", { class: "mon-name" }, mon.species),
+    el("span", { class: "mon-route" }, [mon.level && `Lv ${mon.level}`, mon.routeName].filter(Boolean).join(" · "))];
 }
 
 function defaultBattleId() {
@@ -379,7 +650,6 @@ function renderFocus() {
   const fight = state.fights.get(battle.id);
   const slots = teamSlots(fight);
   const mons = box();
-  const byId = new Map(mons.map((m) => [m.id, m]));
 
   // The split's level cap sits above the name, for regular trainers too.
   const split = battle.level_cap !== null ? battle : state.battles.find((b) => b.id === battle.group_id);
@@ -396,11 +666,12 @@ function renderFocus() {
   }
 
   $("#team-count").textContent = `${slots.filter(Boolean).length}/${TEAM_SIZE}`;
-  $("#team-grid").replaceChildren(...slots.map((catchId, i) => teamSlot(i, byId.get(catchId))));
+  $("#team-changed").hidden = !slots.some((m) => m && copyChanged(m));
+  $("#team-grid").replaceChildren(...slots.map((member, i) => teamSlot(i, member)));
 
   $("#box-count").textContent = `(${mons.length} caught)`;
   $("#empty-box").hidden = mons.length > 0;
-  $("#box-grid").replaceChildren(...mons.map((m) => boxMon(m, slots.indexOf(m.id))));
+  $("#box-grid").replaceChildren(...mons.map((m) => boxMon(m, slots.findIndex((s) => s?.catch_id === m.id))));
 }
 
 // --- focus: enemy team -----------------------------------------------------------
@@ -490,35 +761,63 @@ function enemySlot(mon, placeholder = "") {
 
 // --- focus: your team + box ------------------------------------------------------
 
-function teamSlot(index, mon) {
-  const slot = el("div", { class: `team-slot${mon ? " filled" : ""}` });
-  if (mon) {
-    const remove = el("button", { type: "button", class: "remove", "aria-label": `Remove ${mon.pokemon} from the team` }, "×");
+function teamSlot(index, member) {
+  const slot = el("div", { class: `team-slot${member ? " filled" : ""}` });
+  if (member) {
+    const source = member.catch_id === null ? null : catchById(member.catch_id);
+    const remove = el("button", { type: "button", class: "remove", "aria-label": `Remove ${member.species} from the team` }, "×");
     remove.addEventListener("click", () => setSlot(index, null));
-    slot.append(...monLabel(mon), remove);
-    slot.title = `${mon.pokemon} (${mon.routeName}): drag to another slot to swap, or back to the box to remove`;
-    makeDraggable(slot, { catchId: mon.id, fromSlot: index });
+    slot.append(
+      sprite(member.species),
+      el("span", { class: "mon-name" }, member.species),
+      el("span", { class: "mon-route" },
+        [member.level && `Lv ${member.level}`, source ? routeName(source.route_id) : "no longer in box"]
+          .filter(Boolean).join(" · ")),
+      statusBadge(member.status),
+      copyChanged(member) ? el("span", { class: "changed-tag", title: "This copy differs from the Pokémon in your box" }, "changed") : "",
+      remove);
+    slot.tabIndex = 0;
+    slot.title = `${member.species}: click to see or edit this battle's copy; drag to swap slots or back to the box to remove`;
+    const open = () => openCopyEditor(member);
+    slot.addEventListener("click", (e) => { if (!e.target.closest(".remove")) open(); });
+    slot.addEventListener("keydown", (e) => {
+      if (e.target === slot && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); open(); }
+    });
+    makeDraggable(slot, { catchId: member.catch_id, fromSlot: index });
   } else {
     slot.append(el("span", { class: "slot-empty" }, `Slot ${index + 1}`));
   }
-  makeDropTarget(slot, (drag) => moveTo(drag.catchId, index));
+  makeDropTarget(slot, (drag) => (drag.fromSlot === null ? addToTeam(drag.catchId, index) : moveSlot(drag.fromSlot, index)));
   return slot;
+}
+
+function openCopyEditor(member) {
+  if (!member.id) return setStatus("Still saving this team; try again in a moment", "error");
+  const source = member.catch_id === null ? null : catchById(member.catch_id);
+  openDetailsDialog({
+    title: `${currentBattle().name}: ${member.species}`,
+    subtitle: "This battle's copy. Changes here don't affect your box" +
+      (source ? ` (currently ${source.species}${source.level ? ` Lv ${source.level}` : ""}).` : "."),
+    mon: member,
+    saveLabel: "Save copy",
+    onSave: (fields) => saveCopy(member.id, fields),
+  });
 }
 
 function boxMon(mon, teamIndex) {
   const onTeam = teamIndex !== -1;
   const node = el("div", {
-    class: `box-mon${onTeam ? " on-team" : ""}`,
+    class: `box-mon${onTeam ? " on-team" : ""}${mon.status === "Fainted" ? " fainted" : ""}`,
     role: "button",
     tabindex: "0",
     "aria-pressed": String(onTeam),
-    title: `${mon.pokemon} (${mon.routeName})${onTeam ? ": on the team" : ""}`,
-  }, ...monLabel(mon));
+    title: `${mon.species} (${mon.routeName})${onTeam ? ": on the team" : ""}`,
+  }, ...monLabel(mon), statusBadge(mon.status));
   const toggle = () => {
     if (onTeam) return setSlot(teamIndex, null);
     const empty = currentSlots().indexOf(null);
     if (empty === -1) return setStatus("Team is full: drag onto a slot to replace someone", "error");
-    setSlot(empty, mon.id);
+    addToTeam(mon.id, empty);
   };
   node.addEventListener("click", toggle);
   node.addEventListener("keydown", (e) => {
@@ -567,21 +866,31 @@ function makeDropTarget(node, onDrop, accepts = () => true) {
 
 // --- team edits --------------------------------------------------------------
 
-/** Put a catch into a slot. If it was already on the team, swap the two slots. */
-function moveTo(catchId, index) {
+const currentResult = () => state.fights.get(state.battleId)?.result ?? null;
+
+/** Put a box Pokemon into a slot as a fresh copy. If it's already on the team, move its copy. */
+function addToTeam(catchId, index) {
   const slots = currentSlots();
-  const from = slots.indexOf(catchId);
-  if (from === index) return;
-  const displaced = slots[index];
-  slots[index] = catchId;
-  if (from !== -1) slots[from] = displaced;
-  saveFight(slots, state.fights.get(state.battleId)?.result ?? null);
+  const from = slots.findIndex((m) => m?.catch_id === catchId);
+  if (from !== -1) return moveSlot(from, index);
+  const mon = catchById(catchId);
+  if (!mon) return;
+  slots[index] = freshCopy(mon);
+  saveFight(slots, currentResult());
 }
 
-function setSlot(index, catchId) {
+/** Swap two team slots; the copies themselves don't change. */
+function moveSlot(from, to) {
+  if (from === to) return;
   const slots = currentSlots();
-  slots[index] = catchId;
-  saveFight(slots, state.fights.get(state.battleId)?.result ?? null);
+  [slots[from], slots[to]] = [slots[to], slots[from]];
+  saveFight(slots, currentResult());
+}
+
+function setSlot(index, member) {
+  const slots = currentSlots();
+  slots[index] = member;
+  saveFight(slots, currentResult());
 }
 
 function toggleResult(result) {
@@ -593,7 +902,9 @@ function toggleResult(result) {
 function saveFight(slots, result) {
   const attemptId = state.attempt.id;
   const battleId = state.battleId;
-  const members = slots.flatMap((catchId, i) => (catchId ? [{ slot: i + 1, catch_id: catchId }] : []));
+  const members = slots.flatMap((m, i) => (m ? [{ ...m, slot: i + 1 }] : []));
+  // Saved copies are kept by id; new ones are copied from their box Pokemon.
+  const payload = slots.map((m) => (m ? (m.id ? { id: m.id } : { catch_id: m.catch_id }) : null));
   if (members.length || result) {
     state.fights.set(battleId, { ...state.fights.get(battleId), battle_id: battleId, result, members });
   } else {
@@ -606,7 +917,7 @@ function saveFight(slots, result) {
   saveChain = saveChain.then(async () => {
     try {
       const { fight } = await save(() =>
-        api("PUT", `/attempts/${attemptId}/fights/${battleId}`, { members: slots, result }));
+        api("PUT", `/attempts/${attemptId}/fights/${battleId}`, { members: payload, result }));
       // Keep the optimistic state if the user switched attempts or edited again since.
       if (state.attempt?.id !== attemptId || fightEdits.get(battleId) !== edit) return;
       if (fight) state.fights.set(battleId, fight);
@@ -619,9 +930,25 @@ function saveFight(slots, result) {
       state.catches = new Map(data.catches.map((c) => [c.route_id, c]));
       state.fights = new Map(data.fights.map((f) => [f.battle_id, f]));
       renderEncounters();
+      renderBox();
       renderFightView();
     }
   });
+}
+
+/** Save one battle's copy. Queued behind pending team saves so their replies can't undo it. */
+async function saveCopy(memberId, fields) {
+  const attemptId = state.attempt.id;
+  const battleId = state.battleId;
+  const run = saveChain.then(() => save(() => api("PATCH", `/fight-members/${memberId}`, fields)));
+  saveChain = run.catch(() => {});
+  const { member } = await run;
+  const fight = state.fights.get(battleId);
+  if (state.attempt?.id === attemptId && fight) {
+    fight.members = fight.members.map((m) => (m.id === member.id ? member : m));
+    renderFightView();
+  }
+  return member;
 }
 
 // --- battle list drawer ---------------------------------------------------------
@@ -676,11 +1003,19 @@ async function boot() {
     state.routes = game.routes;
     state.battles = game.battles;
     state.sprites = game.sprites;
+    state.evolutions = game.evolutions;
+    state.natures = game.natures;
+    state.statuses = game.statuses;
+    state.ivStats = game.iv_stats;
+    for (const [id, names] of [["dl-moves", game.suggestions.moves], ["dl-abilities", game.suggestions.abilities],
+      ["dl-items", game.suggestions.items]]) {
+      $(`#${id}`).replaceChildren(...names.map((name) => el("option", { value: name })));
+    }
 
     for (const btn of document.querySelectorAll(".tabs button")) {
       btn.addEventListener("click", () => showTab(btn.dataset.tab));
     }
-    showTab(["encounters", "fights", "notes"].includes(storageGet("tab")) ? storageGet("tab") : "encounters");
+    showTab(["encounters", "box", "fights", "notes"].includes(storageGet("tab")) ? storageGet("tab") : "encounters");
 
     $("#drawer-open").addEventListener("click", () =>
       setDrawer($("#tab-fights").classList.contains("drawer-closed")));
@@ -691,10 +1026,12 @@ async function boot() {
       $("#catch-picker").close();
       removeCatch(pickerRoute).catch(() => {});
     });
-    // Clicking the dimmed backdrop (outside .picker-inner) closes the picker.
-    $("#catch-picker").addEventListener("click", (e) => {
-      if (e.target === e.currentTarget) e.currentTarget.close();
-    });
+    // Clicking the dimmed backdrop (outside .picker-inner) closes a popup.
+    for (const dialog of document.querySelectorAll("dialog.picker")) {
+      dialog.addEventListener("click", (e) => {
+        if (e.target === e.currentTarget) e.currentTarget.close();
+      });
+    }
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape" && mobileLayout.matches) setDrawer(false);
     });
