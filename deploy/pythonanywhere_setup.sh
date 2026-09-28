@@ -49,4 +49,7 @@ echo
 echo "Done. On the Web tab make sure:"
 echo "  Source code:  $PROJECT"
 echo "  Virtualenv:   $VENV"
-echo "  Password protection and Force HTTPS are both on."
+echo "  Force HTTPS is on. (The site has its own accounts, so Password protection can be off.)"
+echo
+echo "To set an account's password or role (it asks for the password; nothing is echoed):"
+echo "  $VENV/bin/python $PROJECT/scripts/manage_account.py USERNAME --password [--role admin]"

@@ -34,9 +34,15 @@ const $ = (sel) => document.querySelector(sel);
 async function api(method, path, body) {
   const res = await fetch(`/api${path}`, {
     method,
-    headers: body === undefined ? {} : { "Content-Type": "application/json" },
+    // The server only accepts changes that carry X-Requested-With (see app.py).
+    headers: { "X-Requested-With": "fetch", ...(body === undefined ? {} : { "Content-Type": "application/json" }) },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
+  if (res.status === 401) {
+    // Logged out (or the session ended elsewhere): log back in, then come back here.
+    location.href = "/login?next=/app";
+    throw new Error("Logged out");
+  }
   if (res.status === 204) return null;
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || `${res.status} ${res.statusText}`);
@@ -1433,6 +1439,12 @@ function showTab(name) {
 
 async function boot() {
   try {
+    const { user } = await api("GET", "/me");
+    if (!user) {
+      location.href = "/login?next=/app";
+      return;
+    }
+    setupAccountMenu(user);  // site.js
     const game = await api("GET", "/game");
     state.routes = game.routes;
     state.battles = game.battles;

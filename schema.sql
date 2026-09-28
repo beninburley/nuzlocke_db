@@ -89,11 +89,29 @@ CREATE TABLE IF NOT EXISTS evolution_lines (
 -- User data.
 -- ---------------------------------------------------------------------------
 
+-- Accounts. Everyone who signs up is a 'trainer'; the other roles are only
+-- labels for now. password_hash is a salted scrypt hash (see accounts.py);
+-- NULL means the account can't log in until a password is set with
+-- scripts/manage_account.py. session_epoch goes up when the password changes
+-- or the user logs out everywhere, which ends every session made before.
+CREATE TABLE IF NOT EXISTS users (
+    id            INTEGER PRIMARY KEY,
+    username      TEXT    NOT NULL UNIQUE COLLATE NOCASE,
+    password_hash TEXT,
+    role          TEXT    NOT NULL DEFAULT 'trainer'
+                  CHECK (role IN ('trainer', 'mod', 'content_creator', 'admin')),
+    session_epoch INTEGER NOT NULL DEFAULT 0,
+    created_at    TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Each attempt belongs to one account; numbers are unique per account.
 CREATE TABLE IF NOT EXISTS attempts (
     id         INTEGER PRIMARY KEY,
-    number     INTEGER NOT NULL UNIQUE,
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    number     INTEGER NOT NULL,
     notes      TEXT    NOT NULL DEFAULT '',
-    created_at TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (user_id, number)
 );
 
 -- The attempt's box: what was caught on each route (at most one per route).

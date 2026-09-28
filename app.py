@@ -1,15 +1,29 @@
-"""Nuzlocke tracker: JSON API + static frontend.
+"""Nuzlocke tracker: JSON API + static frontend, with accounts.
 
 Run with:  python app.py   (then open http://127.0.0.1:5000)
 """
 import json
+import os
 import sqlite3
+from datetime import timedelta
 
-from flask import Flask, g, jsonify, request
+from flask import Flask, g, jsonify, redirect, request, session
 
+import accounts
 import db
 
 app = Flask(__name__, static_folder="static", static_url_path="")
+app.config.update(
+    SECRET_KEY=accounts.load_secret_key(db.DB_PATH.parent / "secret_key"),
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+    # The live site is HTTPS-only; its WSGI file sets this so the login
+    # cookie is never sent over plain HTTP.
+    SESSION_COOKIE_SECURE=os.environ.get("NUZLOCKE_SECURE_COOKIES") == "1",
+    PERMANENT_SESSION_LIFETIME=timedelta(days=30),
+)
+failed_logins = accounts.RateLimit(limit=10, window=15 * 60)
+signups = accounts.RateLimit(limit=5, window=60 * 60)
 
 TEAM_SIZE = 6
 RESULTS = (None, "won", "lost")
@@ -49,19 +63,205 @@ def body():
 
 
 def get_attempt(conn, attempt_id):
-    row = conn.execute("SELECT * FROM attempts WHERE id = ?", (attempt_id,)).fetchone()
+    """One of the logged-in user's attempts (other users' attempts are 'not found')."""
+    row = conn.execute("SELECT * FROM attempts WHERE id = ? AND user_id = ?",
+                       (attempt_id, user_id())).fetchone()
     if row is None:
         raise ApiError("attempt not found", 404)
     return row
 
 
 # ---------------------------------------------------------------------------
-# Frontend
+# Accounts and sessions
+# ---------------------------------------------------------------------------
+
+# API endpoints anyone may call. Every other /api/ endpoint needs a login, and
+# only ever sees the logged-in user's own data.
+PUBLIC_API = {"signup", "login", "logout", "me"}
+
+
+def current_user():
+    """The logged-in user's row, or None."""
+    if "user" not in g:
+        g.user = None
+        if "user_id" in session:
+            row = get_db().execute("SELECT * FROM users WHERE id = ?", (session["user_id"],)).fetchone()
+            # Sessions from before a password change or "log out everywhere" are void.
+            if row and row["password_hash"] and row["session_epoch"] == session.get("epoch"):
+                g.user = row
+    return g.user
+
+
+def user_id():
+    return current_user()["id"]
+
+
+@app.before_request
+def check_api_request():
+    if not request.path.startswith("/api/"):
+        return
+    # Other sites can't make a browser send a custom header to this one (that
+    # would need a CORS preflight, which this app never grants), so requiring
+    # it on every change stops cross-site request forgery.
+    if request.method not in ("GET", "HEAD", "OPTIONS") and not request.headers.get("X-Requested-With"):
+        raise ApiError("missing X-Requested-With header", 403)
+    if request.endpoint not in PUBLIC_API and current_user() is None:
+        raise ApiError("log in first", 401)
+
+
+def start_session(user):
+    session.clear()
+    session.permanent = True
+    session["user_id"] = user["id"]
+    session["epoch"] = user["session_epoch"]
+    g.pop("user", None)
+
+
+def client_address():
+    # PythonAnywhere's proxy passes the visitor's own address in X-Real-IP.
+    return request.headers.get("X-Real-IP") or request.remote_addr or "unknown"
+
+
+def user_json(conn, user):
+    attempts = conn.execute("SELECT COUNT(*) FROM attempts WHERE user_id = ?", (user["id"],)).fetchone()[0]
+    return {"username": user["username"], "role": user["role"],
+            "created_at": user["created_at"], "attempts": attempts}
+
+
+def credentials():
+    data = body()
+    username, password = data.get("username"), data.get("password")
+    return (username.strip() if isinstance(username, str) else username), password
+
+
+def wait_message(seconds, what):
+    minutes = -(-seconds // 60)
+    return f"Too many {what}. Try again in {minutes} minute{'s' if minutes != 1 else ''}."
+
+
+@app.post("/api/signup")
+def signup():
+    """Create an account (role: trainer) and log in to it."""
+    address = client_address()
+    wait = signups.retry_after(address)
+    if wait:
+        raise ApiError(wait_message(wait, "new accounts from here"), 429)
+    username, password = credentials()
+    problem = accounts.username_problem(username) or accounts.password_problem(password)
+    if problem:
+        raise ApiError(problem)
+    conn = get_db()
+    try:
+        with conn:
+            cur = conn.execute("INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)",
+                               (username, accounts.hash_password(password), accounts.DEFAULT_ROLE))
+    except sqlite3.IntegrityError:
+        raise ApiError("That username is taken.", 409)
+    signups.record(address)
+    user = conn.execute("SELECT * FROM users WHERE id = ?", (cur.lastrowid,)).fetchone()
+    start_session(user)
+    return jsonify(user=user_json(conn, user)), 201
+
+
+@app.post("/api/login")
+def login():
+    address = client_address()
+    wait = failed_logins.retry_after(address)
+    if wait:
+        raise ApiError(wait_message(wait, "failed logins"), 429)
+    username, password = credentials()
+    conn = get_db()
+    user = None
+    if isinstance(username, str) and isinstance(password, str) and len(password) <= accounts.MAX_PASSWORD:
+        user = conn.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
+        ok = accounts.verify_password(user["password_hash"] if user else None, password)
+    else:
+        ok = False
+    if not ok:
+        failed_logins.record(address)
+        raise ApiError("Wrong username or password.", 401)
+    failed_logins.clear(address)
+    start_session(user)
+    return jsonify(user=user_json(conn, user))
+
+
+@app.post("/api/logout")
+def logout():
+    session.clear()
+    return "", 204
+
+
+@app.get("/api/me")
+def me():
+    """The logged-in user, or null (never a 401, so pages can ask freely)."""
+    user = current_user()
+    return jsonify(user=None if user is None else user_json(get_db(), user))
+
+
+@app.post("/api/me/password")
+def change_password():
+    """Change the password. Every other session of this account is logged out."""
+    address = client_address()
+    wait = failed_logins.retry_after(address)
+    if wait:
+        raise ApiError(wait_message(wait, "wrong passwords"), 429)
+    data = body()
+    current, new = data.get("current_password"), data.get("new_password")
+    user = current_user()
+    if (not isinstance(current, str) or len(current) > accounts.MAX_PASSWORD
+            or not accounts.verify_password(user["password_hash"], current)):
+        failed_logins.record(address)
+        raise ApiError("Your current password is wrong.", 403)
+    problem = accounts.password_problem(new)
+    if problem:
+        raise ApiError(problem)
+    conn = get_db()
+    with conn:
+        conn.execute("UPDATE users SET password_hash = ?, session_epoch = session_epoch + 1 WHERE id = ?",
+                     (accounts.hash_password(new), user["id"]))
+    user = conn.execute("SELECT * FROM users WHERE id = ?", (user["id"],)).fetchone()
+    start_session(user)  # this session carries on with the new epoch
+    return jsonify(user=user_json(conn, user))
+
+
+@app.post("/api/me/logout-everywhere")
+def logout_everywhere():
+    """End every session of this account, on every device (this one too)."""
+    conn = get_db()
+    with conn:
+        conn.execute("UPDATE users SET session_epoch = session_epoch + 1 WHERE id = ?", (user_id(),))
+    session.clear()
+    return "", 204
+
+
+# ---------------------------------------------------------------------------
+# Pages
 # ---------------------------------------------------------------------------
 
 @app.get("/")
-def index():
+def landing():
+    return app.send_static_file("landing.html")
+
+
+@app.get("/login")
+def login_page():
+    if current_user() is not None:
+        return redirect("/app")
+    return app.send_static_file("login.html")
+
+
+@app.get("/app")
+def tracker_page():
+    if current_user() is None:
+        return redirect("/login?next=/app")
     return app.send_static_file("index.html")
+
+
+@app.get("/account")
+def account_page():
+    if current_user() is None:
+        return redirect("/login?next=/account")
+    return app.send_static_file("account.html")
 
 
 # ---------------------------------------------------------------------------
@@ -147,9 +347,13 @@ def list_attempts():
     rows = get_db().execute(
         "SELECT a.id, a.number, a.notes, a.created_at, "
         "       (SELECT COUNT(*) FROM catches c WHERE c.attempt_id = a.id) AS catch_count "
-        "FROM attempts a ORDER BY a.number DESC"
+        "FROM attempts a WHERE a.user_id = ? ORDER BY a.number DESC", (user_id(),)
     )
     return jsonify(attempts=[dict(r) for r in rows])
+
+
+def attempt_json(row):
+    return {"id": row["id"], "number": row["number"], "notes": row["notes"], "created_at": row["created_at"]}
 
 
 def parse_number(value):
@@ -164,14 +368,15 @@ def create_attempt():
     data = request.get_json(silent=True) or {}
     number = data.get("number")
     if number is None:
-        number = conn.execute("SELECT COALESCE(MAX(number), 0) + 1 FROM attempts").fetchone()[0]
+        number = conn.execute("SELECT COALESCE(MAX(number), 0) + 1 FROM attempts WHERE user_id = ?",
+                              (user_id(),)).fetchone()[0]
     number = parse_number(number)
     try:
         with conn:
-            cur = conn.execute("INSERT INTO attempts (number) VALUES (?)", (number,))
+            cur = conn.execute("INSERT INTO attempts (user_id, number) VALUES (?, ?)", (user_id(), number))
     except sqlite3.IntegrityError:
         raise ApiError(f"attempt {number} already exists", 409)
-    return jsonify(attempt=dict(get_attempt(conn, cur.lastrowid))), 201
+    return jsonify(attempt=attempt_json(get_attempt(conn, cur.lastrowid))), 201
 
 
 @app.patch("/api/attempts/<int:attempt_id>")
@@ -191,7 +396,7 @@ def update_attempt(attempt_id):
                              (data["notes"], attempt_id))
     except sqlite3.IntegrityError:
         raise ApiError(f"attempt {data['number']} already exists", 409)
-    return jsonify(attempt=dict(get_attempt(conn, attempt_id)))
+    return jsonify(attempt=attempt_json(get_attempt(conn, attempt_id)))
 
 
 @app.delete("/api/attempts/<int:attempt_id>")
@@ -316,7 +521,7 @@ def get_attempt_detail(attempt_id):
         "SELECT * FROM catches WHERE attempt_id = ?", (attempt_id,))]
     fights = [fight_json(conn, f["id"]) for f in conn.execute(
         "SELECT id FROM fights WHERE attempt_id = ?", (attempt_id,))]
-    return jsonify(attempt=dict(attempt), catches=catches, fights=fights)
+    return jsonify(attempt=attempt_json(attempt), catches=catches, fights=fights)
 
 
 # ---------------------------------------------------------------------------
@@ -363,7 +568,9 @@ def set_catch(attempt_id, route_id):
 def update_catch(catch_id):
     """Edit a box Pokemon's details (including evolving it). Battle copies are unaffected."""
     conn = get_db()
-    if conn.execute("SELECT 1 FROM catches WHERE id = ?", (catch_id,)).fetchone() is None:
+    owned = conn.execute("SELECT 1 FROM catches c JOIN attempts a ON a.id = c.attempt_id "
+                         "WHERE c.id = ? AND a.user_id = ?", (catch_id, user_id())).fetchone()
+    if owned is None:
         raise ApiError("catch not found", 404)
     fields = parse_details(conn, body())
     with conn:
@@ -474,7 +681,8 @@ def set_kos(fight_id):
     the enemy Pokemon knocked out the team member.
     """
     conn = get_db()
-    fight = conn.execute("SELECT id, battle_id FROM fights WHERE id = ?", (fight_id,)).fetchone()
+    fight = conn.execute("SELECT f.id, f.battle_id FROM fights f JOIN attempts a ON a.id = f.attempt_id "
+                         "WHERE f.id = ? AND a.user_id = ?", (fight_id, user_id())).fetchone()
     if fight is None:
         raise ApiError("fight not found", 404)
     data = body()
@@ -524,7 +732,10 @@ def set_kos(fight_id):
 def update_member(member_id):
     """Edit one battle's copy of a Pokemon. The box Pokemon is unaffected."""
     conn = get_db()
-    if conn.execute("SELECT 1 FROM fight_members WHERE id = ?", (member_id,)).fetchone() is None:
+    owned = conn.execute("SELECT 1 FROM fight_members m JOIN fights f ON f.id = m.fight_id "
+                         "JOIN attempts a ON a.id = f.attempt_id WHERE m.id = ? AND a.user_id = ?",
+                         (member_id, user_id())).fetchone()
+    if owned is None:
         raise ApiError("team member not found", 404)
     fields = parse_details(conn, body())
     with conn:

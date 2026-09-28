@@ -1,7 +1,15 @@
 # Run & Bun Nuzlocke Tracker (MVP)
 
-A small web app that replaces the user-entered parts of the Run & Bun master sheet:
+A small web app that replaces the user-entered parts of the Run & Bun master sheet,
+for anyone who makes an account:
 
+- **Accounts**: the landing page (`/`) explains the site and links to log in or
+  create an account (`/login`). Each account sees and edits only its own
+  attempts. The account button (top right) shows who's logged in and links to
+  the account page (`/account`), where you can see your details, change your
+  password and log out (here or everywhere). Every account has a role:
+  sign-ups are *trainers*; the others are *mod*, *content creator* and
+  *admin*. Roles don't change what anyone can do yet.
 - **Attempts**: pick which run you're on, or start a new one.
 - **Encounters**: record what you caught on each route. *+ Add catch* only
   offers Pokemon from that route's encounter table (from the sheet's
@@ -60,14 +68,38 @@ python -m venv .venv
 .venv\Scripts\python.exe app.py
 ```
 
-Then open http://127.0.0.1:5000. The database (`instance/nuzlocke.db`) is
-created on first start. Set `NUZLOCKE_DB` to use a different file.
+Then open http://127.0.0.1:5000 and create an account. The database
+(`instance/nuzlocke.db`) is created on first start, along with
+`instance/secret_key`, which signs login cookies (keep it private; deleting it
+logs everyone out). Set `NUZLOCKE_DB` to use a different database file; the
+key is kept next to it.
+
+## Accounts
+
+Passwords are stored only as salted scrypt hashes (werkzeug's
+`generate_password_hash`, scrypt N=2^15, r=8, p=1). Logins last 30 days in an
+HttpOnly, SameSite=Lax cookie that is also Secure on the live site. Changing
+your password or logging out everywhere ends all your other sessions. After 10
+failed logins, an address has to wait 15 minutes, and it can create at most 5
+accounts an hour. Every change to data must carry an `X-Requested-With`
+header, which other sites can't make a browser send, so they can't make
+changes on a visitor's behalf.
+
+There's no email, so a forgotten password is reset from a console, which is
+also how to change a role or set up an admin:
+
+```powershell
+.venv\Scripts\python.exe scripts\manage_account.py NAME                       # show the account
+.venv\Scripts\python.exe scripts\manage_account.py NAME --password            # set its password (asked for, not echoed)
+.venv\Scripts\python.exe scripts\manage_account.py NAME --role mod            # trainer, mod, content_creator or admin
+.venv\Scripts\python.exe scripts\manage_account.py NAME --create --password --role admin
+```
 
 ## Deploying (PythonAnywhere, free)
 
 The live site runs on a free PythonAnywhere "Beginner" account. That plan
-keeps the SQLite database on a persistent disk, serves HTTPS at
-`<username>.pythonanywhere.com`, and has built-in password protection.
+keeps the SQLite database on a persistent disk and serves HTTPS at
+`<username>.pythonanywhere.com`.
 
 First-time setup:
 
@@ -81,8 +113,8 @@ First-time setup:
 
 3. Back on the **Web** tab, set *Source code* to `/home/<username>/nuzlocke_db` and
    *Virtualenv* to `/home/<username>/.virtualenvs/nuzlocke`. Turn on **Force HTTPS**
-   and **Password protection**. The app has no login of its own, so without
-   password protection anyone with the URL could edit your data. Click **Reload**.
+   (login cookies are only sent over HTTPS). *Password protection* isn't needed:
+   the site has its own accounts. Click **Reload**.
 4. To bring your existing data along, upload your local `instance/nuzlocke.db` on
    the **Files** tab into `/home/<username>/nuzlocke_db/instance/`, replacing the
    file there. Then click **Reload**. From then on, the live site's database is the
@@ -90,6 +122,14 @@ First-time setup:
 
 To deploy an update after merging to `main`, re-run the setup script in a Bash
 console. It pulls, installs dependencies and reloads the site.
+
+Upgrading a database from before accounts (schema v3 or older) gives all its
+attempts to the site owner's account (`SITE_OWNER` in `db.py`), created as an
+admin with no password. Set one before logging in:
+
+```bash
+~/.virtualenvs/nuzlocke/bin/python ~/nuzlocke_db/scripts/manage_account.py bkewps --password
+```
 
 Free web apps must be renewed monthly: click *Run until 1 month from today* on
 the **Web** tab, or the site gets disabled.
@@ -131,7 +171,8 @@ Arcanine-H). Re-run after re-extracting game data:
 ```
 
 **Past attempts** from the *Past Encounters* and *Past Boss Fights* tabs can be
-imported (best effort):
+imported (best effort) into an account, the site owner's unless `--user=NAME`
+says otherwise. The account must exist (see *Accounts*):
 
 ```powershell
 .venv\Scripts\python.exe scripts\import_history.py            # skips attempts already in the DB
@@ -158,13 +199,20 @@ caught species, so edits made in the app are kept:
 To start over, stop the app and delete `instance/nuzlocke.db`.
 
 When a new version changes the schema, the app migrates the existing database
-on startup. It first saves a copy next to it (e.g. `nuzlocke.backup-v2.db`).
+on startup. It first saves a copy next to it (e.g. `nuzlocke.backup-v3.db`).
 Upgrading to v3 splits the Museum grunts and Tate & Liza into a battle per
 trainer; fights already recorded there get the same team and result on both.
+Upgrading to v4 adds accounts and gives every existing attempt to the site
+owner.
 
 ## Rules enforced
 
 Rules are checked in the API and again by SQLite triggers and constraints:
+
+- every attempt belongs to one account, and each account sees and changes only its own attempts
+  (anyone else's show up as "not found"); attempt numbers are unique per account
+- usernames are 3-30 letters, digits, dots, dashes or underscores, unique ignoring case;
+  passwords are 8-128 characters
 
 - one catch per route per attempt, and what was caught must be in that route's encounter table
   (its current species can then evolve freely)
@@ -178,20 +226,31 @@ Rules are checked in the API and again by SQLite triggers and constraints:
 ## Layout
 
 ```
-app.py                 Flask app: JSON API + serves static/
-db.py                  SQLite connection, schema setup, game-data sync
+app.py                 Flask app: JSON API, pages, logins
+accounts.py            Password hashing, username/password rules, rate limits, cookie key
+db.py                  SQLite connection, schema setup, migrations, game-data sync
 schema.sql             Tables and integrity triggers
 data/game_data.json    Extracted game data
 data/sprites.json      Species -> PokeAPI sprite URL
 data/evolutions.json   Species -> its evolutionary line (PokeAPI)
-scripts/               Spreadsheet extraction, PokeAPI lookups, history import/backfill
-static/                Frontend (plain HTML/CSS/JS, no build step)
+scripts/               Spreadsheet extraction, PokeAPI lookups, history import/backfill, accounts
+static/                Frontend (plain HTML/CSS/JS, no build step): landing.html, login.html,
+                       account.html and site.js for accounts; index.html and app.js for the tracker
 ```
 
 ### API
 
+Every endpoint except the first five needs a login and works on the logged-in
+account's data only. Changes (anything but GET) need an `X-Requested-With` header.
+
 | Method | Path | Body |
 |---|---|---|
+| POST | `/api/signup` | `{username, password}`: creates a trainer account and logs in |
+| POST | `/api/login` | `{username, password}` |
+| POST | `/api/logout` | |
+| GET | `/api/me` | the logged-in user `{username, role, created_at, attempts}`, or `null` |
+| POST | `/api/me/password` | `{current_password, new_password}`; logs out the account's other sessions |
+| POST | `/api/me/logout-everywhere` | ends every session of the account |
 | GET | `/api/game` | routes (with encounter options), battles, sprites, evolution lines, natures, statuses, suggestions |
 | GET | `/api/battles/<id>` | a battle's trainers and their teams |
 | GET / POST | `/api/attempts` | `{number?}` |
@@ -212,5 +271,6 @@ were against, for battles with alternatives) and `kos`.
 - KOs for past attempts (the old sheet's "Killed:" rows are only in each attempt's notes)
 - Failed or skipped encounters (a `-` in the old sheet)
 - Dupes-clause warnings (the family data is already in the DB)
-- User accounts (it's single-user right now)
+- Email (password resets happen from a console), deleting an account
+- Anything that depends on roles
 - UI/UX polish

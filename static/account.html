@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Account · Run &amp; Bun Nuzlocke</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body data-page="account">
+  <header class="topbar">
+    <h1><a class="home-link" href="/">Run &amp; Bun Nuzlocke</a></h1>
+    <a class="button" href="/app">&larr; Back to your tracker</a>
+    <div class="account-menu topbar-end">
+      <button id="account-button" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="account-popover" hidden>
+        <span id="account-name"></span> <span aria-hidden="true">▾</span>
+      </button>
+      <div id="account-popover" class="account-popover" hidden>
+        <p class="account-who"><strong id="account-username"></strong><span id="account-role" class="muted"></span></p>
+        <a href="/account">Account settings</a>
+        <button id="logout" type="button">Log out</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="account-main">
+    <section class="panel">
+      <h2>Your account</h2>
+      <dl class="account-details">
+        <dt>Username</dt><dd id="acct-username"></dd>
+        <dt>Role</dt><dd id="acct-role"></dd>
+        <dt>Member since</dt><dd id="acct-created"></dd>
+        <dt>Attempts</dt><dd id="acct-attempts"></dd>
+      </dl>
+    </section>
+
+    <section class="panel">
+      <h2>Change password</h2>
+      <form id="password-form" class="auth-form">
+        <label class="field">
+          <span class="field-label">Current password</span>
+          <input name="current" type="password" autocomplete="current-password" required>
+        </label>
+        <label class="field">
+          <span class="field-label">New password</span>
+          <input name="password" type="password" autocomplete="new-password" minlength="8" maxlength="128" required>
+        </label>
+        <label class="field">
+          <span class="field-label">New password again</span>
+          <input name="confirm" type="password" autocomplete="new-password" minlength="8" maxlength="128" required>
+        </label>
+        <p class="form-error" role="alert" hidden></p>
+        <p id="password-done" class="form-done" role="status" hidden>Password changed. You've been logged out everywhere else.</p>
+        <button type="submit" class="primary">Change password</button>
+      </form>
+      <p class="hint">Changing your password logs you out on every other device.</p>
+    </section>
+
+    <section class="panel">
+      <h2>Sessions</h2>
+      <p class="hint">You stay logged in on this device for 30 days unless you log out.</p>
+      <div class="account-actions">
+        <button id="logout-here" type="button">Log out</button>
+        <button id="logout-everywhere" type="button" class="danger">Log out everywhere</button>
+      </div>
+    </section>
+  </main>
+
+  <script src="site.js"></script>
+</body>
+</html>

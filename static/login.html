@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Log in · Run &amp; Bun Nuzlocke</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body data-page="login">
+  <header class="topbar">
+    <h1><a class="home-link" href="/">Run &amp; Bun Nuzlocke</a></h1>
+  </header>
+
+  <main class="auth-main">
+    <section class="panel auth-card">
+      <div class="auth-tabs" role="tablist" aria-label="Log in or create an account">
+        <button type="button" role="tab" data-mode="login" aria-selected="true">Log in</button>
+        <button type="button" role="tab" data-mode="signup" aria-selected="false">Create account</button>
+      </div>
+
+      <form id="login-form" class="auth-form">
+        <label class="field">
+          <span class="field-label">Username</span>
+          <input name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required>
+        </label>
+        <label class="field">
+          <span class="field-label">Password</span>
+          <input name="password" type="password" autocomplete="current-password" required>
+        </label>
+        <p class="form-error" role="alert" hidden></p>
+        <button type="submit" class="primary">Log in</button>
+      </form>
+
+      <form id="signup-form" class="auth-form" hidden>
+        <label class="field">
+          <span class="field-label">Username</span>
+          <input name="username" autocomplete="username" autocapitalize="none" spellcheck="false"
+                 minlength="3" maxlength="30" aria-describedby="username-rules" required>
+        </label>
+        <p id="username-rules" class="hint">3–30 letters, digits, dots, dashes or underscores.</p>
+        <label class="field">
+          <span class="field-label">Password</span>
+          <input name="password" type="password" autocomplete="new-password" minlength="8" maxlength="128"
+                 aria-describedby="password-rules" required>
+        </label>
+        <p id="password-rules" class="hint">At least 8 characters.</p>
+        <label class="field">
+          <span class="field-label">Password again</span>
+          <input name="confirm" type="password" autocomplete="new-password" minlength="8" maxlength="128" required>
+        </label>
+        <p class="form-error" role="alert" hidden></p>
+        <button type="submit" class="primary">Create account</button>
+      </form>
+    </section>
+  </main>
+
+  <script src="site.js"></script>
+</body>
+</html>

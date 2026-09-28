@@ -13,7 +13,12 @@ EVOLUTIONS_PATH = ROOT / "data" / "evolutions.json"
 
 # Bump when schema.sql changes in a way existing databases need migrating for,
 # and add a step to migrate().
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
+
+# The site owner's account. Attempts recorded before accounts existed are
+# given to it (as an admin, without a password until one is set with
+# scripts/manage_account.py), and the import scripts use it by default.
+SITE_OWNER = "bkewps"
 
 # A Pokemon's details, as stored on box Pokemon (catches) and on the copies in
 # battle teams (fight_members).
@@ -73,14 +78,21 @@ def migrate(conn):
         # Safe to repeat, so an upgrade to v3 that stopped halfway just carries on.
         add_column(conn, "battles", "split", "TEXT")
         add_column(conn, "fights", "trainer_key", "TEXT")
+    if version < 4 and "user_id" not in columns(conn, "attempts"):
+        backup(conn, "v3")
+        migrate_accounts(conn)
     problems = conn.execute("PRAGMA foreign_key_check").fetchall()
     if problems:
         raise RuntimeError(f"migration left broken references: {[tuple(p) for p in problems]}")
     return version
 
 
+def columns(conn, table):
+    return {r["name"] for r in conn.execute(f"PRAGMA table_info({table})")}
+
+
 def add_column(conn, table, column, definition):
-    if column not in {r["name"] for r in conn.execute(f"PRAGMA table_info({table})")}:
+    if column not in columns(conn, table):
         conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
 
 
@@ -165,6 +177,27 @@ def migrate_box_details(conn):
                   "DROP TABLE fight_members_v1;"
                   "DROP TABLE catches_v1;",
         check=("catches", "fights", "fight_members"),
+    )
+
+
+def migrate_accounts(conn):
+    """v3 -> v4: accounts. Every attempt belongs to a user, and attempt
+    numbers are unique per user rather than site-wide.
+
+    Existing attempts go to SITE_OWNER, created as an admin with no password
+    (it can't log in until one is set with scripts/manage_account.py).
+    """
+    owner = SITE_OWNER.replace("'", "''")
+    rebuild_tables(
+        conn,
+        move_aside="ALTER TABLE attempts RENAME TO attempts_v3;",
+        copy_back=f"INSERT OR IGNORE INTO users (username, role)"
+                  f"  SELECT '{owner}', 'admin' WHERE EXISTS (SELECT 1 FROM attempts_v3);"
+                  f"INSERT INTO attempts (id, user_id, number, notes, created_at)"
+                  f"  SELECT id, (SELECT id FROM users WHERE username = '{owner}'), number, notes, created_at"
+                  f"  FROM attempts_v3;"
+                  "DROP TABLE attempts_v3;",
+        check=("attempts", "catches", "fights"),
     )
 
 

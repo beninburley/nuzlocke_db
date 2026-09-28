@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Run &amp; Bun Nuzlocke Tracker</title>
+  <meta name="description" content="A nuzlocke data tracker for Pokémon Run & Bun: catches, box, trainer battles and KOs for every attempt.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body data-page="landing">
+  <header class="topbar">
+    <h1>Run &amp; Bun Nuzlocke</h1>
+    <nav id="landing-actions" class="topbar-end">
+      <a class="button" href="/login">Log in</a>
+    </nav>
+  </header>
+
+  <main class="landing">
+    <section class="hero">
+      <h2>A nuzlocke data tracker</h2>
+      <p>
+        Keep a record of every attempt at a Pok&eacute;mon Run &amp; Bun nuzlocke: what you caught on each
+        route, your box, the team you brought to every trainer battle, and who knocked out whom.
+      </p>
+      <p id="hero-actions" class="hero-actions">
+        <a class="button primary" href="/login?mode=signup">Create a free account</a>
+        <a class="button" href="/login">Log in</a>
+      </p>
+    </section>
+
+    <section class="features" aria-label="What it tracks">
+      <article class="panel">
+        <h3>Encounters</h3>
+        <p>Record the catch on each route, picked from that route's encounter table with its odds.</p>
+      </article>
+      <article class="panel">
+        <h3>Your box</h3>
+        <p>Level, nature, ability, held item, moves, IVs and status for every Pok&eacute;mon, and evolve them as you go.</p>
+      </article>
+      <article class="panel">
+        <h3>Trainer battles</h3>
+        <p>Every trainer in the game, grouped by level cap, with their full teams. Drag in the team you brought.</p>
+      </article>
+      <article class="panel">
+        <h3>KO tracking</h3>
+        <p>Draw who knocked out whom in each fight, then see which Pok&eacute;mon carried your run.</p>
+      </article>
+    </section>
+  </main>
+
+  <script src="site.js"></script>
+</body>
+</html>
