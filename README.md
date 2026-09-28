@@ -12,12 +12,18 @@ A small web app that replaces the user-entered parts of the Run & Bun master she
   nature, ability, held item, four moves and IVs. Ability, item and move boxes
   suggest the names Run & Bun's trainers use. *Evolve…* shows the whole
   evolutionary line (from PokeAPI) and evolves or devolves in one click.
+  Fainted Pokemon are greyed out with a "Fainted" stamp, here and on the
+  Trainer Battles tab.
 - **Trainer Battles**: the slide-out list has one dropdown per split, e.g.
   "Route 104 Aqua Grunt Split". Each lists that split's trainers in game order,
   ending with the level-cap boss. You can also type in the filter box. Pick
   any trainer to see their team: each Pokemon's level, held item, ability,
   nature and moves. Fights with several trainers get a switcher: the rival's
-  starter variants, Museum grunts #1/#2, Tate & Liza, and tag-battle partners.
+  starter variants and tag-battle partners. Boss fights against two trainers
+  with separate teams are split into a battle per trainer (Museum grunts #1
+  and #2, Tate and Liza), so KOs are tracked against one team at a time. A
+  split shows ✗ if any of its battles was lost, and ✓ once its boss battles
+  are won.
   Drag Pokemon from your box (only this attempt's catches) into the six team
   slots. You can also click a box Pokemon to add or remove it. Drag between
   slots to swap, or back to the box to remove. Mark each fight won or lost.
@@ -26,6 +32,17 @@ A small web app that replaces the user-entered parts of the Run & Bun master she
   editing a copy doesn't touch the box). Click a team member to see or edit
   that fight's copy. If any copy differs from the box, the fight shows *This
   fight used Pokémon that have since been changed*.
+- **KO tracker**: marking a battle Won or Lost opens it, and the KO button
+  next to every finished battle (or *Edit KOs*) reopens it. The enemy team
+  sits above yours with a dot under each enemy and over each of your
+  Pokemon. Drag from one of your dots to an enemy's for a KO by your Pokemon
+  (green arrow), or from an enemy's dot to one of yours for a KO by the enemy
+  (red arrow). Clicking one dot and then the other works too, and clicking an
+  arrow removes it. Each Pokemon can only be knocked out once per fight, so
+  a new arrow into it replaces the old one. For the rival, pick which starter
+  variant you fought.
+- **KO Analytics**: a bar chart of which Pokemon scored the most KOs this
+  attempt, with the battles they scored them in.
 - **Notes**: free text per attempt.
 
 Everything saves automatically on change.
@@ -125,7 +142,8 @@ The import strips ability markers (`Lillipup-`), matches evolved or shorthand
 names to catches through evolution families (`Grotle` -> the Turtwig starter,
 `Zigzagoon` -> `Zigzagoon-G`), and fixes small typos. Battle copies get the
 form the sheet lists for that fight, and each box Pokemon gets the latest form
-it reached. It puts "Killed:" rows and free-text notes into each attempt's
+it reached. A split boss fight (the Museum grunts, Tate & Liza) gets the
+column's team and result on each of its battles. It puts "Killed:" rows and free-text notes into each attempt's
 notes. It prints everything it corrected or skipped.
 
 Databases imported before battle copies existed can get those forms
@@ -140,7 +158,9 @@ caught species, so edits made in the app are kept:
 To start over, stop the app and delete `instance/nuzlocke.db`.
 
 When a new version changes the schema, the app migrates the existing database
-on startup. It first saves a copy next to it (e.g. `nuzlocke.backup-v1.db`).
+on startup. It first saves a copy next to it (e.g. `nuzlocke.backup-v2.db`).
+Upgrading to v3 splits the Museum grunts and Tate & Liza into a battle per
+trainer; fights already recorded there get the same team and result on both.
 
 ## Rules enforced
 
@@ -152,6 +172,8 @@ Rules are checked in the API and again by SQLite triggers and constraints:
 - a team member must be a copy of a catch from the same attempt, with no duplicates and at most 6
 - removing a route's catch keeps the battle copies made from it (they show as "no longer in box");
   changing the Pokemon caught on a route resets its current species
+- a KO links one of the fight's team copies to a Pokemon of the enemy team fought; each Pokemon
+  is knocked out at most once per fight, and removing a team member removes its KOs
 
 ## Layout
 
@@ -178,12 +200,16 @@ static/                Frontend (plain HTML/CSS/JS, no build step)
 | PATCH | `/api/catches/<id>` | any of `{species, level, ability, nature, item, moves: [4], ivs: {hp, atk, def, spa, spd, spe}, status}` |
 | PUT | `/api/attempts/<id>/fights/<battle_id>` | `{members: [slot] x6, result: "won" or "lost" or null}`; each slot is `null`, `{"id": copy}` (keep) or `{"catch_id": n}` (new copy) |
 | PATCH | `/api/fight-members/<id>` | same fields as a catch; edits that battle's copy only |
+| PUT | `/api/fights/<id>/kos` | `{trainer: key or null, kos: [{member: copy id, enemy: slot, by: "player" or "enemy"}]}` replaces the fight's KOs |
+
+Fights (in `GET /api/attempts/<id>`) include `trainer` (the enemy team the KOs
+were against, for battles with alternatives) and `kos`.
 
 ## Not in the MVP yet
 
 - Trainer portraits (the sheet's *Sprites* tab embeds images rather than linking them)
 - Tracking which trainers you've beaten or skipped (the *Trainers* tab's Status column)
-- Who killed a Pokemon (the old sheet's "Killed:" rows are only in each attempt's notes)
+- KOs for past attempts (the old sheet's "Killed:" rows are only in each attempt's notes)
 - Failed or skipped encounters (a `-` in the old sheet)
 - Dupes-clause warnings (the family data is already in the DB)
 - User accounts (it's single-user right now)

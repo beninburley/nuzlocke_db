@@ -21,19 +21,23 @@ CREATE TABLE IF NOT EXISTS route_encounters (
 );
 CREATE INDEX IF NOT EXISTS idx_route_encounters_route ON route_encounters(route_id);
 
--- Everything you can fight. Level-cap battles (the 23 boss fights) have a
--- level_cap and may involve several trainers: back-to-back or double battles,
--- a tag partner, or alternative teams (the rival's depends on your starter).
--- Every other trainer is a battle of its own, listed under (group_id) the
--- level-cap battle that follows it.
+-- Everything you can fight, grouped into splits. Each split ends with a
+-- level-cap battle (one of the 23 boss fights; `split` names the split).
+-- Every other battle is listed under (group_id) the level-cap battle that ends
+-- its split. A battle may involve several trainers: a tag partner, or
+-- alternative teams (the rival's depends on your starter). A boss fight
+-- against two trainers with separate teams (the Museum grunts, Tate & Liza)
+-- is one battle per trainer: each has the level_cap, and all but the last
+-- are listed under the last.
 CREATE TABLE IF NOT EXISTS battles (
     id        INTEGER PRIMARY KEY,
     key       TEXT    NOT NULL UNIQUE,   -- stable identity when game data is re-synced
     name      TEXT    NOT NULL,
     location  TEXT,
     level_cap INTEGER,                   -- set only on level-cap battles
-    group_id  INTEGER REFERENCES battles(id) ON DELETE SET NULL,  -- NULL on level-cap battles
-    position  INTEGER NOT NULL
+    group_id  INTEGER REFERENCES battles(id) ON DELETE SET NULL,  -- NULL on the battle ending a split
+    position  INTEGER NOT NULL,
+    split     TEXT                       -- name of the split this battle ends, else NULL
 );
 
 CREATE TABLE IF NOT EXISTS trainers (
@@ -139,10 +143,13 @@ BEGIN
 END;
 
 CREATE TABLE IF NOT EXISTS fights (
-    id         INTEGER PRIMARY KEY,
-    attempt_id INTEGER NOT NULL REFERENCES attempts(id) ON DELETE CASCADE,
-    battle_id  INTEGER NOT NULL REFERENCES battles(id),
-    result     TEXT CHECK (result IN ('won', 'lost')),  -- NULL = not recorded
+    id          INTEGER PRIMARY KEY,
+    attempt_id  INTEGER NOT NULL REFERENCES attempts(id) ON DELETE CASCADE,
+    battle_id   INTEGER NOT NULL REFERENCES battles(id),
+    result      TEXT CHECK (result IN ('won', 'lost')),  -- NULL = not recorded
+    -- The enemy team the KOs were against (a trainers.key), for battles with
+    -- alternative teams. NULL = the battle's first enemy trainer.
+    trainer_key TEXT,
     UNIQUE (attempt_id, battle_id)
 );
 
@@ -187,4 +194,26 @@ WHEN NEW.catch_id IS NOT NULL
      IS NOT (SELECT attempt_id FROM catches WHERE id = NEW.catch_id)
 BEGIN
     SELECT RAISE(ABORT, 'team member was not caught during this attempt');
+END;
+
+-- Who knocked out whom in a fight: the KO tracker's arrows. ko_by 'player'
+-- means the team member knocked out the enemy Pokemon in enemy_slot (a green
+-- arrow); 'enemy' means that enemy Pokemon knocked out the team member (red).
+-- Each Pokemon is knocked out at most once per fight.
+CREATE TABLE IF NOT EXISTS fight_kos (
+    id         INTEGER PRIMARY KEY,
+    fight_id   INTEGER NOT NULL REFERENCES fights(id) ON DELETE CASCADE,
+    member_id  INTEGER NOT NULL REFERENCES fight_members(id) ON DELETE CASCADE,
+    enemy_slot INTEGER NOT NULL CHECK (enemy_slot BETWEEN 1 AND 6),
+    ko_by      TEXT    NOT NULL CHECK (ko_by IN ('player', 'enemy'))
+);
+CREATE INDEX IF NOT EXISTS idx_fight_kos_fight ON fight_kos(fight_id);
+CREATE UNIQUE INDEX IF NOT EXISTS fight_kos_enemy_once ON fight_kos(fight_id, enemy_slot) WHERE ko_by = 'player';
+CREATE UNIQUE INDEX IF NOT EXISTS fight_kos_member_once ON fight_kos(member_id) WHERE ko_by = 'enemy';
+
+CREATE TRIGGER IF NOT EXISTS fight_kos_same_fight
+BEFORE INSERT ON fight_kos
+WHEN (SELECT fight_id FROM fight_members WHERE id = NEW.member_id) IS NOT NEW.fight_id
+BEGIN
+    SELECT RAISE(ABORT, 'KO team member is not in this fight');
 END;

@@ -84,6 +84,12 @@ LEVEL_CAP_TRAINERS = {
     "Champion Wallace": [("Champion Wallace", "Pokémon League")],
 }
 
+# Level-cap fights against two trainers with separate teams (rather than
+# alternative teams). Each trainer becomes a battle of its own, so KOs are
+# tracked against one team at a time. The last one is the split's level-cap
+# battle; the others are listed just before it in the same split.
+SEPARATE_TRAINERS = {"Museum Aqua Grunts", "Leaders Tate & Liza"}
+
 
 def clean(value):
     if isinstance(value, str):
@@ -206,9 +212,13 @@ def extract_trainers(ws):
 def build_battles(bosses, trainers):
     """Group trainers into battles, in game order.
 
-    The level-cap fights use the trainers listed in LEVEL_CAP_TRAINERS. Every
-    other trainer is its own battle, listed under the next level-cap fight. A
-    "[Tag Partner]" (an ally) joins the battle of the trainer just before it.
+    The level-cap fights use the trainers listed in LEVEL_CAP_TRAINERS, one
+    battle per trainer for SEPARATE_TRAINERS. Every other trainer is its own
+    battle, listed under the next level-cap fight. A "[Tag Partner]" (an ally)
+    joins the battle of the trainer just before it.
+
+    `split` names the split a level-cap battle ends (its Past Boss Fights
+    name); `group` names the split every other battle is listed in.
     """
     by_key = {(t["raw_name"], t["location"]): t for t in trainers}
     boss_of = {}
@@ -223,26 +233,32 @@ def build_battles(bosses, trainers):
         boss = boss_of.get((trainer["raw_name"], trainer["location"]))
         if "Tag Partner" in trainer["tags"] and battles:
             battles[-1]["trainers"].append(trainer)
-        elif boss is None:
-            battle = {"name": trainer["name"], "location": trainer["location"],
-                      "level_cap": None, "group": None, "trainers": [trainer]}
+            continue
+        if boss is None:
+            battle = {"name": trainer["name"], "location": trainer["location"], "level_cap": None,
+                      "group": None, "split": None, "trainers": [trainer]}
             battles.append(battle)
             waiting.append(battle)
-        elif boss["name"] in boss_battles:
-            boss_battles[boss["name"]]["trainers"].append(trainer)
-        else:
-            battle = {"name": boss["name"], "location": trainer["location"],
-                      "level_cap": boss["level_cap"], "group": None, "trainers": [trainer]}
-            boss_battles[boss["name"]] = battle
-            battles.append(battle)
-            for other in waiting:
-                other["group"] = boss["name"]
-            waiting = []
+            continue
+        for other in waiting:
+            other["group"] = boss["name"]
+        waiting = []
+        separate = boss["name"] in SEPARATE_TRAINERS
+        if boss["name"] in boss_battles and not separate:
+            boss_battles[boss["name"]][-1]["trainers"].append(trainer)  # an alternative team
+            continue
+        battle = {"name": trainer["name"] if separate else boss["name"], "location": trainer["location"],
+                  "level_cap": boss["level_cap"], "group": None, "split": boss["name"], "trainers": [trainer]}
+        boss_battles.setdefault(boss["name"], []).append(battle)
+        battles.append(battle)
     if waiting:
         raise SystemExit(f"Trainers after the last level-cap fight: {[b['name'] for b in waiting]}")
+    for name, parts in boss_battles.items():
+        for part in parts[:-1]:  # the last part is the split's level-cap battle
+            part["group"], part["split"] = name, None
     for battle in battles:
-        # Level-cap fights keep their Past Boss Fights name as their identity.
-        battle["key"] = (f"boss:{battle['name']}" if battle["level_cap"] is not None
+        # A split's level-cap battle keeps its Past Boss Fights name as its identity.
+        battle["key"] = (f"boss:{battle['split']}" if battle["split"] is not None
                          else f"trainer:{battle['trainers'][0]['key']}")
         for trainer in battle["trainers"]:
             del trainer["raw_name"]
@@ -263,9 +279,9 @@ def main():
     OUT.parent.mkdir(exist_ok=True)
     OUT.write_text(json.dumps(data, indent=1, ensure_ascii=False), encoding="utf-8")
     n_enc = sum(len(r["encounters"]) for r in data["routes"])
-    n_boss = sum(1 for b in data["battles"] if b["level_cap"] is not None)
+    n_boss = sum(1 for b in data["battles"] if b["split"] is not None)
     print(f"Wrote {OUT}: {len(data['routes'])} routes, {n_enc} encounter slots, "
-          f"{len(data['battles'])} battles ({n_boss} level caps) from {len(trainers)} trainers, "
+          f"{len(data['battles'])} battles ({n_boss} splits) from {len(trainers)} trainers, "
           f"{len(data['families'])} families")
 
 

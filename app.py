@@ -13,6 +13,7 @@ app = Flask(__name__, static_folder="static", static_url_path="")
 
 TEAM_SIZE = 6
 RESULTS = (None, "won", "lost")
+KO_BY = ("player", "enemy")
 
 
 class ApiError(Exception):
@@ -87,7 +88,7 @@ def game():
             "levels": row["levels"],
         })
     battles = [dict(b, tags=[]) for b in conn.execute(
-        "SELECT id, name, location, level_cap, group_id FROM battles ORDER BY position")]
+        "SELECT id, name, location, level_cap, group_id, split FROM battles ORDER BY position")]
     by_battle = {b["id"]: b for b in battles}
     for trainer in conn.execute("SELECT battle_id, tags FROM trainers ORDER BY position"):
         tags = by_battle[trainer["battle_id"]]["tags"]
@@ -112,13 +113,13 @@ def battle_detail(battle_id):
     """A battle's trainers and their full teams (item, ability, nature, moves)."""
     conn = get_db()
     battle = conn.execute(
-        "SELECT id, name, location, level_cap, group_id FROM battles WHERE id = ?",
+        "SELECT id, name, location, level_cap, group_id, split FROM battles WHERE id = ?",
         (battle_id,)).fetchone()
     if battle is None:
         raise ApiError("battle not found", 404)
     trainers = [dict(t, tags=[x for x in t["tags"].split(",") if x], pokemon=[])
                 for t in conn.execute(
-                    "SELECT id, name, location, tags FROM trainers "
+                    "SELECT id, key, name, location, tags FROM trainers "
                     "WHERE battle_id = ? ORDER BY position", (battle_id,))]
     by_trainer = {t["id"]: t for t in trainers}
     for p in conn.execute(
@@ -297,11 +298,14 @@ def update_row(conn, table, row_id, fields):
 
 
 def fight_json(conn, fight_id):
-    fight = conn.execute("SELECT id, battle_id, result FROM fights WHERE id = ?",
+    fight = conn.execute("SELECT id, battle_id, result, trainer_key FROM fights WHERE id = ?",
                          (fight_id,)).fetchone()
     members = [member_json(m) for m in conn.execute(
         "SELECT * FROM fight_members WHERE fight_id = ? ORDER BY slot", (fight_id,))]
-    return dict(fight, members=members)
+    kos = [{"member": k["member_id"], "enemy": k["enemy_slot"], "by": k["ko_by"]} for k in conn.execute(
+        "SELECT member_id, enemy_slot, ko_by FROM fight_kos WHERE fight_id = ? ORDER BY id", (fight_id,))]
+    return {"id": fight["id"], "battle_id": fight["battle_id"], "result": fight["result"],
+            "trainer": fight["trainer_key"], "members": members, "kos": kos}
 
 
 @app.get("/api/attempts/<int:attempt_id>")
@@ -434,6 +438,10 @@ def set_fight(attempt_id, battle_id):
         # Rewrite the team: kept copies are re-inserted as they were (same id,
         # possibly a new slot), then added ones copy their box Pokemon's current
         # details. Kept copies go first so a new copy can never take a kept id.
+        # Deleting the copies deletes their KOs too, so those of kept copies
+        # are put back afterwards.
+        kos = conn.execute("SELECT member_id, enemy_slot, ko_by FROM fight_kos WHERE fight_id = ?",
+                           (fight_id,)).fetchall()
         conn.execute("DELETE FROM fight_members WHERE fight_id = ?", (fight_id,))
         slots = [(slot, entry) for slot, entry in enumerate(members, start=1) if entry is not None]
         for slot, entry in slots:
@@ -449,6 +457,66 @@ def set_fight(attempt_id, battle_id):
                     f"INSERT INTO fight_members (fight_id, slot, catch_id, {columns}) "
                     f"SELECT ?, ?, id, {columns} FROM catches WHERE id = ?",
                     (fight_id, slot, entry["catch_id"]))
+        conn.executemany(
+            "INSERT INTO fight_kos (fight_id, member_id, enemy_slot, ko_by) VALUES (?, ?, ?, ?)",
+            [(fight_id, *ko) for ko in kos if ko["member_id"] in kept])
+    return jsonify(fight=fight_json(conn, fight_id))
+
+
+@app.put("/api/fights/<int:fight_id>/kos")
+def set_kos(fight_id):
+    """Replace a fight's KOs (the KO tracker's arrows).
+
+    Body: {"trainer": key or null, "kos": [{"member": copy id, "enemy": slot,
+    "by": "player" or "enemy"}]}. "trainer" is the enemy team fought, for
+    battles with alternative teams (null = the first). "by": "player" means
+    the team member knocked out the enemy Pokemon in that slot; "enemy" means
+    the enemy Pokemon knocked out the team member.
+    """
+    conn = get_db()
+    fight = conn.execute("SELECT id, battle_id FROM fights WHERE id = ?", (fight_id,)).fetchone()
+    if fight is None:
+        raise ApiError("fight not found", 404)
+    data = body()
+    unknown = set(data) - {"trainer", "kos"}
+    if unknown:
+        raise ApiError(f"unknown field(s): {', '.join(sorted(unknown))}")
+
+    enemies = conn.execute(
+        "SELECT id, key FROM trainers WHERE battle_id = ? AND ',' || tags || ',' NOT LIKE '%,Tag Partner,%' "
+        "ORDER BY position", (fight["battle_id"],)).fetchall()
+    trainer_key = data.get("trainer")
+    if trainer_key is not None and trainer_key not in {t["key"] for t in enemies}:
+        raise ApiError("trainer is not an enemy in this battle")
+    trainer = next((t for t in enemies if t["key"] == trainer_key), enemies[0] if enemies else None)
+    team_size = 0 if trainer is None else conn.execute(
+        "SELECT COUNT(*) FROM trainer_pokemon WHERE trainer_id = ?", (trainer["id"],)).fetchone()[0]
+    members = {m["id"] for m in conn.execute("SELECT id FROM fight_members WHERE fight_id = ?", (fight_id,))}
+
+    kos = data.get("kos", [])
+    if not isinstance(kos, list):
+        raise ApiError("kos must be a list")
+    rows = []
+    for ko in kos:
+        if not isinstance(ko, dict) or set(ko) != {"member", "enemy", "by"}:
+            raise ApiError('each KO must be {"member": copy id, "enemy": slot, "by": "player" or "enemy"}')
+        member, enemy, by = ko["member"], ko["enemy"], ko["by"]
+        if isinstance(member, bool) or not isinstance(member, int) or member not in members:
+            raise ApiError("KO team member isn't in this fight")
+        if isinstance(enemy, bool) or not isinstance(enemy, int) or not 1 <= enemy <= team_size:
+            raise ApiError(f"enemy must be a slot from 1 to {team_size}")
+        if by not in KO_BY:
+            raise ApiError("by must be 'player' or 'enemy'")
+        rows.append((member, enemy, by))
+    knocked_out = [("enemy", enemy) if by == "player" else ("member", member) for member, enemy, by in rows]
+    if len(set(knocked_out)) != len(knocked_out):
+        raise ApiError("a Pokemon can only be knocked out once per fight")
+
+    with conn:
+        conn.execute("UPDATE fights SET trainer_key = ? WHERE id = ?", (trainer_key, fight_id))
+        conn.execute("DELETE FROM fight_kos WHERE fight_id = ?", (fight_id,))
+        conn.executemany("INSERT INTO fight_kos (fight_id, member_id, enemy_slot, ko_by) VALUES (?, ?, ?, ?)",
+                         [(fight_id, *row) for row in rows])
     return jsonify(fight=fight_json(conn, fight_id))
 
 

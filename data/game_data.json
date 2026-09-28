@@ -10969,6 +10969,7 @@
    "location": "Route 102",
    "level_cap": null,
    "group": "Route 104 Aqua Grunt",
+   "split": null,
    "trainers": [
     {
      "name": "Youngster Calvin",
@@ -11022,6 +11023,7 @@
    "location": "Route 102",
    "level_cap": null,
    "group": "Route 104 Aqua Grunt",
+   "split": null,
    "trainers": [
     {
      "name": "Bug Catcher Rick",
@@ -11074,6 +11076,7 @@
    "location": "Route 102",
    "level_cap": null,
    "group": "Route 104 Aqua Grunt",
+   "split": null,
    "trainers": [
     {
      "name": "Youngster Allen",
@@ -11126,6 +11129,7 @@
    "location": "Route 102",
    "level_cap": null,
    "group": "Route 104 Aqua Grunt",
+   "split": null,
    "trainers": [
     {
      "name": "Lass Tiana",
@@ -11165,6 +11169,7 @@
    "location": "Route 104",
    "level_cap": null,
    "group": "Route 104 Aqua Grunt",
+   "split": null,
    "trainers": [
     {
      "name": "Triathlete Mikey",
@@ -11217,6 +11222,7 @@
    "location": "Route 104",
    "level_cap": null,
    "group": "Route 104 Aqua Grunt",
+   "split": null,
    "trainers": [
     {
      "name": "Fisherman Darian",
@@ -11256,6 +11262,7 @@
    "location": "Route 104",
    "level_cap": null,
    "group": "Route 104 Aqua Grunt",
+   "split": null,
    "trainers": [
     {
      "name": "Lady Cindy",
@@ -11309,6 +11316,7 @@
    "location": "Route 104",
    "level_cap": 12,
    "group": null,
+   "split": "Route 104 Aqua Grunt",
    "trainers": [
     {
      "name": "Team Aqua Grunt Petalburg Woods",
@@ -11367,6 +11375,7 @@
    "location": "Route 106",
    "level_cap": null,
    "group": "Museum Aqua Grunts",
+   "split": null,
    "trainers": [
     {
      "name": "Fisherman Elliot",
@@ -11423,6 +11432,7 @@
    "location": "Route 106",
    "level_cap": null,
    "group": "Museum Aqua Grunts",
+   "split": null,
    "trainers": [
     {
      "name": "Ruin Maniac Georgie",
@@ -11489,6 +11499,7 @@
    "location": "Route 109",
    "level_cap": null,
    "group": "Museum Aqua Grunts",
+   "split": null,
    "trainers": [
     {
      "name": "Tuber Chandler",
@@ -11544,6 +11555,7 @@
    "location": "Route 109",
    "level_cap": null,
    "group": "Museum Aqua Grunts",
+   "split": null,
    "trainers": [
     {
      "name": "Tuber Lola",
@@ -11586,6 +11598,7 @@
    "location": "Route 109",
    "level_cap": null,
    "group": "Museum Aqua Grunts",
+   "split": null,
    "trainers": [
     {
      "name": "Sailor Edmond",
@@ -11642,6 +11655,7 @@
    "location": "Route 109",
    "level_cap": null,
    "group": "Museum Aqua Grunts",
+   "split": null,
    "trainers": [
     {
      "name": "Fisherman Bill",
@@ -11709,6 +11723,7 @@
    "location": "Route 109",
    "level_cap": null,
    "group": "Museum Aqua Grunts",
+   "split": null,
    "trainers": [
     {
      "name": "Tuber Ricky",
@@ -11765,6 +11780,7 @@
    "location": "Route 109",
    "level_cap": null,
    "group": "Museum Aqua Grunts",
+   "split": null,
    "trainers": [
     {
      "name": "Tuber Hailey",
@@ -11821,6 +11837,7 @@
    "location": "Route 110",
    "level_cap": null,
    "group": "Museum Aqua Grunts",
+   "split": null,
    "trainers": [
     {
      "name": "Camper Gavi",
@@ -11900,10 +11917,11 @@
    "key": "trainer:Camper Gavi [Optional] @ Route 110"
   },
   {
-   "name": "Museum Aqua Grunts",
+   "name": "Team Aqua Grunt Museum #1",
    "location": "Slateport Museum",
    "level_cap": 17,
-   "group": null,
+   "group": "Museum Aqua Grunts",
+   "split": null,
    "trainers": [
     {
      "name": "Team Aqua Grunt Museum #1",
@@ -11952,7 +11970,17 @@
        ]
       }
      ]
-    },
+    }
+   ],
+   "key": "trainer:Team Aqua Grunt Museum #1 [Boss] @ Slateport Museum"
+  },
+  {
+   "name": "Team Aqua Grunt Museum #2",
+   "location": "Slateport Museum",
+   "level_cap": 17,
+   "group": null,
+   "split": "Museum Aqua Grunts",
+   "trainers": [
     {
      "name": "Team Aqua Grunt Museum #2",
      "location": "Slateport Museum",
@@ -12010,6 +12038,7 @@
    "location": "Dewford Gym",
    "level_cap": null,
    "group": "Leader Brawly",
+   "split": null,
    "trainers": [
     {
      "name": "Battle Girl Laura",
@@ -12063,6 +12092,7 @@
    "location": "Dewford Gym",
    "level_cap": null,
    "group": "Leader Brawly",
+   "split": null,
    "trainers": [
     {
      "name": "Sailor Brenden",
@@ -12104,6 +12134,7 @@
    "location": "Dewford Gym",
    "level_cap": null,
    "group": "Leader Brawly",
+   "split": null,
    "trainers": [
     {
      "name": "Battle Girl Lilith",
@@ -12158,6 +12189,7 @@
    "location": "Dewford Gym",
    "level_cap": null,
    "group": "Leader Brawly",
+   "split": null,
    "trainers": [
     {
      "name": "Black Belt Cristian",
@@ -12214,6 +12246,7 @@
    "location": "Dewford Gym",
    "level_cap": null,
    "group": "Leader Brawly",
+   "split": null,
    "trainers": [
     {
      "name": "Black Belt Takao",
@@ -12269,6 +12302,7 @@
    "location": "Dewford Gym",
    "level_cap": null,
    "group": "Leader Brawly",
+   "split": null,
    "trainers": [
     {
      "name": "Battle Girl Jocelyn",
@@ -12337,6 +12371,7 @@
    "location": "Dewford Gym",
    "level_cap": 21,
    "group": null,
+   "split": "Leader Brawly",
    "trainers": [
     {
      "name": "Leader Brawly",
@@ -12433,6 +12468,7 @@
    "location": "Petalburg Woods",
    "level_cap": null,
    "group": "Leader Roxanne",
+   "split": null,
    "trainers": [
     {
      "name": "Bug Catcher Lyle",
@@ -12488,6 +12524,7 @@
    "location": "Petalburg Woods",
    "level_cap": null,
    "group": "Leader Roxanne",
+   "split": null,
    "trainers": [
     {
      "name": "Bug Maniac James",
@@ -12557,6 +12594,7 @@
    "location": "Route 104",
    "level_cap": null,
    "group": "Leader Roxanne",
+   "split": null,
    "trainers": [
     {
      "name": "Rich Boy Winston",
@@ -12599,6 +12637,7 @@
    "location": "Route 104",
    "level_cap": null,
    "group": "Leader Roxanne",
+   "split": null,
    "trainers": [
     {
      "name": "Fisherman Ivan",
@@ -12655,6 +12694,7 @@
    "location": "Route 104",
    "level_cap": null,
    "group": "Leader Roxanne",
+   "split": null,
    "trainers": [
     {
      "name": "Twins Gina And Mia",
@@ -12720,6 +12760,7 @@
    "location": "Route 104",
    "level_cap": null,
    "group": "Leader Roxanne",
+   "split": null,
    "trainers": [
     {
      "name": "Lass Haley",
@@ -12788,6 +12829,7 @@
    "location": "Route 116",
    "level_cap": null,
    "group": "Leader Roxanne",
+   "split": null,
    "trainers": [
     {
      "name": "Youngster Joey",
@@ -12844,6 +12886,7 @@
    "location": "Route 116",
    "level_cap": null,
    "group": "Leader Roxanne",
+   "split": null,
    "trainers": [
     {
      "name": "Lass Janice",
@@ -12897,6 +12940,7 @@
    "location": "Route 116",
    "level_cap": null,
    "group": "Leader Roxanne",
+   "split": null,
    "trainers": [
     {
      "name": "Rich Boy Dawson",
@@ -12937,6 +12981,7 @@
    "location": "Route 116",
    "level_cap": null,
    "group": "Leader Roxanne",
+   "split": null,
    "trainers": [
     {
      "name": "School Kid Jerry & Youngster Johnson",
@@ -13008,6 +13053,7 @@
    "location": "Route 116",
    "level_cap": null,
    "group": "Leader Roxanne",
+   "split": null,
    "trainers": [
     {
      "name": "Bug Catcher Jose",
@@ -13064,6 +13110,7 @@
    "location": "Route 116",
    "level_cap": null,
    "group": "Leader Roxanne",
+   "split": null,
    "trainers": [
     {
      "name": "Lady Sarah",
@@ -13107,6 +13154,7 @@
    "location": "Route 116",
    "level_cap": null,
    "group": "Leader Roxanne",
+   "split": null,
    "trainers": [
     {
      "name": "School Kid Karen",
@@ -13163,6 +13211,7 @@
    "location": "Route 116",
    "level_cap": null,
    "group": "Leader Roxanne",
+   "split": null,
    "trainers": [
     {
      "name": "Hiker Clark",
@@ -13206,6 +13255,7 @@
    "location": "Route 116",
    "level_cap": null,
    "group": "Leader Roxanne",
+   "split": null,
    "trainers": [
     {
      "name": "Hiker Devan",
@@ -13262,6 +13312,7 @@
    "location": "Rustboro Gym",
    "level_cap": null,
    "group": "Leader Roxanne",
+   "split": null,
    "trainers": [
     {
      "name": "Youngster Josh",
@@ -13315,6 +13366,7 @@
    "location": "Rustboro Gym",
    "level_cap": null,
    "group": "Leader Roxanne",
+   "split": null,
    "trainers": [
     {
      "name": "Youngster Tommy",
@@ -13384,6 +13436,7 @@
    "location": "Rustboro Gym",
    "level_cap": null,
    "group": "Leader Roxanne",
+   "split": null,
    "trainers": [
     {
      "name": "Hiker Marc",
@@ -13452,6 +13505,7 @@
    "location": "Rustboro Gym",
    "level_cap": 25,
    "group": null,
+   "split": "Leader Roxanne",
    "trainers": [
     {
      "name": "Leader Roxanne",
@@ -13549,6 +13603,7 @@
    "location": "Rusturf Tunnel",
    "level_cap": null,
    "group": "Route 117 Chelle",
+   "split": null,
    "trainers": [
     {
      "name": "Hiker Mike",
@@ -13618,6 +13673,7 @@
    "location": "Route 117",
    "level_cap": null,
    "group": "Route 117 Chelle",
+   "split": null,
    "trainers": [
     {
      "name": "Breeder Lydia",
@@ -13687,6 +13743,7 @@
    "location": "Route 117",
    "level_cap": null,
    "group": "Route 117 Chelle",
+   "split": null,
    "trainers": [
     {
      "name": "Breeder Corgi",
@@ -13769,6 +13826,7 @@
    "location": "Route 117",
    "level_cap": null,
    "group": "Route 117 Chelle",
+   "split": null,
    "trainers": [
     {
      "name": "Psychic Brandi & Battle Girl Aisha",
@@ -13840,6 +13898,7 @@
    "location": "Route 117",
    "level_cap": null,
    "group": "Route 117 Chelle",
+   "split": null,
    "trainers": [
     {
      "name": "Battle Girl Luna",
@@ -13922,6 +13981,7 @@
    "location": "Route 117",
    "level_cap": null,
    "group": "Route 117 Chelle",
+   "split": null,
    "trainers": [
     {
      "name": "Triathlete Dylan",
@@ -13978,6 +14038,7 @@
    "location": "Route 117",
    "level_cap": null,
    "group": "Route 117 Chelle",
+   "split": null,
    "trainers": [
     {
      "name": "Triathlete Maria",
@@ -14034,6 +14095,7 @@
    "location": "Route 117",
    "level_cap": null,
    "group": "Route 117 Chelle",
+   "split": null,
    "trainers": [
     {
      "name": "Breeder Isaac",
@@ -14103,6 +14165,7 @@
    "location": "Route 117",
    "level_cap": null,
    "group": "Route 117 Chelle",
+   "split": null,
    "trainers": [
     {
      "name": "Sr. And Jr. Anna And Meg",
@@ -14171,6 +14234,7 @@
    "location": "Route 117",
    "level_cap": 32,
    "group": null,
+   "split": "Route 117 Chelle",
    "trainers": [
     {
      "name": "Trainer Chelle Daycare",
@@ -14266,6 +14330,7 @@
    "location": "Route 111",
    "level_cap": null,
    "group": "Leader Wattson",
+   "split": null,
    "trainers": [
     {
      "name": "Camper Tyron & Aroma Lady Celina",
@@ -14324,6 +14389,7 @@
    "location": "Route 111",
    "level_cap": null,
    "group": "Leader Wattson",
+   "split": null,
    "trainers": [
     {
      "name": "Picnicker Bianca",
@@ -14378,6 +14444,7 @@
    "location": "Route 111",
    "level_cap": null,
    "group": "Leader Wattson",
+   "split": null,
    "trainers": [
     {
      "name": "Kindler Hayden",
@@ -14447,6 +14514,7 @@
    "location": "Route 110",
    "level_cap": null,
    "group": "Leader Wattson",
+   "split": null,
    "trainers": [
     {
      "name": "Fisherman Dale",
@@ -14516,6 +14584,7 @@
    "location": "Route 110",
    "level_cap": null,
    "group": "Leader Wattson",
+   "split": null,
    "trainers": [
     {
      "name": "Psychic Edward",
@@ -14572,6 +14641,7 @@
    "location": "Mauville",
    "level_cap": null,
    "group": "Leader Wattson",
+   "split": null,
    "trainers": [
     {
      "name": "Trainer Wally",
@@ -14605,6 +14675,7 @@
    "location": "Mauville Gym",
    "level_cap": null,
    "group": "Leader Wattson",
+   "split": null,
    "trainers": [
     {
      "name": "Guitarist Kirk",
@@ -14674,6 +14745,7 @@
    "location": "Mauville Gym",
    "level_cap": null,
    "group": "Leader Wattson",
+   "split": null,
    "trainers": [
     {
      "name": "Battle Girl Vivian",
@@ -14756,6 +14828,7 @@
    "location": "Mauville Gym",
    "level_cap": null,
    "group": "Leader Wattson",
+   "split": null,
    "trainers": [
     {
      "name": "Youngster Ben",
@@ -14838,6 +14911,7 @@
    "location": "Mauville Gym",
    "level_cap": null,
    "group": "Leader Wattson",
+   "split": null,
    "trainers": [
     {
      "name": "Guitarist Shawn & Guitarist Angelo",
@@ -14909,6 +14983,7 @@
    "location": "Mauville Gym",
    "level_cap": 35,
    "group": null,
+   "split": "Leader Wattson",
    "trainers": [
     {
      "name": "Leader Wattson",
@@ -15006,6 +15081,7 @@
    "location": "Route 110",
    "level_cap": null,
    "group": "Cycling Road Rival",
+   "split": null,
    "trainers": [
     {
      "name": "Psychic Jaclyn",
@@ -15075,6 +15151,7 @@
    "location": "Route 110",
    "level_cap": null,
    "group": "Cycling Road Rival",
+   "split": null,
    "trainers": [
     {
      "name": "Triathlete Abigail",
@@ -15141,6 +15218,7 @@
    "location": "Route 110",
    "level_cap": null,
    "group": "Cycling Road Rival",
+   "split": null,
    "trainers": [
     {
      "name": "Triathlete Anthony",
@@ -15197,6 +15275,7 @@
    "location": "Route 110",
    "level_cap": null,
    "group": "Cycling Road Rival",
+   "split": null,
    "trainers": [
     {
      "name": "Triathlete Alyssa",
@@ -15240,6 +15319,7 @@
    "location": "Route 110",
    "level_cap": null,
    "group": "Cycling Road Rival",
+   "split": null,
    "trainers": [
     {
      "name": "Triathlete Benjamin",
@@ -15309,6 +15389,7 @@
    "location": "Route 110",
    "level_cap": null,
    "group": "Cycling Road Rival",
+   "split": null,
    "trainers": [
     {
      "name": "Triathlete Jacob",
@@ -15365,6 +15446,7 @@
    "location": "Route 110",
    "level_cap": null,
    "group": "Cycling Road Rival",
+   "split": null,
    "trainers": [
     {
      "name": "Triathlete Jasmine",
@@ -15418,6 +15500,7 @@
    "location": "Route 110",
    "level_cap": 38,
    "group": null,
+   "split": "Cycling Road Rival",
    "trainers": [
     {
      "name": "Trainer Rival Cycling Road Sceptile",
@@ -15691,6 +15774,7 @@
    "location": "Route 110",
    "level_cap": null,
    "group": "Leader Norman",
+   "split": null,
    "trainers": [
     {
      "name": "Pokéfan Isabel & Pokéfan Kaleb",
@@ -15762,6 +15846,7 @@
    "location": "Route 110",
    "level_cap": null,
    "group": "Leader Norman",
+   "split": null,
    "trainers": [
     {
      "name": "Guitarist Brian",
@@ -15828,6 +15913,7 @@
    "location": "Route 110",
    "level_cap": null,
    "group": "Leader Norman",
+   "split": null,
    "trainers": [
     {
      "name": "Collector Edwin",
@@ -15884,6 +15970,7 @@
    "location": "Route 103",
    "level_cap": null,
    "group": "Leader Norman",
+   "split": null,
    "trainers": [
     {
      "name": "Black Belt Rhett & Guitarist Marcos",
@@ -15942,6 +16029,7 @@
    "location": "Route 103",
    "level_cap": null,
    "group": "Leader Norman",
+   "split": null,
    "trainers": [
     {
      "name": "Pokéfan Miguel",
@@ -15998,6 +16086,7 @@
    "location": "Route 103",
    "level_cap": null,
    "group": "Leader Norman",
+   "split": null,
    "trainers": [
     {
      "name": "Aroma Lady Daisy",
@@ -16067,6 +16156,7 @@
    "location": "Route 103",
    "level_cap": null,
    "group": "Leader Norman",
+   "split": null,
    "trainers": [
     {
      "name": "Twins Amy And Liv",
@@ -16150,6 +16240,7 @@
    "location": "Route 103",
    "level_cap": null,
    "group": "Leader Norman",
+   "split": null,
    "trainers": [
     {
      "name": "Fisherman Andrew",
@@ -16219,6 +16310,7 @@
    "location": "Petalburg Gym",
    "level_cap": null,
    "group": "Leader Norman",
+   "split": null,
    "trainers": [
     {
      "name": "Cool Trainer Mary",
@@ -16290,6 +16382,7 @@
    "location": "Petalburg Gym",
    "level_cap": null,
    "group": "Leader Norman",
+   "split": null,
    "trainers": [
     {
      "name": "Cool Trainer Randall",
@@ -16374,6 +16467,7 @@
    "location": "Petalburg Gym",
    "level_cap": null,
    "group": "Leader Norman",
+   "split": null,
    "trainers": [
     {
      "name": "Cool Trainer George",
@@ -16458,6 +16552,7 @@
    "location": "Petalburg Gym",
    "level_cap": null,
    "group": "Leader Norman",
+   "split": null,
    "trainers": [
     {
      "name": "Cool Trainer Alexia",
@@ -16542,6 +16637,7 @@
    "location": "Petalburg Gym",
    "level_cap": null,
    "group": "Leader Norman",
+   "split": null,
    "trainers": [
     {
      "name": "Cool Trainer Parker",
@@ -16626,6 +16722,7 @@
    "location": "Petalburg Gym",
    "level_cap": null,
    "group": "Leader Norman",
+   "split": null,
    "trainers": [
     {
      "name": "Cool Trainer Berke",
@@ -16707,6 +16804,7 @@
    "location": "Petalburg Gym",
    "level_cap": null,
    "group": "Leader Norman",
+   "split": null,
    "trainers": [
     {
      "name": "Cool Trainer Jody",
@@ -16788,6 +16886,7 @@
    "location": "Petalburg Gym",
    "level_cap": 42,
    "group": null,
+   "split": "Leader Norman",
    "trainers": [
     {
      "name": "Leader Norman",
@@ -16885,6 +16984,7 @@
    "location": "Winstrate House",
    "level_cap": null,
    "group": "Fallarbor Town Vito",
+   "split": null,
    "trainers": [
     {
      "name": "Winstrate Victor",
@@ -16928,6 +17028,7 @@
    "location": "Winstrate House",
    "level_cap": null,
    "group": "Fallarbor Town Vito",
+   "split": null,
    "trainers": [
     {
      "name": "Winstrate Victoria",
@@ -16984,6 +17085,7 @@
    "location": "Winstrate House",
    "level_cap": null,
    "group": "Fallarbor Town Vito",
+   "split": null,
    "trainers": [
     {
      "name": "Winstrate Vivi",
@@ -17040,6 +17142,7 @@
    "location": "Winstrate House",
    "level_cap": null,
    "group": "Fallarbor Town Vito",
+   "split": null,
    "trainers": [
     {
      "name": "Winstrate Vicky",
@@ -17083,6 +17186,7 @@
    "location": "Route 111",
    "level_cap": null,
    "group": "Fallarbor Town Vito",
+   "split": null,
    "trainers": [
     {
      "name": "Picnicker Irene",
@@ -17139,6 +17243,7 @@
    "location": "Route 111",
    "level_cap": null,
    "group": "Fallarbor Town Vito",
+   "split": null,
    "trainers": [
     {
      "name": "Camper Travis",
@@ -17195,6 +17300,7 @@
    "location": "Route 111",
    "level_cap": null,
    "group": "Fallarbor Town Vito",
+   "split": null,
    "trainers": [
     {
      "name": "Ruin Maniac Bryan & Picnicker Celia",
@@ -17266,6 +17372,7 @@
    "location": "Route 111",
    "level_cap": null,
    "group": "Fallarbor Town Vito",
+   "split": null,
    "trainers": [
     {
      "name": "Camper Branden",
@@ -17335,6 +17442,7 @@
    "location": "Route 111",
    "level_cap": null,
    "group": "Fallarbor Town Vito",
+   "split": null,
    "trainers": [
     {
      "name": "Collector John",
@@ -17414,6 +17522,7 @@
    "location": "Route 111",
    "level_cap": null,
    "group": "Fallarbor Town Vito",
+   "split": null,
    "trainers": [
     {
      "name": "Camper Beau",
@@ -17470,6 +17579,7 @@
    "location": "Route 111",
    "level_cap": null,
    "group": "Fallarbor Town Vito",
+   "split": null,
    "trainers": [
     {
      "name": "Ninja Boy Jinra",
@@ -17539,6 +17649,7 @@
    "location": "Route 111",
    "level_cap": null,
    "group": "Fallarbor Town Vito",
+   "split": null,
    "trainers": [
     {
      "name": "Ruin Maniac Rigger",
@@ -17608,6 +17719,7 @@
    "location": "Route 111",
    "level_cap": null,
    "group": "Fallarbor Town Vito",
+   "split": null,
    "trainers": [
     {
      "name": "Camper Drew",
@@ -17677,6 +17789,7 @@
    "location": "Route 111",
    "level_cap": null,
    "group": "Fallarbor Town Vito",
+   "split": null,
    "trainers": [
     {
      "name": "Cool Trainer Wilton",
@@ -17759,6 +17872,7 @@
    "location": "Route 111",
    "level_cap": null,
    "group": "Fallarbor Town Vito",
+   "split": null,
    "trainers": [
     {
      "name": "Black Belt Daisuke",
@@ -17815,6 +17929,7 @@
    "location": "Route 111",
    "level_cap": null,
    "group": "Fallarbor Town Vito",
+   "split": null,
    "trainers": [
     {
      "name": "Cool Trainer Brooke",
@@ -17897,6 +18012,7 @@
    "location": "Route 113",
    "level_cap": null,
    "group": "Fallarbor Town Vito",
+   "split": null,
    "trainers": [
     {
      "name": "Pokémaniac Wyatt",
@@ -17966,6 +18082,7 @@
    "location": "Route 113",
    "level_cap": null,
    "group": "Fallarbor Town Vito",
+   "split": null,
    "trainers": [
     {
      "name": "Ninja Boy Lao",
@@ -18022,6 +18139,7 @@
    "location": "Route 113",
    "level_cap": null,
    "group": "Fallarbor Town Vito",
+   "split": null,
    "trainers": [
     {
      "name": "Picnicker Sophie",
@@ -18091,6 +18209,7 @@
    "location": "Route 113",
    "level_cap": null,
    "group": "Fallarbor Town Vito",
+   "split": null,
    "trainers": [
     {
      "name": "Ninja Boy Lung",
@@ -18147,6 +18266,7 @@
    "location": "Route 113",
    "level_cap": null,
    "group": "Fallarbor Town Vito",
+   "split": null,
    "trainers": [
     {
      "name": "Rich Boy Santos",
@@ -18213,6 +18333,7 @@
    "location": "Route 113",
    "level_cap": null,
    "group": "Fallarbor Town Vito",
+   "split": null,
    "trainers": [
     {
      "name": "Twins Tori And Tia",
@@ -18284,6 +18405,7 @@
    "location": "Route 113",
    "level_cap": null,
    "group": "Fallarbor Town Vito",
+   "split": null,
    "trainers": [
     {
      "name": "Youngster Jaylen",
@@ -18338,6 +18460,7 @@
    "location": "Route 113",
    "level_cap": null,
    "group": "Fallarbor Town Vito",
+   "split": null,
    "trainers": [
     {
      "name": "Bird Keeper Coby",
@@ -18394,6 +18517,7 @@
    "location": "Route 113",
    "level_cap": null,
    "group": "Fallarbor Town Vito",
+   "split": null,
    "trainers": [
     {
      "name": "Parasol Lady Madeline",
@@ -18450,6 +18574,7 @@
    "location": "Route 113",
    "level_cap": null,
    "group": "Fallarbor Town Vito",
+   "split": null,
    "trainers": [
     {
      "name": "Camper Lawrence",
@@ -18506,6 +18631,7 @@
    "location": "Fallarbor",
    "level_cap": 48,
    "group": null,
+   "split": "Fallarbor Town Vito",
    "trainers": [
     {
      "name": "Winstrate Vito",
@@ -18603,6 +18729,7 @@
    "location": "Route 114",
    "level_cap": null,
    "group": "Mt. Chimney Maxie",
+   "split": null,
    "trainers": [
     {
      "name": "Picnicker Charlotte",
@@ -18654,6 +18781,7 @@
    "location": "Route 114",
    "level_cap": null,
    "group": "Mt. Chimney Maxie",
+   "split": null,
    "trainers": [
     {
      "name": "Rich Boy Braw",
@@ -18723,6 +18851,7 @@
    "location": "Route 114",
    "level_cap": null,
    "group": "Mt. Chimney Maxie",
+   "split": null,
    "trainers": [
     {
      "name": "Fisherman Nolan",
@@ -18766,6 +18895,7 @@
    "location": "Route 114",
    "level_cap": null,
    "group": "Mt. Chimney Maxie",
+   "split": null,
    "trainers": [
     {
      "name": "Fisherman Kai",
@@ -18835,6 +18965,7 @@
    "location": "Route 114",
    "level_cap": null,
    "group": "Mt. Chimney Maxie",
+   "split": null,
    "trainers": [
     {
      "name": "Fisherman Claude",
@@ -18904,6 +19035,7 @@
    "location": "Route 114",
    "level_cap": null,
    "group": "Mt. Chimney Maxie",
+   "split": null,
    "trainers": [
     {
      "name": "Kindler Bernie",
@@ -18973,6 +19105,7 @@
    "location": "Route 114",
    "level_cap": null,
    "group": "Mt. Chimney Maxie",
+   "split": null,
    "trainers": [
     {
      "name": "Picnicker Angelina",
@@ -19029,6 +19162,7 @@
    "location": "Route 114",
    "level_cap": null,
    "group": "Mt. Chimney Maxie",
+   "split": null,
    "trainers": [
     {
      "name": "Expert Nancy",
@@ -19111,6 +19245,7 @@
    "location": "Route 114",
    "level_cap": null,
    "group": "Mt. Chimney Maxie",
+   "split": null,
    "trainers": [
     {
      "name": "Sr. And Jr. Tyra And Ivy",
@@ -19180,6 +19315,7 @@
    "location": "Route 114",
    "level_cap": null,
    "group": "Mt. Chimney Maxie",
+   "split": null,
    "trainers": [
     {
      "name": "Pokémaniac Steve",
@@ -19223,6 +19359,7 @@
    "location": "Route 114",
    "level_cap": null,
    "group": "Mt. Chimney Maxie",
+   "split": null,
    "trainers": [
     {
      "name": "Hiker Lucas",
@@ -19279,6 +19416,7 @@
    "location": "Route 114",
    "level_cap": null,
    "group": "Mt. Chimney Maxie",
+   "split": null,
    "trainers": [
     {
      "name": "Hiker Lenny",
@@ -19335,6 +19473,7 @@
    "location": "Route 115",
    "level_cap": null,
    "group": "Mt. Chimney Maxie",
+   "split": null,
    "trainers": [
     {
      "name": "Black Belt Nob",
@@ -19378,6 +19517,7 @@
    "location": "Route 115",
    "level_cap": null,
    "group": "Mt. Chimney Maxie",
+   "split": null,
    "trainers": [
     {
      "name": "Battle Girl Cyndy",
@@ -19434,6 +19574,7 @@
    "location": "Route 115",
    "level_cap": null,
    "group": "Mt. Chimney Maxie",
+   "split": null,
    "trainers": [
     {
      "name": "Psychic Marlene",
@@ -19477,6 +19618,7 @@
    "location": "Route 115",
    "level_cap": null,
    "group": "Mt. Chimney Maxie",
+   "split": null,
    "trainers": [
     {
      "name": "Collector Hector",
@@ -19546,6 +19688,7 @@
    "location": "Route 112",
    "level_cap": null,
    "group": "Mt. Chimney Maxie",
+   "split": null,
    "trainers": [
     {
      "name": "Kindler Bryant & Aroma Lady Shayla",
@@ -19617,6 +19760,7 @@
    "location": "Route 112",
    "level_cap": null,
    "group": "Mt. Chimney Maxie",
+   "split": null,
    "trainers": [
     {
      "name": "Camper Merc",
@@ -19686,6 +19830,7 @@
    "location": "Route 112",
    "level_cap": null,
    "group": "Mt. Chimney Maxie",
+   "split": null,
    "trainers": [
     {
      "name": "Hiker Trent",
@@ -19742,6 +19887,7 @@
    "location": "Route 112",
    "level_cap": null,
    "group": "Mt. Chimney Maxie",
+   "split": null,
    "trainers": [
     {
      "name": "Hiker Brice",
@@ -19811,6 +19957,7 @@
    "location": "Route 112",
    "level_cap": null,
    "group": "Mt. Chimney Maxie",
+   "split": null,
    "trainers": [
     {
      "name": "Picnicker Carol",
@@ -19867,6 +20014,7 @@
    "location": "Mt. Chimney",
    "level_cap": null,
    "group": "Mt. Chimney Maxie",
+   "split": null,
    "trainers": [
     {
      "name": "Team Magma Grunt Mt Chimney #1 & Team Magma Grunt Mt Chimney #2",
@@ -19936,6 +20084,7 @@
    "location": "Mt. Chimney",
    "level_cap": null,
    "group": "Mt. Chimney Maxie",
+   "split": null,
    "trainers": [
     {
      "name": "Magma Admin Tabitha",
@@ -20018,6 +20167,7 @@
    "location": "Mt. Chimney",
    "level_cap": 54,
    "group": null,
+   "split": "Mt. Chimney Maxie",
    "trainers": [
     {
      "name": "Magma Leader Maxie",
@@ -20115,6 +20265,7 @@
    "location": "Jagged Pass",
    "level_cap": null,
    "group": "Leader Flannery",
+   "split": null,
    "trainers": [
     {
      "name": "Hiker Eric & Picnicker Autumn",
@@ -20196,6 +20347,7 @@
    "location": "Jagged Pass",
    "level_cap": null,
    "group": "Leader Flannery",
+   "split": null,
    "trainers": [
     {
      "name": "Triathlete Julio",
@@ -20252,6 +20404,7 @@
    "location": "Jagged Pass",
    "level_cap": null,
    "group": "Leader Flannery",
+   "split": null,
    "trainers": [
     {
      "name": "Camper Ethan",
@@ -20295,6 +20448,7 @@
    "location": "Jagged Pass",
    "level_cap": null,
    "group": "Leader Flannery",
+   "split": null,
    "trainers": [
     {
      "name": "Picnicker Diana",
@@ -20364,6 +20518,7 @@
    "location": "Jagged Pass",
    "level_cap": null,
    "group": "Leader Flannery",
+   "split": null,
    "trainers": [
     {
      "name": "Team Magma Grunt Jagged Pass",
@@ -20423,6 +20578,7 @@
    "location": "Lavaridge Gym",
    "level_cap": null,
    "group": "Leader Flannery",
+   "split": null,
    "trainers": [
     {
      "name": "Kindler Jace",
@@ -20492,6 +20648,7 @@
    "location": "Lavaridge Gym",
    "level_cap": null,
    "group": "Leader Flannery",
+   "split": null,
    "trainers": [
     {
      "name": "Kindler Cole",
@@ -20574,6 +20731,7 @@
    "location": "Lavaridge Gym",
    "level_cap": null,
    "group": "Leader Flannery",
+   "split": null,
    "trainers": [
     {
      "name": "Cool Trainer Gerald",
@@ -20630,6 +20788,7 @@
    "location": "Lavaridge Gym",
    "level_cap": null,
    "group": "Leader Flannery",
+   "split": null,
    "trainers": [
     {
      "name": "Kindler Keegan",
@@ -20686,6 +20845,7 @@
    "location": "Lavaridge Gym",
    "level_cap": null,
    "group": "Leader Flannery",
+   "split": null,
    "trainers": [
     {
      "name": "Kindler Axle",
@@ -20742,6 +20902,7 @@
    "location": "Lavaridge Gym",
    "level_cap": null,
    "group": "Leader Flannery",
+   "split": null,
    "trainers": [
     {
      "name": "Kindler Jeff",
@@ -20811,6 +20972,7 @@
    "location": "Lavaridge Gym",
    "level_cap": null,
    "group": "Leader Flannery",
+   "split": null,
    "trainers": [
     {
      "name": "Battle Girl Danielle",
@@ -20893,6 +21055,7 @@
    "location": "Lavaridge Gym",
    "level_cap": null,
    "group": "Leader Flannery",
+   "split": null,
    "trainers": [
     {
      "name": "Hiker Eli",
@@ -20975,6 +21138,7 @@
    "location": "Lavaridge Gym",
    "level_cap": 57,
    "group": null,
+   "split": "Leader Flannery",
    "trainers": [
     {
      "name": "Leader Flannery",
@@ -21073,6 +21237,7 @@
    "location": "Seashore House",
    "level_cap": null,
    "group": "Weather Institute Shelly",
+   "split": null,
    "trainers": [
     {
      "name": "Tuber Simon",
@@ -21166,6 +21331,7 @@
    "location": "Seashore House",
    "level_cap": null,
    "group": "Weather Institute Shelly",
+   "split": null,
    "trainers": [
     {
      "name": "Beauty Johanna",
@@ -21261,6 +21427,7 @@
    "location": "Seashore House",
    "level_cap": null,
    "group": "Weather Institute Shelly",
+   "split": null,
    "trainers": [
     {
      "name": "Sailor Dwayne",
@@ -21356,6 +21523,7 @@
    "location": "Route 105",
    "level_cap": null,
    "group": "Weather Institute Shelly",
+   "split": null,
    "trainers": [
     {
      "name": "Swimmer♀ Imani",
@@ -21391,6 +21559,7 @@
    "location": "Route 105",
    "level_cap": null,
    "group": "Weather Institute Shelly",
+   "split": null,
    "trainers": [
     {
      "name": "Swimmer♂ Dominik",
@@ -21426,6 +21595,7 @@
    "location": "Route 105",
    "level_cap": null,
    "group": "Weather Institute Shelly",
+   "split": null,
    "trainers": [
     {
      "name": "Ruin Maniac Foster",
@@ -21469,6 +21639,7 @@
    "location": "Route 105",
    "level_cap": null,
    "group": "Weather Institute Shelly",
+   "split": null,
    "trainers": [
     {
      "name": "Swimmer♀ Beverly",
@@ -21504,6 +21675,7 @@
    "location": "Route 105",
    "level_cap": null,
    "group": "Weather Institute Shelly",
+   "split": null,
    "trainers": [
     {
      "name": "Swimmer♂ Luis",
@@ -21547,6 +21719,7 @@
    "location": "Route 105",
    "level_cap": null,
    "group": "Weather Institute Shelly",
+   "split": null,
    "trainers": [
     {
      "name": "Bird Keeper Josue & Ruin Maniac Andres",
@@ -21644,6 +21817,7 @@
    "location": "Route 106",
    "level_cap": null,
    "group": "Weather Institute Shelly",
+   "split": null,
    "trainers": [
     {
      "name": "Swimmer♂ Douglas",
@@ -21679,6 +21853,7 @@
    "location": "Route 106",
    "level_cap": null,
    "group": "Weather Institute Shelly",
+   "split": null,
    "trainers": [
     {
      "name": "Swimmer♀ Kyla",
@@ -21714,6 +21889,7 @@
    "location": "Route 107",
    "level_cap": null,
    "group": "Weather Institute Shelly",
+   "split": null,
    "trainers": [
     {
      "name": "Swimmer♀ Denise",
@@ -21749,6 +21925,7 @@
    "location": "Route 107",
    "level_cap": null,
    "group": "Weather Institute Shelly",
+   "split": null,
    "trainers": [
     {
      "name": "Swimmer♂ Tony",
@@ -21784,6 +21961,7 @@
    "location": "Route 107",
    "level_cap": null,
    "group": "Weather Institute Shelly",
+   "split": null,
    "trainers": [
     {
      "name": "Sis And Bro Lisa And Ray",
@@ -21827,6 +22005,7 @@
    "location": "Route 107",
    "level_cap": null,
    "group": "Weather Institute Shelly",
+   "split": null,
    "trainers": [
     {
      "name": "Swimmer♂ Darrin",
@@ -21862,6 +22041,7 @@
    "location": "Route 107",
    "level_cap": null,
    "group": "Weather Institute Shelly",
+   "split": null,
    "trainers": [
     {
      "name": "Swimmer♀ Beth",
@@ -21897,6 +22077,7 @@
    "location": "Route 107",
    "level_cap": null,
    "group": "Weather Institute Shelly",
+   "split": null,
    "trainers": [
     {
      "name": "Triathlete Camron",
@@ -21932,6 +22113,7 @@
    "location": "Route 108",
    "level_cap": null,
    "group": "Weather Institute Shelly",
+   "split": null,
    "trainers": [
     {
      "name": "Swimmer♀ Missy",
@@ -21967,6 +22149,7 @@
    "location": "Route 108",
    "level_cap": null,
    "group": "Weather Institute Shelly",
+   "split": null,
    "trainers": [
     {
      "name": "Swimmer♂ Matthew",
@@ -22002,6 +22185,7 @@
    "location": "Route 108",
    "level_cap": null,
    "group": "Weather Institute Shelly",
+   "split": null,
    "trainers": [
     {
      "name": "Swimmer♀ Tara",
@@ -22037,6 +22221,7 @@
    "location": "Route 108",
    "level_cap": null,
    "group": "Weather Institute Shelly",
+   "split": null,
    "trainers": [
     {
      "name": "Swimmer♂ Jerome",
@@ -22072,6 +22257,7 @@
    "location": "Route 108",
    "level_cap": null,
    "group": "Weather Institute Shelly",
+   "split": null,
    "trainers": [
     {
      "name": "Cool Trainer Carolina & Sailor Cory",
@@ -22169,6 +22355,7 @@
    "location": "Abandoned Ship",
    "level_cap": null,
    "group": "Weather Institute Shelly",
+   "split": null,
    "trainers": [
     {
      "name": "Beauty Thalia",
@@ -22204,6 +22391,7 @@
    "location": "Abandoned Ship",
    "level_cap": null,
    "group": "Weather Institute Shelly",
+   "split": null,
    "trainers": [
     {
      "name": "Youngster Demetrius",
@@ -22239,6 +22427,7 @@
    "location": "Abandoned Ship",
    "level_cap": null,
    "group": "Weather Institute Shelly",
+   "split": null,
    "trainers": [
     {
      "name": "Sailor Duncan",
@@ -22274,6 +22463,7 @@
    "location": "Abandoned Ship",
    "level_cap": null,
    "group": "Weather Institute Shelly",
+   "split": null,
    "trainers": [
     {
      "name": "Tuber Charlie",
@@ -22301,6 +22491,7 @@
    "location": "Abandoned Ship",
    "level_cap": null,
    "group": "Weather Institute Shelly",
+   "split": null,
    "trainers": [
     {
      "name": "Young Couple Kira And Dan",
@@ -22336,6 +22527,7 @@
    "location": "Abandoned Ship",
    "level_cap": null,
    "group": "Weather Institute Shelly",
+   "split": null,
    "trainers": [
     {
      "name": "Ruin Maniac Garrison & Tuber Jani",
@@ -22433,6 +22625,7 @@
    "location": "Route 109",
    "level_cap": null,
    "group": "Weather Institute Shelly",
+   "split": null,
    "trainers": [
     {
      "name": "Bird Keeper Elijah",
@@ -22468,6 +22661,7 @@
    "location": "Route 109",
    "level_cap": null,
    "group": "Weather Institute Shelly",
+   "split": null,
    "trainers": [
     {
      "name": "Fisherman Carter",
@@ -22503,6 +22697,7 @@
    "location": "Route 109",
    "level_cap": null,
    "group": "Weather Institute Shelly",
+   "split": null,
    "trainers": [
     {
      "name": "Young Couple Mel And Paul",
@@ -22547,6 +22742,7 @@
    "location": "Route 109",
    "level_cap": null,
    "group": "Weather Institute Shelly",
+   "split": null,
    "trainers": [
     {
      "name": "Swimmer♀ Alice",
@@ -22582,6 +22778,7 @@
    "location": "Route 109",
    "level_cap": null,
    "group": "Weather Institute Shelly",
+   "split": null,
    "trainers": [
     {
      "name": "Swimmer♂ David",
@@ -22617,6 +22814,7 @@
    "location": "Route 109",
    "level_cap": null,
    "group": "Weather Institute Shelly",
+   "split": null,
    "trainers": [
     {
      "name": "Tuber Gwen",
@@ -22652,6 +22850,7 @@
    "location": "Route 109",
    "level_cap": null,
    "group": "Weather Institute Shelly",
+   "split": null,
    "trainers": [
     {
      "name": "Tuber Austina",
@@ -22687,6 +22886,7 @@
    "location": "Route 118",
    "level_cap": null,
    "group": "Weather Institute Shelly",
+   "split": null,
    "trainers": [
     {
      "name": "Swimmer♀ Rose & Swimmer♂ Deandre",
@@ -22745,6 +22945,7 @@
    "location": "Route 118",
    "level_cap": null,
    "group": "Weather Institute Shelly",
+   "split": null,
    "trainers": [
     {
      "name": "Fisherman Wade",
@@ -22801,6 +23002,7 @@
    "location": "Route 118",
    "level_cap": null,
    "group": "Weather Institute Shelly",
+   "split": null,
    "trainers": [
     {
      "name": "Fisherman Barny",
@@ -22855,6 +23057,7 @@
    "location": "Route 118",
    "level_cap": null,
    "group": "Weather Institute Shelly",
+   "split": null,
    "trainers": [
     {
      "name": "Guitarist Dalton",
@@ -22910,6 +23113,7 @@
    "location": "Route 118",
    "level_cap": null,
    "group": "Weather Institute Shelly",
+   "split": null,
    "trainers": [
     {
      "name": "Bird Keeper Perry & Bird Keeper Chester",
@@ -22981,6 +23185,7 @@
    "location": "Route 119",
    "level_cap": null,
    "group": "Weather Institute Shelly",
+   "split": null,
    "trainers": [
     {
      "name": "Bug Maniac Taylor",
@@ -23050,6 +23255,7 @@
    "location": "Route 119",
    "level_cap": null,
    "group": "Weather Institute Shelly",
+   "split": null,
    "trainers": [
     {
      "name": "Bug Catcher Doug",
@@ -23102,6 +23308,7 @@
    "location": "Route 119",
    "level_cap": null,
    "group": "Weather Institute Shelly",
+   "split": null,
    "trainers": [
     {
      "name": "Fisherman Phil",
@@ -23151,6 +23358,7 @@
    "location": "Route 119",
    "level_cap": null,
    "group": "Weather Institute Shelly",
+   "split": null,
    "trainers": [
     {
      "name": "Ranger Lydian",
@@ -23220,6 +23428,7 @@
    "location": "Route 119",
    "level_cap": null,
    "group": "Weather Institute Shelly",
+   "split": null,
    "trainers": [
     {
      "name": "Bug Catcher Greg",
@@ -23276,6 +23485,7 @@
    "location": "Route 119",
    "level_cap": null,
    "group": "Weather Institute Shelly",
+   "split": null,
    "trainers": [
     {
      "name": "Bug Maniac Brent",
@@ -23332,6 +23542,7 @@
    "location": "Route 119",
    "level_cap": null,
    "group": "Weather Institute Shelly",
+   "split": null,
    "trainers": [
     {
      "name": "Expert Donald",
@@ -23401,6 +23612,7 @@
    "location": "Route 119",
    "level_cap": null,
    "group": "Weather Institute Shelly",
+   "split": null,
    "trainers": [
     {
      "name": "Ranger Catherine",
@@ -23470,6 +23682,7 @@
    "location": "Route 119",
    "level_cap": null,
    "group": "Weather Institute Shelly",
+   "split": null,
    "trainers": [
     {
      "name": "Ranger Jackson",
@@ -23526,6 +23739,7 @@
    "location": "Route 119",
    "level_cap": null,
    "group": "Weather Institute Shelly",
+   "split": null,
    "trainers": [
     {
      "name": "Bug Catcher Kent",
@@ -23582,6 +23796,7 @@
    "location": "Route 119",
    "level_cap": null,
    "group": "Weather Institute Shelly",
+   "split": null,
    "trainers": [
     {
      "name": "Ninja Boy Takashi & Psychic Dayton",
@@ -23650,6 +23865,7 @@
    "location": "Route 119",
    "level_cap": null,
    "group": "Weather Institute Shelly",
+   "split": null,
    "trainers": [
     {
      "name": "Bird Keeper Hugh",
@@ -23719,6 +23935,7 @@
    "location": "Route 119",
    "level_cap": null,
    "group": "Weather Institute Shelly",
+   "split": null,
    "trainers": [
     {
      "name": "Parasol Lady Koko",
@@ -23801,6 +24018,7 @@
    "location": "Weather Institute",
    "level_cap": null,
    "group": "Weather Institute Shelly",
+   "split": null,
    "trainers": [
     {
      "name": "Team Aqua Grunt Weather Inst #1",
@@ -23883,6 +24101,7 @@
    "location": "Weather Institute",
    "level_cap": null,
    "group": "Weather Institute Shelly",
+   "split": null,
    "trainers": [
     {
      "name": "Team Aqua Grunt Weather Inst #2",
@@ -23965,6 +24184,7 @@
    "location": "Weather Institute",
    "level_cap": null,
    "group": "Weather Institute Shelly",
+   "split": null,
    "trainers": [
     {
      "name": "Team Aqua Grunt Weather Inst #3",
@@ -24034,6 +24254,7 @@
    "location": "Weather Institute",
    "level_cap": null,
    "group": "Weather Institute Shelly",
+   "split": null,
    "trainers": [
     {
      "name": "Team Aqua Grunt Weather Inst #4 & Team Aqua Grunt Weather Inst #5",
@@ -24105,6 +24326,7 @@
    "location": "Weather Institute",
    "level_cap": 65,
    "group": null,
+   "split": "Weather Institute Shelly",
    "trainers": [
     {
      "name": "Aqua Admin Shelly Weather Institute",
@@ -24202,6 +24424,7 @@
    "location": "Route 119",
    "level_cap": 66,
    "group": null,
+   "split": "Route 119 Rival",
    "trainers": [
     {
      "name": "Trainer Rival Bridge Sceptile",
@@ -24478,6 +24701,7 @@
    "location": "Route 119",
    "level_cap": null,
    "group": "Leader Winona",
+   "split": null,
    "trainers": [
     {
      "name": "Ninja Boy Yasu & Guitarist Fabian",
@@ -24549,6 +24773,7 @@
    "location": "Route 119",
    "level_cap": null,
    "group": "Leader Winona",
+   "split": null,
    "trainers": [
     {
      "name": "Ninja Boy Gren",
@@ -24628,6 +24853,7 @@
    "location": "Route 120",
    "level_cap": null,
    "group": "Leader Winona",
+   "split": null,
    "trainers": [
     {
      "name": "Parasol Lady Clarissa",
@@ -24684,6 +24910,7 @@
    "location": "Route 120",
    "level_cap": null,
    "group": "Leader Winona",
+   "split": null,
    "trainers": [
     {
      "name": "Bird Keeper Robert",
@@ -24738,6 +24965,7 @@
    "location": "Fortree Gym",
    "level_cap": null,
    "group": "Leader Winona",
+   "split": null,
    "trainers": [
     {
      "name": "Expert Kevin",
@@ -24820,6 +25048,7 @@
    "location": "Fortree Gym",
    "level_cap": null,
    "group": "Leader Winona",
+   "split": null,
    "trainers": [
     {
      "name": "Picnicker Ashley",
@@ -24887,6 +25116,7 @@
    "location": "Fortree Gym",
    "level_cap": null,
    "group": "Leader Winona",
+   "split": null,
    "trainers": [
     {
      "name": "Camper Flint & Bird Keeper Edwardo",
@@ -24971,6 +25201,7 @@
    "location": "Fortree Gym",
    "level_cap": null,
    "group": "Leader Winona",
+   "split": null,
    "trainers": [
     {
      "name": "Bird Keeper Darius",
@@ -25040,6 +25271,7 @@
    "location": "Fortree Gym",
    "level_cap": null,
    "group": "Leader Winona",
+   "split": null,
    "trainers": [
     {
      "name": "Bird Keeper Jared",
@@ -25121,6 +25353,7 @@
    "location": "Fortree Gym",
    "level_cap": 69,
    "group": null,
+   "split": "Leader Winona",
    "trainers": [
     {
      "name": "Leader Winona",
@@ -25218,6 +25451,7 @@
    "location": "Route 120",
    "level_cap": null,
    "group": "Lilycove City Rival",
+   "split": null,
    "trainers": [
     {
      "name": "Bird Keeper Colin",
@@ -25274,6 +25508,7 @@
    "location": "Route 120",
    "level_cap": null,
    "group": "Lilycove City Rival",
+   "split": null,
    "trainers": [
     {
      "name": "Cool Trainer Gian",
@@ -25356,6 +25591,7 @@
    "location": "Route 120",
    "level_cap": null,
    "group": "Lilycove City Rival",
+   "split": null,
    "trainers": [
     {
      "name": "Cool Trainer Jennifer & Battle Girl Callie",
@@ -25414,6 +25650,7 @@
    "location": "Route 120",
    "level_cap": null,
    "group": "Lilycove City Rival",
+   "split": null,
    "trainers": [
     {
      "name": "Parasol Lady Angelica",
@@ -25483,6 +25720,7 @@
    "location": "Route 120",
    "level_cap": null,
    "group": "Lilycove City Rival",
+   "split": null,
    "trainers": [
     {
      "name": "Ranger Jenna",
@@ -25551,6 +25789,7 @@
    "location": "Route 120",
    "level_cap": null,
    "group": "Lilycove City Rival",
+   "split": null,
    "trainers": [
     {
      "name": "Ranger Lorenzo",
@@ -25620,6 +25859,7 @@
    "location": "Route 120",
    "level_cap": null,
    "group": "Lilycove City Rival",
+   "split": null,
    "trainers": [
     {
      "name": "Bug Maniac Jeffrey",
@@ -25676,6 +25916,7 @@
    "location": "Route 120",
    "level_cap": null,
    "group": "Lilycove City Rival",
+   "split": null,
    "trainers": [
     {
      "name": "Ruin Maniac Chip",
@@ -25745,6 +25986,7 @@
    "location": "Route 120",
    "level_cap": null,
    "group": "Lilycove City Rival",
+   "split": null,
    "trainers": [
     {
      "name": "Ninja Boy Keigo",
@@ -25814,6 +26056,7 @@
    "location": "Route 120",
    "level_cap": null,
    "group": "Lilycove City Rival",
+   "split": null,
    "trainers": [
     {
      "name": "Ninja Boy Riley",
@@ -25883,6 +26126,7 @@
    "location": "Route 121",
    "level_cap": null,
    "group": "Lilycove City Rival",
+   "split": null,
    "trainers": [
     {
      "name": "Cool Trainer Tammy & Bug Maniac Cale",
@@ -25954,6 +26198,7 @@
    "location": "Route 121",
    "level_cap": null,
    "group": "Lilycove City Rival",
+   "split": null,
    "trainers": [
     {
      "name": "Beauty Jessica",
@@ -26023,6 +26268,7 @@
    "location": "Route 121",
    "level_cap": null,
    "group": "Lilycove City Rival",
+   "split": null,
    "trainers": [
     {
      "name": "Breeder Pat",
@@ -26105,6 +26351,7 @@
    "location": "Route 121",
    "level_cap": null,
    "group": "Lilycove City Rival",
+   "split": null,
    "trainers": [
     {
      "name": "Breeder Myles",
@@ -26187,6 +26434,7 @@
    "location": "Route 121",
    "level_cap": null,
    "group": "Lilycove City Rival",
+   "split": null,
    "trainers": [
     {
      "name": "Cool Trainer Gustavo",
@@ -26269,6 +26517,7 @@
    "location": "Route 121",
    "level_cap": null,
    "group": "Lilycove City Rival",
+   "split": null,
    "trainers": [
     {
      "name": "Cool Trainer Cristin",
@@ -26338,6 +26587,7 @@
    "location": "Route 121",
    "level_cap": null,
    "group": "Lilycove City Rival",
+   "split": null,
    "trainers": [
     {
      "name": "Young Couple Brian And Casey",
@@ -26409,6 +26659,7 @@
    "location": "Route 121",
    "level_cap": null,
    "group": "Lilycove City Rival",
+   "split": null,
    "trainers": [
     {
      "name": "Gentleman Walter",
@@ -26491,6 +26742,7 @@
    "location": "Route 121",
    "level_cap": null,
    "group": "Lilycove City Rival",
+   "split": null,
    "trainers": [
     {
      "name": "Pokéfan Vanessa",
@@ -26547,6 +26799,7 @@
    "location": "Lilycove",
    "level_cap": 73,
    "group": null,
+   "split": "Lilycove City Rival",
    "trainers": [
     {
      "name": "Trainer Rival Lilycove Sceptile",
@@ -26820,6 +27073,7 @@
    "location": "Mt. Pyre",
    "level_cap": null,
    "group": "Mt. Pyre Archie",
+   "split": null,
    "trainers": [
     {
      "name": "Young Couple Dez And Luke",
@@ -26904,6 +27158,7 @@
    "location": "Mt. Pyre",
    "level_cap": null,
    "group": "Mt. Pyre Archie",
+   "split": null,
    "trainers": [
     {
      "name": "Hex Maniac Leah",
@@ -26973,6 +27228,7 @@
    "location": "Mt. Pyre",
    "level_cap": null,
    "group": "Mt. Pyre Archie",
+   "split": null,
    "trainers": [
     {
      "name": "Pokémaniac Mark",
@@ -27042,6 +27298,7 @@
    "location": "Mt. Pyre",
    "level_cap": null,
    "group": "Mt. Pyre Archie",
+   "split": null,
    "trainers": [
     {
      "name": "Psychic William",
@@ -27111,6 +27368,7 @@
    "location": "Mt. Pyre",
    "level_cap": null,
    "group": "Mt. Pyre Archie",
+   "split": null,
    "trainers": [
     {
      "name": "Breeder Gabrielle",
@@ -27193,6 +27451,7 @@
    "location": "Mt. Pyre",
    "level_cap": null,
    "group": "Mt. Pyre Archie",
+   "split": null,
    "trainers": [
     {
      "name": "Hex Maniac Tasha",
@@ -27275,6 +27534,7 @@
    "location": "Mt. Pyre",
    "level_cap": null,
    "group": "Mt. Pyre Archie",
+   "split": null,
    "trainers": [
     {
      "name": "Black Belt Atsushi",
@@ -27357,6 +27617,7 @@
    "location": "Mt. Pyre",
    "level_cap": null,
    "group": "Mt. Pyre Archie",
+   "split": null,
    "trainers": [
     {
      "name": "Hex Maniac Valerie",
@@ -27426,6 +27687,7 @@
    "location": "Mt. Pyre",
    "level_cap": null,
    "group": "Mt. Pyre Archie",
+   "split": null,
    "trainers": [
     {
      "name": "Psychic Cedric",
@@ -27495,6 +27757,7 @@
    "location": "Mt. Pyre",
    "level_cap": null,
    "group": "Mt. Pyre Archie",
+   "split": null,
    "trainers": [
     {
      "name": "Psychic Kayla",
@@ -27564,6 +27827,7 @@
    "location": "Mt. Pyre",
    "level_cap": null,
    "group": "Mt. Pyre Archie",
+   "split": null,
    "trainers": [
     {
      "name": "Black Belt Zander",
@@ -27620,6 +27884,7 @@
    "location": "Mt. Pyre",
    "level_cap": null,
    "group": "Mt. Pyre Archie",
+   "split": null,
    "trainers": [
     {
      "name": "Team Aqua Grunt Mt Pyre #1",
@@ -27676,6 +27941,7 @@
    "location": "Mt. Pyre",
    "level_cap": null,
    "group": "Mt. Pyre Archie",
+   "split": null,
    "trainers": [
     {
      "name": "Team Aqua Grunt Mt Pyre #2",
@@ -27745,6 +28011,7 @@
    "location": "Mt. Pyre",
    "level_cap": null,
    "group": "Mt. Pyre Archie",
+   "split": null,
    "trainers": [
     {
      "name": "Team Aqua Grunt Mt Pyre #3",
@@ -27814,6 +28081,7 @@
    "location": "Mt. Pyre",
    "level_cap": null,
    "group": "Mt. Pyre Archie",
+   "split": null,
    "trainers": [
     {
      "name": "Team Aqua Grunt Mt Pyre #4",
@@ -27883,6 +28151,7 @@
    "location": "Mt. Pyre",
    "level_cap": null,
    "group": "Mt. Pyre Archie",
+   "split": null,
    "trainers": [
     {
      "name": "Team Aqua Grunt Mt Pyre #5 & Team Aqua Grunt Mt Pyre #6",
@@ -27951,6 +28220,7 @@
    "location": "Mt. Pyre",
    "level_cap": 76,
    "group": null,
+   "split": "Mt. Pyre Archie",
    "trainers": [
     {
      "name": "Aqua Leader Archie",
@@ -28096,6 +28366,7 @@
    "location": "Magma Hideout",
    "level_cap": null,
    "group": "Magma Hideout Maxie",
+   "split": null,
    "trainers": [
     {
      "name": "Team Magma Grunt Magma Hideout #1",
@@ -28178,6 +28449,7 @@
    "location": "Magma Hideout",
    "level_cap": null,
    "group": "Magma Hideout Maxie",
+   "split": null,
    "trainers": [
     {
      "name": "Team Magma Grunt Magma Hideout #2",
@@ -28260,6 +28532,7 @@
    "location": "Magma Hideout",
    "level_cap": null,
    "group": "Magma Hideout Maxie",
+   "split": null,
    "trainers": [
     {
      "name": "Team Magma Grunt Magma Hideout #3",
@@ -28342,6 +28615,7 @@
    "location": "Magma Hideout",
    "level_cap": null,
    "group": "Magma Hideout Maxie",
+   "split": null,
    "trainers": [
     {
      "name": "Team Magma Grunt Magma Hideout #4",
@@ -28424,6 +28698,7 @@
    "location": "Magma Hideout",
    "level_cap": null,
    "group": "Magma Hideout Maxie",
+   "split": null,
    "trainers": [
     {
      "name": "Team Magma Grunt Magma Hideout #5",
@@ -28493,6 +28768,7 @@
    "location": "Magma Hideout",
    "level_cap": null,
    "group": "Magma Hideout Maxie",
+   "split": null,
    "trainers": [
     {
      "name": "Team Magma Grunt Magma Hideout #6",
@@ -28575,6 +28851,7 @@
    "location": "Magma Hideout",
    "level_cap": null,
    "group": "Magma Hideout Maxie",
+   "split": null,
    "trainers": [
     {
      "name": "Team Magma Grunt Magma Hideout #7 & Team Magma Grunt Magma Hideout #8",
@@ -28672,6 +28949,7 @@
    "location": "Magma Hideout",
    "level_cap": null,
    "group": "Magma Hideout Maxie",
+   "split": null,
    "trainers": [
     {
      "name": "Team Magma Grunt Magma Hideout #9",
@@ -28754,6 +29032,7 @@
    "location": "Magma Hideout",
    "level_cap": null,
    "group": "Magma Hideout Maxie",
+   "split": null,
    "trainers": [
     {
      "name": "Team Magma Grunt Magma Hideout #10",
@@ -28823,6 +29102,7 @@
    "location": "Magma Hideout",
    "level_cap": null,
    "group": "Magma Hideout Maxie",
+   "split": null,
    "trainers": [
     {
      "name": "Team Magma Grunt Magma Hideout #11",
@@ -28892,6 +29172,7 @@
    "location": "Magma Hideout",
    "level_cap": null,
    "group": "Magma Hideout Maxie",
+   "split": null,
    "trainers": [
     {
      "name": "Team Magma Grunt Magma Hideout  #12",
@@ -28974,6 +29255,7 @@
    "location": "Magma Hideout",
    "level_cap": null,
    "group": "Magma Hideout Maxie",
+   "split": null,
    "trainers": [
     {
      "name": "Team Magma Grunt Magma Hideout #13",
@@ -29043,6 +29325,7 @@
    "location": "Magma Hideout",
    "level_cap": null,
    "group": "Magma Hideout Maxie",
+   "split": null,
    "trainers": [
     {
      "name": "Team Magma Grunt Magma Hideout #14",
@@ -29122,6 +29405,7 @@
    "location": "Magma Hideout",
    "level_cap": null,
    "group": "Magma Hideout Maxie",
+   "split": null,
    "trainers": [
     {
      "name": "Team Magma Grunt Magma Hideout #15",
@@ -29204,6 +29488,7 @@
    "location": "Magma Hideout",
    "level_cap": null,
    "group": "Magma Hideout Maxie",
+   "split": null,
    "trainers": [
     {
      "name": "Magma Admin Tabitha",
@@ -29299,6 +29584,7 @@
    "location": "Magma Hideout",
    "level_cap": 79,
    "group": null,
+   "split": "Magma Hideout Maxie",
    "trainers": [
     {
      "name": "Magma Leader Maxie",
@@ -29396,6 +29682,7 @@
    "location": "Aqua Hideout",
    "level_cap": null,
    "group": "Aqua Hideout Matt",
+   "split": null,
    "trainers": [
     {
      "name": "Team Aqua Grunt Aqua Hideout #1",
@@ -29491,6 +29778,7 @@
    "location": "Aqua Hideout",
    "level_cap": null,
    "group": "Aqua Hideout Matt",
+   "split": null,
    "trainers": [
     {
      "name": "Team Aqua Grunt Aqua Hideout #2",
@@ -29573,6 +29861,7 @@
    "location": "Aqua Hideout",
    "level_cap": null,
    "group": "Aqua Hideout Matt",
+   "split": null,
    "trainers": [
     {
      "name": "Team Aqua Grunt Aqua Hideout #3",
@@ -29655,6 +29944,7 @@
    "location": "Aqua Hideout",
    "level_cap": null,
    "group": "Aqua Hideout Matt",
+   "split": null,
    "trainers": [
     {
      "name": "Team Aqua Grunt Aqua Hideout #4",
@@ -29737,6 +30027,7 @@
    "location": "Aqua Hideout",
    "level_cap": null,
    "group": "Aqua Hideout Matt",
+   "split": null,
    "trainers": [
     {
      "name": "Team Aqua Grunt Aqua Hideout #5",
@@ -29806,6 +30097,7 @@
    "location": "Aqua Hideout",
    "level_cap": null,
    "group": "Aqua Hideout Matt",
+   "split": null,
    "trainers": [
     {
      "name": "Team Aqua Grunt Aqua Hideout #6",
@@ -29888,6 +30180,7 @@
    "location": "Aqua Hideout",
    "level_cap": null,
    "group": "Aqua Hideout Matt",
+   "split": null,
    "trainers": [
     {
      "name": "Team Aqua Grunt Aqua Hideout #7",
@@ -29970,6 +30263,7 @@
    "location": "Aqua Hideout",
    "level_cap": null,
    "group": "Aqua Hideout Matt",
+   "split": null,
    "trainers": [
     {
      "name": "Team Aqua Grunt Aqua Hideout #8",
@@ -30065,6 +30359,7 @@
    "location": "Aqua Hideout",
    "level_cap": 81,
    "group": null,
+   "split": "Aqua Hideout Matt",
    "trainers": [
     {
      "name": "Aqua Admin Matt",
@@ -30159,6 +30454,7 @@
    "location": "Route 124",
    "level_cap": null,
    "group": "Leaders Tate & Liza",
+   "split": null,
    "trainers": [
     {
      "name": "Swimmer♀ Grace & Swimmer♂ Declan",
@@ -30217,6 +30513,7 @@
    "location": "Route 124",
    "level_cap": null,
    "group": "Leaders Tate & Liza",
+   "split": null,
    "trainers": [
     {
      "name": "Swimmer♂ Cranberry",
@@ -30298,6 +30595,7 @@
    "location": "Route 124",
    "level_cap": null,
    "group": "Leaders Tate & Liza",
+   "split": null,
    "trainers": [
     {
      "name": "Triathlete Aubrey",
@@ -30393,6 +30691,7 @@
    "location": "Route 124",
    "level_cap": null,
    "group": "Leaders Tate & Liza",
+   "split": null,
    "trainers": [
     {
      "name": "Swimmer♂ Chad",
@@ -30436,6 +30735,7 @@
    "location": "Route 124",
    "level_cap": null,
    "group": "Leaders Tate & Liza",
+   "split": null,
    "trainers": [
     {
      "name": "Triathlete Isabella",
@@ -30479,6 +30779,7 @@
    "location": "Route 124",
    "level_cap": null,
    "group": "Leaders Tate & Liza",
+   "split": null,
    "trainers": [
     {
      "name": "Swimmer♂ Roland",
@@ -30522,6 +30823,7 @@
    "location": "Route 124",
    "level_cap": null,
    "group": "Leaders Tate & Liza",
+   "split": null,
    "trainers": [
     {
      "name": "Swimmer♂ Nolen",
@@ -30557,6 +30859,7 @@
    "location": "Route 124",
    "level_cap": null,
    "group": "Leaders Tate & Liza",
+   "split": null,
    "trainers": [
     {
      "name": "Sailor Ernest",
@@ -30592,6 +30895,7 @@
    "location": "Route 124",
    "level_cap": null,
    "group": "Leaders Tate & Liza",
+   "split": null,
    "trainers": [
     {
      "name": "Swimmer♀ Sharon",
@@ -30627,6 +30931,7 @@
    "location": "Route 124",
    "level_cap": null,
    "group": "Leaders Tate & Liza",
+   "split": null,
    "trainers": [
     {
      "name": "Swimmer♀ Tanya",
@@ -30662,6 +30967,7 @@
    "location": "Route 124",
    "level_cap": null,
    "group": "Leaders Tate & Liza",
+   "split": null,
    "trainers": [
     {
      "name": "Swimmer♂ Stan",
@@ -30705,6 +31011,7 @@
    "location": "Route 124",
    "level_cap": null,
    "group": "Leaders Tate & Liza",
+   "split": null,
    "trainers": [
     {
      "name": "Bird Keeper Presley & Expert Auron",
@@ -30802,6 +31109,7 @@
    "location": "Route 124",
    "level_cap": null,
    "group": "Leaders Tate & Liza",
+   "split": null,
    "trainers": [
     {
      "name": "Sr. And Jr. Kim And Iris",
@@ -30899,6 +31207,7 @@
    "location": "Mossdeep Gym",
    "level_cap": null,
    "group": "Leaders Tate & Liza",
+   "split": null,
    "trainers": [
     {
      "name": "Psychic Preston & Psychic Maura",
@@ -30995,6 +31304,7 @@
    "location": "Mossdeep Gym",
    "level_cap": null,
    "group": "Leaders Tate & Liza",
+   "split": null,
    "trainers": [
     {
      "name": "Psychic Blake & Psychic Samantha",
@@ -31090,6 +31400,7 @@
    "location": "Mossdeep Gym",
    "level_cap": null,
    "group": "Leaders Tate & Liza",
+   "split": null,
    "trainers": [
     {
      "name": "Psychic Virgil & Gentleman Nate",
@@ -31187,6 +31498,7 @@
    "location": "Mossdeep Gym",
    "level_cap": null,
    "group": "Leaders Tate & Liza",
+   "split": null,
    "trainers": [
     {
      "name": "Psychic Hannah & Battle Girl Sylvia",
@@ -31284,6 +31596,7 @@
    "location": "Mossdeep Gym",
    "level_cap": null,
    "group": "Leaders Tate & Liza",
+   "split": null,
    "trainers": [
     {
      "name": "Hex Maniac Kathleen & Psychic Nicholas",
@@ -31381,6 +31694,7 @@
    "location": "Mossdeep Gym",
    "level_cap": null,
    "group": "Leaders Tate & Liza",
+   "split": null,
    "trainers": [
     {
      "name": "Gentleman Clifford & Psychic Macey",
@@ -31471,10 +31785,11 @@
    "key": "trainer:Gentleman Clifford & Psychic Macey [Double] @ Mossdeep Gym"
   },
   {
-   "name": "Leaders Tate & Liza",
+   "name": "Leader Tate",
    "location": "Mossdeep Gym",
    "level_cap": 85,
-   "group": null,
+   "group": "Leaders Tate & Liza",
+   "split": null,
    "trainers": [
     {
      "name": "Leader Tate",
@@ -31537,7 +31852,17 @@
        ]
       }
      ]
-    },
+    }
+   ],
+   "key": "trainer:Leader Tate [Boss] @ Mossdeep Gym"
+  },
+  {
+   "name": "Leader Liza",
+   "location": "Mossdeep Gym",
+   "level_cap": 85,
+   "group": null,
+   "split": "Leaders Tate & Liza",
+   "trainers": [
     {
      "name": "Leader Liza",
      "location": "Mossdeep Gym",
@@ -31608,6 +31933,7 @@
    "location": "Mossdeep Space Center",
    "level_cap": null,
    "group": "Seafloor Cavern Archie",
+   "split": null,
    "trainers": [
     {
      "name": "Team Magma Grunt Space Center #1",
@@ -31690,6 +32016,7 @@
    "location": "Mossdeep Space Center",
    "level_cap": null,
    "group": "Seafloor Cavern Archie",
+   "split": null,
    "trainers": [
     {
      "name": "Team Magma Grunt Space Center #2",
@@ -31785,6 +32112,7 @@
    "location": "Mossdeep Space Center",
    "level_cap": null,
    "group": "Seafloor Cavern Archie",
+   "split": null,
    "trainers": [
     {
      "name": "Team Magma Grunt Space Center #3",
@@ -31864,6 +32192,7 @@
    "location": "Mossdeep Space Center",
    "level_cap": null,
    "group": "Seafloor Cavern Archie",
+   "split": null,
    "trainers": [
     {
      "name": "Magma Admin Courtney",
@@ -31959,6 +32288,7 @@
    "location": "Mossdeep Space Center",
    "level_cap": null,
    "group": "Seafloor Cavern Archie",
+   "split": null,
    "trainers": [
     {
      "name": "Team Magma Grunt Space Center #5",
@@ -32002,6 +32332,7 @@
    "location": "Mossdeep Space Center",
    "level_cap": null,
    "group": "Seafloor Cavern Archie",
+   "split": null,
    "trainers": [
     {
      "name": "Team Magma Grunt Space Center #6",
@@ -32045,6 +32376,7 @@
    "location": "Mossdeep Space Center",
    "level_cap": null,
    "group": "Seafloor Cavern Archie",
+   "split": null,
    "trainers": [
     {
      "name": "Team Magma Grunt Space Center #7",
@@ -32101,6 +32433,7 @@
    "location": "Mossdeep Space Center",
    "level_cap": null,
    "group": "Seafloor Cavern Archie",
+   "split": null,
    "trainers": [
     {
      "name": "Magma Leader Maxie & Magma Admin Tabitha",
@@ -32248,6 +32581,7 @@
    "location": "Route 124",
    "level_cap": null,
    "group": "Seafloor Cavern Archie",
+   "split": null,
    "trainers": [
     {
      "name": "Sis And Bro Lila And Roy",
@@ -32343,6 +32677,7 @@
    "location": "Route 126",
    "level_cap": null,
    "group": "Seafloor Cavern Archie",
+   "split": null,
    "trainers": [
     {
      "name": "Swimmer♂ Dean",
@@ -32438,6 +32773,7 @@
    "location": "Route 126",
    "level_cap": null,
    "group": "Seafloor Cavern Archie",
+   "split": null,
    "trainers": [
     {
      "name": "Swimmer♀ Sienna",
@@ -32473,6 +32809,7 @@
    "location": "Route 126",
    "level_cap": null,
    "group": "Seafloor Cavern Archie",
+   "split": null,
    "trainers": [
     {
      "name": "Swimmer♂ Leonardo",
@@ -32508,6 +32845,7 @@
    "location": "Route 126",
    "level_cap": null,
    "group": "Seafloor Cavern Archie",
+   "split": null,
    "trainers": [
     {
      "name": "Triathlete Isobel",
@@ -32543,6 +32881,7 @@
    "location": "Route 126",
    "level_cap": null,
    "group": "Seafloor Cavern Archie",
+   "split": null,
    "trainers": [
     {
      "name": "Swimmer♀ Brenda",
@@ -32578,6 +32917,7 @@
    "location": "Route 126",
    "level_cap": null,
    "group": "Seafloor Cavern Archie",
+   "split": null,
    "trainers": [
     {
      "name": "Swimmer♀ Nikki",
@@ -32613,6 +32953,7 @@
    "location": "Route 126",
    "level_cap": null,
    "group": "Seafloor Cavern Archie",
+   "split": null,
    "trainers": [
     {
      "name": "Swimmer♂ Barry",
@@ -32656,6 +32997,7 @@
    "location": "Route 126",
    "level_cap": null,
    "group": "Seafloor Cavern Archie",
+   "split": null,
    "trainers": [
     {
      "name": "Triathlete Pablo",
@@ -32751,6 +33093,7 @@
    "location": "Route 127",
    "level_cap": null,
    "group": "Seafloor Cavern Archie",
+   "split": null,
    "trainers": [
     {
      "name": "Bird Keeper Camden & Battle Girl Donny",
@@ -32848,6 +33191,7 @@
    "location": "Route 127",
    "level_cap": null,
    "group": "Seafloor Cavern Archie",
+   "split": null,
    "trainers": [
     {
      "name": "Bird Keeper Aidan & Cool Trainer Athena",
@@ -32945,6 +33289,7 @@
    "location": "Route 127",
    "level_cap": null,
    "group": "Seafloor Cavern Archie",
+   "split": null,
    "trainers": [
     {
      "name": "Fisherman Roger & Black Belt Koji",
@@ -33042,6 +33387,7 @@
    "location": "Route 127",
    "level_cap": null,
    "group": "Seafloor Cavern Archie",
+   "split": null,
    "trainers": [
     {
      "name": "Fisherman Jonah",
@@ -33085,6 +33431,7 @@
    "location": "Route 127",
    "level_cap": null,
    "group": "Seafloor Cavern Archie",
+   "split": null,
    "trainers": [
     {
      "name": "Fisherman Henry",
@@ -33120,6 +33467,7 @@
    "location": "Route 128",
    "level_cap": null,
    "group": "Seafloor Cavern Archie",
+   "split": null,
    "trainers": [
     {
      "name": "Swimmer♀ Carlee & Swimmer♂ Harrison",
@@ -33217,6 +33565,7 @@
    "location": "Route 128",
    "level_cap": null,
    "group": "Seafloor Cavern Archie",
+   "split": null,
    "trainers": [
     {
      "name": "Cool Trainer Alexa",
@@ -33260,6 +33609,7 @@
    "location": "Route 128",
    "level_cap": null,
    "group": "Seafloor Cavern Archie",
+   "split": null,
    "trainers": [
     {
      "name": "Cool Trainer Ruben",
@@ -33295,6 +33645,7 @@
    "location": "Route 128",
    "level_cap": null,
    "group": "Seafloor Cavern Archie",
+   "split": null,
    "trainers": [
     {
      "name": "Triathlete Katelyn",
@@ -33330,6 +33681,7 @@
    "location": "Route 128",
    "level_cap": null,
    "group": "Seafloor Cavern Archie",
+   "split": null,
    "trainers": [
     {
      "name": "Fisherman Wayne",
@@ -33373,6 +33725,7 @@
    "location": "Route 128",
    "level_cap": null,
    "group": "Seafloor Cavern Archie",
+   "split": null,
    "trainers": [
     {
      "name": "Triathlete Isaiah",
@@ -33408,6 +33761,7 @@
    "location": "Seafloor Cavern",
    "level_cap": null,
    "group": "Seafloor Cavern Archie",
+   "split": null,
    "trainers": [
     {
      "name": "Team Aqua Grunt Seafloor Cavern #1",
@@ -33503,6 +33857,7 @@
    "location": "Seafloor Cavern",
    "level_cap": null,
    "group": "Seafloor Cavern Archie",
+   "split": null,
    "trainers": [
     {
      "name": "Team Aqua Grunt Seafloor Cavern #2",
@@ -33598,6 +33953,7 @@
    "location": "Seafloor Cavern",
    "level_cap": null,
    "group": "Seafloor Cavern Archie",
+   "split": null,
    "trainers": [
     {
      "name": "Team Aqua Grunt Seafloor Cavern #3",
@@ -33680,6 +34036,7 @@
    "location": "Seafloor Cavern",
    "level_cap": null,
    "group": "Seafloor Cavern Archie",
+   "split": null,
    "trainers": [
     {
      "name": "Team Aqua Grunt Seafloor Cavern #4",
@@ -33749,6 +34106,7 @@
    "location": "Seafloor Cavern",
    "level_cap": null,
    "group": "Seafloor Cavern Archie",
+   "split": null,
    "trainers": [
     {
      "name": "Team Aqua Grunt Seafloor Cavern #5",
@@ -33844,6 +34202,7 @@
    "location": "Seafloor Cavern",
    "level_cap": null,
    "group": "Seafloor Cavern Archie",
+   "split": null,
    "trainers": [
     {
      "name": "Aqua Admin Shelly",
@@ -33937,6 +34296,7 @@
    "location": "Seafloor Cavern",
    "level_cap": 89,
    "group": null,
+   "split": "Seafloor Cavern Archie",
    "trainers": [
     {
      "name": "Aqua Leader Archie",
@@ -34034,6 +34394,7 @@
    "location": "Route 129 [Erratic Weather]",
    "level_cap": null,
    "group": "Leader Juan",
+   "split": null,
    "trainers": [
     {
      "name": "Swimmer♂ Reed",
@@ -34129,6 +34490,7 @@
    "location": "Route 129 [Erratic Weather]",
    "level_cap": null,
    "group": "Leader Juan",
+   "split": null,
    "trainers": [
     {
      "name": "Triathlete Chase & Triathlete Allison",
@@ -34226,6 +34588,7 @@
    "location": "Route 129 [Erratic Weather]",
    "level_cap": null,
    "group": "Leader Juan",
+   "split": null,
    "trainers": [
     {
      "name": "Swimmer♀ Tisha",
@@ -34321,6 +34684,7 @@
    "location": "Route 129 [Erratic Weather]",
    "level_cap": null,
    "group": "Leader Juan",
+   "split": null,
    "trainers": [
     {
      "name": "Swimmer♂ Clarence",
@@ -34416,6 +34780,7 @@
    "location": "Route 130",
    "level_cap": null,
    "group": "Leader Juan",
+   "split": null,
    "trainers": [
     {
      "name": "Swimmer♂ Rodney",
@@ -34511,6 +34876,7 @@
    "location": "Route 130",
    "level_cap": null,
    "group": "Leader Juan",
+   "split": null,
    "trainers": [
     {
      "name": "Swimmer♀ Katie",
@@ -34604,6 +34970,7 @@
    "location": "Route 130",
    "level_cap": null,
    "group": "Leader Juan",
+   "split": null,
    "trainers": [
     {
      "name": "Swimmer♂ Santiago",
@@ -34647,6 +35014,7 @@
    "location": "Route 131",
    "level_cap": null,
    "group": "Leader Juan",
+   "split": null,
    "trainers": [
     {
      "name": "Swimmer♂ Zappator",
@@ -34742,6 +35110,7 @@
    "location": "Route 131",
    "level_cap": null,
    "group": "Leader Juan",
+   "split": null,
    "trainers": [
     {
      "name": "Triathlete Xayah",
@@ -34837,6 +35206,7 @@
    "location": "Route 131",
    "level_cap": null,
    "group": "Leader Juan",
+   "split": null,
    "trainers": [
     {
      "name": "Sis And Bro Reli And Ian",
@@ -34934,6 +35304,7 @@
    "location": "Route 131",
    "level_cap": null,
    "group": "Leader Juan",
+   "split": null,
    "trainers": [
     {
      "name": "Swimmer♂ Herman",
@@ -35029,6 +35400,7 @@
    "location": "Route 132",
    "level_cap": null,
    "group": "Leader Juan",
+   "split": null,
    "trainers": [
     {
      "name": "Swimmer♂ Richard",
@@ -35072,6 +35444,7 @@
    "location": "Route 132",
    "level_cap": null,
    "group": "Leader Juan",
+   "split": null,
    "trainers": [
     {
      "name": "Swimmer♀ Kara",
@@ -35107,6 +35480,7 @@
    "location": "Route 132",
    "level_cap": null,
    "group": "Leader Juan",
+   "split": null,
    "trainers": [
     {
      "name": "Swimmer♀ Susie",
@@ -35142,6 +35516,7 @@
    "location": "Route 132",
    "level_cap": null,
    "group": "Leader Juan",
+   "split": null,
    "trainers": [
     {
      "name": "Fisherman Ronald",
@@ -35201,6 +35576,7 @@
    "location": "Route 132",
    "level_cap": null,
    "group": "Leader Juan",
+   "split": null,
    "trainers": [
     {
      "name": "Expert Paxton",
@@ -35244,6 +35620,7 @@
    "location": "Route 132",
    "level_cap": null,
    "group": "Leader Juan",
+   "split": null,
    "trainers": [
     {
      "name": "Cool Trainer Darcy",
@@ -35287,6 +35664,7 @@
    "location": "Route 132",
    "level_cap": null,
    "group": "Leader Juan",
+   "split": null,
    "trainers": [
     {
      "name": "Expert Makayla",
@@ -35330,6 +35708,7 @@
    "location": "Route 132",
    "level_cap": null,
    "group": "Leader Juan",
+   "split": null,
    "trainers": [
     {
      "name": "Cool Trainer Jonathan",
@@ -35373,6 +35752,7 @@
    "location": "Route 132",
    "level_cap": null,
    "group": "Leader Juan",
+   "split": null,
    "trainers": [
     {
      "name": "Black Belt Kiyo",
@@ -35440,6 +35820,7 @@
    "location": "Route 132",
    "level_cap": null,
    "group": "Leader Juan",
+   "split": null,
    "trainers": [
     {
      "name": "Swimmer♀ Dana",
@@ -35499,6 +35880,7 @@
    "location": "Route 133",
    "level_cap": null,
    "group": "Leader Juan",
+   "split": null,
    "trainers": [
     {
      "name": "Swimmer♂ Franklin",
@@ -35542,6 +35924,7 @@
    "location": "Route 133",
    "level_cap": null,
    "group": "Leader Juan",
+   "split": null,
    "trainers": [
     {
      "name": "Swimmer♀ Debra",
@@ -35585,6 +35968,7 @@
    "location": "Route 133",
    "level_cap": null,
    "group": "Leader Juan",
+   "split": null,
    "trainers": [
     {
      "name": "Cool Trainer Warren",
@@ -35644,6 +36028,7 @@
    "location": "Route 133",
    "level_cap": null,
    "group": "Leader Juan",
+   "split": null,
    "trainers": [
     {
      "name": "Bird Keeper Beck",
@@ -35703,6 +36088,7 @@
    "location": "Route 133",
    "level_cap": null,
    "group": "Leader Juan",
+   "split": null,
    "trainers": [
     {
      "name": "Expert Mollie & Expert Conor",
@@ -35800,6 +36186,7 @@
    "location": "Route 134",
    "level_cap": null,
    "group": "Leader Juan",
+   "split": null,
    "trainers": [
     {
      "name": "Sailor Hudson",
@@ -35851,6 +36238,7 @@
    "location": "Route 134",
    "level_cap": null,
    "group": "Leader Juan",
+   "split": null,
    "trainers": [
     {
      "name": "Battle Girl Reyna",
@@ -35902,6 +36290,7 @@
    "location": "Route 134",
    "level_cap": null,
    "group": "Leader Juan",
+   "split": null,
    "trainers": [
     {
      "name": "Black Belt Hitoshi",
@@ -35953,6 +36342,7 @@
    "location": "Route 134",
    "level_cap": null,
    "group": "Leader Juan",
+   "split": null,
    "trainers": [
     {
      "name": "Swimmer♂ Jaiden",
@@ -35996,6 +36386,7 @@
    "location": "Route 134",
    "level_cap": null,
    "group": "Leader Juan",
+   "split": null,
    "trainers": [
     {
      "name": "Swimmer♀ Laurel",
@@ -36047,6 +36438,7 @@
    "location": "Route 134",
    "level_cap": null,
    "group": "Leader Juan",
+   "split": null,
    "trainers": [
     {
      "name": "Cool Trainer Marley",
@@ -36098,6 +36490,7 @@
    "location": "Route 134",
    "level_cap": null,
    "group": "Leader Juan",
+   "split": null,
    "trainers": [
     {
      "name": "Dragon Tamer Aaron",
@@ -36157,6 +36550,7 @@
    "location": "Route 134",
    "level_cap": null,
    "group": "Leader Juan",
+   "split": null,
    "trainers": [
     {
      "name": "Bird Keeper Alex",
@@ -36216,6 +36610,7 @@
    "location": "Route 134",
    "level_cap": null,
    "group": "Leader Juan",
+   "split": null,
    "trainers": [
     {
      "name": "Sailor Kelvin",
@@ -36275,6 +36670,7 @@
    "location": "Sootopolis Gym",
    "level_cap": null,
    "group": "Leader Juan",
+   "split": null,
    "trainers": [
     {
      "name": "Lass Andrea & Beauty Connie",
@@ -36372,6 +36768,7 @@
    "location": "Sootopolis Gym",
    "level_cap": null,
    "group": "Leader Juan",
+   "split": null,
    "trainers": [
     {
      "name": "Beauty Bridget",
@@ -36454,6 +36851,7 @@
    "location": "Sootopolis Gym",
    "level_cap": null,
    "group": "Leader Juan",
+   "split": null,
    "trainers": [
     {
      "name": "Lady Daphne",
@@ -36549,6 +36947,7 @@
    "location": "Sootopolis Gym",
    "level_cap": null,
    "group": "Leader Juan",
+   "split": null,
    "trainers": [
     {
      "name": "Pokéfan Bethany",
@@ -36644,6 +37043,7 @@
    "location": "Sootopolis Gym",
    "level_cap": null,
    "group": "Leader Juan",
+   "split": null,
    "trainers": [
     {
      "name": "Lass Crissy",
@@ -36739,6 +37139,7 @@
    "location": "Sootopolis Gym",
    "level_cap": null,
    "group": "Leader Juan",
+   "split": null,
    "trainers": [
     {
      "name": "Lady Brianna",
@@ -36821,6 +37222,7 @@
    "location": "Sootopolis Gym",
    "level_cap": null,
    "group": "Leader Juan",
+   "split": null,
    "trainers": [
     {
      "name": "Lass Pearl",
@@ -36903,6 +37305,7 @@
    "location": "Sootopolis Gym",
    "level_cap": null,
    "group": "Leader Juan",
+   "split": null,
    "trainers": [
     {
      "name": "Beauty Tiffany & Beauty Olivia",
@@ -37000,6 +37403,7 @@
    "location": "Sootopolis Gym",
    "level_cap": 91,
    "group": null,
+   "split": "Leader Juan",
    "trainers": [
     {
      "name": "Leader Juan",
@@ -37098,6 +37502,7 @@
    "location": "Victory Road",
    "level_cap": null,
    "group": "Victory Road Vito",
+   "split": null,
    "trainers": [
     {
      "name": "Trainer Wally",
@@ -37193,6 +37598,7 @@
    "location": "Victory Road",
    "level_cap": null,
    "group": "Victory Road Vito",
+   "split": null,
    "trainers": [
     {
      "name": "Cool Trainer Hope & Cool Trainer Albert",
@@ -37290,6 +37696,7 @@
    "location": "Victory Road",
    "level_cap": null,
    "group": "Victory Road Vito",
+   "split": null,
    "trainers": [
     {
      "name": "Cool Trainer Katelynn",
@@ -37385,6 +37792,7 @@
    "location": "Victory Road",
    "level_cap": null,
    "group": "Victory Road Vito",
+   "split": null,
    "trainers": [
     {
      "name": "Cool Trainer Quincy",
@@ -37480,6 +37888,7 @@
    "location": "Victory Road",
    "level_cap": null,
    "group": "Victory Road Vito",
+   "split": null,
    "trainers": [
     {
      "name": "Cool Trainer Felix",
@@ -37575,6 +37984,7 @@
    "location": "Victory Road",
    "level_cap": null,
    "group": "Victory Road Vito",
+   "split": null,
    "trainers": [
     {
      "name": "Cool Trainer Julie & Cool Trainer Dianne",
@@ -37672,6 +38082,7 @@
    "location": "Victory Road",
    "level_cap": null,
    "group": "Victory Road Vito",
+   "split": null,
    "trainers": [
     {
      "name": "Cool Trainer Samuel",
@@ -37767,6 +38178,7 @@
    "location": "Victory Road",
    "level_cap": null,
    "group": "Victory Road Vito",
+   "split": null,
    "trainers": [
     {
      "name": "Cool Trainer Shannon",
@@ -37862,6 +38274,7 @@
    "location": "Victory Road",
    "level_cap": null,
    "group": "Victory Road Vito",
+   "split": null,
    "trainers": [
     {
      "name": "Cool Trainer Caroline",
@@ -37957,6 +38370,7 @@
    "location": "Victory Road",
    "level_cap": null,
    "group": "Victory Road Vito",
+   "split": null,
    "trainers": [
     {
      "name": "Cool Trainer Michelle",
@@ -38052,6 +38466,7 @@
    "location": "Victory Road",
    "level_cap": null,
    "group": "Victory Road Vito",
+   "split": null,
    "trainers": [
     {
      "name": "Cool Trainer Specter",
@@ -38147,6 +38562,7 @@
    "location": "Victory Road",
    "level_cap": null,
    "group": "Victory Road Vito",
+   "split": null,
    "trainers": [
     {
      "name": "Cool Trainer Edgar",
@@ -38242,6 +38658,7 @@
    "location": "Victory Road",
    "level_cap": null,
    "group": "Victory Road Vito",
+   "split": null,
    "trainers": [
     {
      "name": "Triathlete Darren",
@@ -38337,6 +38754,7 @@
    "location": "Victory Road",
    "level_cap": null,
    "group": "Victory Road Vito",
+   "split": null,
    "trainers": [
     {
      "name": "Cool Trainer Halle",
@@ -38432,6 +38850,7 @@
    "location": "Victory Road",
    "level_cap": 95,
    "group": null,
+   "split": "Victory Road Vito",
    "trainers": [
     {
      "name": "Winstrate Vito",
@@ -38529,6 +38948,7 @@
    "location": "Route 123 [Optional]",
    "level_cap": null,
    "group": "Champion Wallace",
+   "split": null,
    "trainers": [
     {
      "name": "Pokémaniac Hambino",
@@ -38624,6 +39044,7 @@
    "location": "Route 123 [Optional]",
    "level_cap": null,
    "group": "Champion Wallace",
+   "split": null,
    "trainers": [
     {
      "name": "Cool Trainer Wendy & Cool Trainer Braxton",
@@ -38721,6 +39142,7 @@
    "location": "Route 123 [Optional]",
    "level_cap": null,
    "group": "Champion Wallace",
+   "split": null,
    "trainers": [
     {
      "name": "Ninja Boy Jonas & Expert Fredrick",
@@ -38818,6 +39240,7 @@
    "location": "Route 123 [Optional]",
    "level_cap": null,
    "group": "Champion Wallace",
+   "split": null,
    "trainers": [
     {
      "name": "Hex Maniac Gongas",
@@ -38913,6 +39336,7 @@
    "location": "Route 123 [Optional]",
    "level_cap": null,
    "group": "Champion Wallace",
+   "split": null,
    "trainers": [
     {
      "name": "Twins Miu And Yuki",
@@ -39010,6 +39434,7 @@
    "location": "Route 123 [Optional]",
    "level_cap": null,
    "group": "Champion Wallace",
+   "split": null,
    "trainers": [
     {
      "name": "Bug Catcher Davis",
@@ -39105,6 +39530,7 @@
    "location": "Route 123 [Optional]",
    "level_cap": null,
    "group": "Champion Wallace",
+   "split": null,
    "trainers": [
     {
      "name": "Psychic Jacki & Bird Keeper Alberto",
@@ -39202,6 +39628,7 @@
    "location": "Route 123 [Optional]",
    "level_cap": null,
    "group": "Champion Wallace",
+   "split": null,
    "trainers": [
     {
      "name": "Black Belt Hawk",
@@ -39297,6 +39724,7 @@
    "location": "Route 123 [Optional]",
    "level_cap": null,
    "group": "Champion Wallace",
+   "split": null,
    "trainers": [
     {
      "name": "Guitarist Fernando & Cool Trainer Jazmyn",
@@ -39393,6 +39821,7 @@
    "location": "Route 123 [Optional]",
    "level_cap": null,
    "group": "Champion Wallace",
+   "split": null,
    "trainers": [
     {
      "name": "Psychic Cameron & Hex Maniac Kindra",
@@ -39490,6 +39919,7 @@
    "location": "Meteor Falls [Optional]",
    "level_cap": null,
    "group": "Champion Wallace",
+   "split": null,
    "trainers": [
     {
      "name": "Old Couple John And Jay",
@@ -39587,6 +40017,7 @@
    "location": "Meteor Falls [Optional]",
    "level_cap": null,
    "group": "Champion Wallace",
+   "split": null,
    "trainers": [
     {
      "name": "Dragon Tamer Nicolas",
@@ -39682,6 +40113,7 @@
    "location": "Route 115 [Optional]",
    "level_cap": null,
    "group": "Champion Wallace",
+   "split": null,
    "trainers": [
     {
      "name": "Triathlete Kyra",
@@ -39776,6 +40208,7 @@
    "location": "Route 115 [Optional]",
    "level_cap": null,
    "group": "Champion Wallace",
+   "split": null,
    "trainers": [
     {
      "name": "Battle Girl Helene",
@@ -39871,6 +40304,7 @@
    "location": "Route 115 [Optional]",
    "level_cap": null,
    "group": "Champion Wallace",
+   "split": null,
    "trainers": [
     {
      "name": "Ninja Boy Jack",
@@ -39963,6 +40397,7 @@
    "location": "Route 115 [Optional]",
    "level_cap": null,
    "group": "Champion Wallace",
+   "split": null,
    "trainers": [
     {
      "name": "Psychic Alix",
@@ -40058,6 +40493,7 @@
    "location": "Route 115 [Optional]",
    "level_cap": null,
    "group": "Champion Wallace",
+   "split": null,
    "trainers": [
     {
      "name": "Black Belt Koichi",
@@ -40152,6 +40588,7 @@
    "location": "Route 115 [Optional]",
    "level_cap": null,
    "group": "Champion Wallace",
+   "split": null,
    "trainers": [
     {
      "name": "Expert Timothy",
@@ -40247,6 +40684,7 @@
    "location": "Pokémon League",
    "level_cap": null,
    "group": "Champion Wallace",
+   "split": null,
    "trainers": [
     {
      "name": "Elite Four Sidney",
@@ -40342,6 +40780,7 @@
    "location": "Pokémon League",
    "level_cap": null,
    "group": "Champion Wallace",
+   "split": null,
    "trainers": [
     {
      "name": "Elite Four Sidney",
@@ -40439,6 +40878,7 @@
    "location": "Pokémon League",
    "level_cap": null,
    "group": "Champion Wallace",
+   "split": null,
    "trainers": [
     {
      "name": "Elite Four Phoebe",
@@ -40534,6 +40974,7 @@
    "location": "Pokémon League",
    "level_cap": null,
    "group": "Champion Wallace",
+   "split": null,
    "trainers": [
     {
      "name": "Elite Four Phoebe",
@@ -40631,6 +41072,7 @@
    "location": "Pokémon League",
    "level_cap": null,
    "group": "Champion Wallace",
+   "split": null,
    "trainers": [
     {
      "name": "Elite Four Glacia",
@@ -40726,6 +41168,7 @@
    "location": "Pokémon League",
    "level_cap": null,
    "group": "Champion Wallace",
+   "split": null,
    "trainers": [
     {
      "name": "Elite Four Glacia",
@@ -40823,6 +41266,7 @@
    "location": "Pokémon League",
    "level_cap": null,
    "group": "Champion Wallace",
+   "split": null,
    "trainers": [
     {
      "name": "Elite Four Drake",
@@ -40918,6 +41362,7 @@
    "location": "Pokémon League",
    "level_cap": null,
    "group": "Champion Wallace",
+   "split": null,
    "trainers": [
     {
      "name": "Elite Four Drake",
@@ -41015,6 +41460,7 @@
    "location": "Pokémon League",
    "level_cap": 99,
    "group": null,
+   "split": "Champion Wallace",
    "trainers": [
     {
      "name": "Champion Wallace",

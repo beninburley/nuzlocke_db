@@ -13,7 +13,7 @@ EVOLUTIONS_PATH = ROOT / "data" / "evolutions.json"
 
 # Bump when schema.sql changes in a way existing databases need migrating for,
 # and add a step to migrate().
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 # A Pokemon's details, as stored on box Pokemon (catches) and on the copies in
 # battle teams (fight_members).
@@ -38,9 +38,12 @@ def connect(path=None):
 
 def init_db(conn):
     """Migrate old databases, create missing tables and (re)load game data."""
-    migrate(conn)
+    version = migrate(conn)
     conn.executescript(schema_sql())
     load_game_data(conn)
+    if version < 3:
+        split_level_cap_fights(conn)
+    conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
 
 
 def schema_sql():
@@ -48,19 +51,37 @@ def schema_sql():
 
 
 def migrate(conn):
+    """Bring an existing database's tables up to date, before schema.sql runs.
+
+    Returns the version it was at. Steps that need the game data loaded run
+    in init_db afterwards, which then sets the final version.
+    """
     version = conn.execute("PRAGMA user_version").fetchone()[0]
     tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
     if "catches" not in tables:  # new database: schema.sql creates everything
-        conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
-        return
+        return SCHEMA_VERSION
     if version < 1 and "bosses" in tables:
         backup(conn, "v0")
         migrate_bosses_to_battles(conn)
-        version = 1
+        conn.execute("PRAGMA user_version = 1")
     if version < 2:
         backup(conn, "v1")
         migrate_box_details(conn)
-    conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+        conn.execute("PRAGMA user_version = 2")
+    if version < 3:
+        backup(conn, "v2")
+        # Safe to repeat, so an upgrade to v3 that stopped halfway just carries on.
+        add_column(conn, "battles", "split", "TEXT")
+        add_column(conn, "fights", "trainer_key", "TEXT")
+    problems = conn.execute("PRAGMA foreign_key_check").fetchall()
+    if problems:
+        raise RuntimeError(f"migration left broken references: {[tuple(p) for p in problems]}")
+    return version
+
+
+def add_column(conn, table, column, definition):
+    if column not in {r["name"] for r in conn.execute(f"PRAGMA table_info({table})")}:
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
 
 
 def backup(conn, label):
@@ -72,7 +93,7 @@ def backup(conn, label):
     target.close()
 
 
-def rebuild_tables(conn, move_aside, copy_back):
+def rebuild_tables(conn, move_aside, copy_back, check):
     """SQLite's table-rebuild procedure, in one transaction.
 
     With foreign keys off and legacy renames (so other tables' references keep
@@ -80,6 +101,9 @@ def rebuild_tables(conn, move_aside, copy_back):
     schema.sql creates the new ones, and `copy_back` copies rows over (keeping
     ids) and drops the old tables. Triggers on or about the rebuilt tables must
     be dropped in `move_aside`; schema.sql recreates them.
+
+    Afterwards the references from the `check` tables are verified. Only those:
+    tables that later migrations rebuild may not fit the current schema yet.
     """
     conn.execute("PRAGMA foreign_keys = OFF")
     conn.execute("PRAGMA legacy_alter_table = ON")
@@ -92,7 +116,7 @@ def rebuild_tables(conn, move_aside, copy_back):
     finally:
         conn.execute("PRAGMA legacy_alter_table = OFF")
         conn.execute("PRAGMA foreign_keys = ON")
-    problems = conn.execute("PRAGMA foreign_key_check").fetchall()
+    problems = [p for table in check for p in conn.execute(f"PRAGMA foreign_key_check({table})")]
     if problems:
         raise RuntimeError(f"migration left broken references: {[tuple(p) for p in problems]}")
 
@@ -113,6 +137,7 @@ def migrate_bosses_to_battles(conn):
                   "  SELECT id, attempt_id, boss_id, result FROM fights_v0;"
                   "DROP TABLE fights_v0;"
                   "DROP TABLE bosses_v0;",
+        check=("battles", "fights", "fight_members"),
     )
 
 
@@ -139,7 +164,49 @@ def migrate_box_details(conn):
                   "  ORDER BY m.fight_id, m.slot;"
                   "DROP TABLE fight_members_v1;"
                   "DROP TABLE catches_v1;",
+        check=("catches", "fights", "fight_members"),
     )
+
+
+def split_level_cap_fights(conn):
+    """v2 -> v3, once game data is loaded.
+
+    A boss fight against two trainers with separate teams (the Museum grunts,
+    Tate & Liza) became one battle per trainer; recorded fights stay on the
+    last one. Each attempt that recorded the fight gets the same result and a
+    copy of the same team on the others. Safe to repeat.
+    """
+    columns = ", ".join(POKEMON_COLUMNS)
+    with conn:
+        for battle_ids in level_cap_battles(conn).values():
+            *added, original = battle_ids
+            for battle_id in added:
+                for fight in conn.execute(
+                    "SELECT id, attempt_id, result FROM fights WHERE battle_id = ? AND attempt_id NOT IN "
+                    "(SELECT attempt_id FROM fights WHERE battle_id = ?)", (original, battle_id)
+                ).fetchall():
+                    cur = conn.execute("INSERT INTO fights (attempt_id, battle_id, result) VALUES (?, ?, ?)",
+                                       (fight["attempt_id"], battle_id, fight["result"]))
+                    conn.execute(
+                        f"INSERT INTO fight_members (fight_id, slot, catch_id, {columns}) "
+                        f"SELECT ?, slot, catch_id, {columns} FROM fight_members WHERE fight_id = ? ORDER BY slot",
+                        (cur.lastrowid, fight["id"]))
+
+
+def level_cap_battles(conn):
+    """{split name: [battle ids]}: each split's level-cap battles, in game order.
+
+    Usually just one. A boss fight against two separate trainers has one per
+    trainer; the last is the one that ends the split.
+    """
+    out = {}
+    for row in conn.execute(
+        "SELECT s.split, b.id FROM battles s "
+        "JOIN battles b ON b.id = s.id OR (b.group_id = s.id AND b.level_cap IS NOT NULL) "
+        "WHERE s.split IS NOT NULL ORDER BY s.position, b.position"
+    ):
+        out.setdefault(row["split"], []).append(row["id"])
+    return out
 
 
 def load_game_data(conn, path=GAME_DATA_PATH):
@@ -198,10 +265,10 @@ def load_game_data(conn, path=GAME_DATA_PATH):
 def load_battles(conn, battles):
     for position, battle in enumerate(battles):
         conn.execute(
-            "INSERT INTO battles (key, name, location, level_cap, position) VALUES (?, ?, ?, ?, ?) "
+            "INSERT INTO battles (key, name, location, level_cap, position, split) VALUES (?, ?, ?, ?, ?, ?) "
             "ON CONFLICT (key) DO UPDATE SET name = excluded.name, location = excluded.location, "
-            "level_cap = excluded.level_cap, position = excluded.position",
-            (battle["key"], battle["name"], battle["location"], battle["level_cap"], position),
+            "level_cap = excluded.level_cap, position = excluded.position, split = excluded.split",
+            (battle["key"], battle["name"], battle["location"], battle["level_cap"], position, battle["split"]),
         )
     battle_ids = {r["key"]: r["id"] for r in conn.execute("SELECT id, key FROM battles")}
     conn.executemany(
