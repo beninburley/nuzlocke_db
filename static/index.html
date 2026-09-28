@@ -23,6 +23,7 @@
       <button type="button" role="tab" data-tab="encounters">Encounters <span id="catch-count" class="pill"></span></button>
       <button type="button" role="tab" data-tab="box">Box</button>
       <button type="button" role="tab" data-tab="fights">Trainer Battles</button>
+      <button type="button" role="tab" data-tab="kos">KO Analytics</button>
       <button type="button" role="tab" data-tab="notes">Notes</button>
     </nav>
 
@@ -69,6 +70,7 @@
             <button type="button" data-result="won" aria-pressed="false">Won</button>
             <button type="button" data-result="lost" aria-pressed="false">Lost</button>
           </div>
+          <button id="ko-open" type="button" hidden>Edit KOs</button>
         </header>
 
         <p id="team-changed" class="changed-banner" role="note" hidden>
@@ -98,6 +100,15 @@
           </section>
         </div>
       </div>
+    </section>
+
+    <section id="tab-kos" class="panel" hidden>
+      <h2 class="ko-stats-head">Most KOs this attempt <span id="ko-stats-total" class="muted"></span></h2>
+      <p id="ko-stats-empty" class="hint" hidden>
+        No KOs recorded yet. Mark a battle <strong>Won</strong> or <strong>Lost</strong> to open the KO tracker,
+        or use the KO button next to a finished battle.
+      </p>
+      <ol id="ko-chart" class="ko-chart"></ol>
     </section>
 
     <section id="tab-notes" class="panel" hidden>
@@ -142,6 +153,29 @@
         <form method="dialog"><button class="icon-button" aria-label="Close">&times;</button></form>
       </header>
       <div id="evolve-body" class="picker-body"></div>
+    </div>
+  </dialog>
+
+  <dialog id="ko-dialog" class="picker ko-dialog" aria-labelledby="ko-title">
+    <div class="picker-inner">
+      <header class="picker-head">
+        <div>
+          <h2 id="ko-title"></h2>
+          <p class="muted">Drag from your Pok&eacute;mon's dot to the enemy it knocked out (green arrow), or from an
+            enemy's dot to the Pok&eacute;mon it knocked out (red arrow). You can also click one dot, then the other.
+            Click an arrow to remove it.</p>
+        </div>
+        <form method="dialog"><button class="icon-button" aria-label="Close">&times;</button></form>
+      </header>
+      <div class="picker-body">
+        <div id="ko-trainers" class="trainer-tabs ko-trainers" role="group" aria-label="Enemy team fought"></div>
+        <div id="ko-board" class="ko-board"></div>
+      </div>
+      <footer class="picker-foot ko-foot">
+        <span id="ko-summary" class="muted" aria-live="polite"></span>
+        <button id="ko-clear" type="button" class="danger">Clear arrows</button>
+        <button id="ko-done" type="button" class="primary">Done</button>
+      </footer>
     </div>
   </dialog>
 

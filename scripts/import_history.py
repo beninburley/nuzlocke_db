@@ -9,6 +9,8 @@ Reads the "Past Encounters" and "Past Boss Fights" tabs:
   * every boss column becomes a fight: "Win?" -> result, and each team name is
     matched to one of that attempt's catches through its evolution family
     ("Grotle" -> the Turtwig caught as the starter). Small typos are fixed.
+    Boss fights against two separate trainers (the Museum grunts, Tate & Liza)
+    are a battle per trainer; each gets the column's team and result.
   * free-text cells (how the run ended) and "Killed:" rows go to the notes.
 Anything that can't be matched is skipped and listed in the report.
 
@@ -213,11 +215,12 @@ def import_attempt(conn, number, enc, fights, names, ids, report):
         if not members and not won:
             continue
         result = "won" if won else "lost"
-        cur = conn.execute("INSERT INTO fights (attempt_id, battle_id, result) VALUES (?, ?, ?)",
-                           (attempt_id, ids["boss"][boss], result))
-        # Each team member is a copy with the form the sheet lists for this fight.
-        conn.executemany("INSERT INTO fight_members (fight_id, slot, catch_id, species) VALUES (?, ?, ?, ?)",
-                         [(cur.lastrowid, slot, c, species) for slot, (c, species) in enumerate(members, start=1)])
+        for battle_id in ids["boss"][boss]:
+            cur = conn.execute("INSERT INTO fights (attempt_id, battle_id, result) VALUES (?, ?, ?)",
+                               (attempt_id, battle_id, result))
+            # Each team member is a copy with the form the sheet lists for this fight.
+            conn.executemany("INSERT INTO fight_members (fight_id, slot, catch_id, species) VALUES (?, ?, ?, ?)",
+                             [(cur.lastrowid, slot, c, species) for slot, (c, species) in enumerate(members, start=1)])
         latest_form.update(members)
         report["fights"][result] += 1
         if result == "lost":
@@ -245,8 +248,7 @@ def main():
     names = Names(conn)
     ids = {
         "route": {r["name"]: r["id"] for r in conn.execute("SELECT id, name FROM routes")},
-        "boss": {r["name"]: r["id"] for r in conn.execute(
-            "SELECT id, name FROM battles WHERE level_cap IS NOT NULL")},
+        "boss": db.level_cap_battles(conn),  # Past Boss Fights name -> battle ids
     }
     route_options = defaultdict(list)
     for r in conn.execute("SELECT DISTINCT r.name, e.pokemon FROM route_encounters e "

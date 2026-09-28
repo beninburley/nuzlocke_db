@@ -29,8 +29,7 @@ def main():
     conn = db.connect()
     db.init_db(conn)
     names = Names(conn)
-    bosses = {r["name"]: r["id"] for r in conn.execute(
-        "SELECT id, name FROM battles WHERE level_cap IS NOT NULL")}
+    bosses = db.level_cap_battles(conn)  # Past Boss Fights name -> battle ids
     sheet = read_boss_fights(openpyxl.load_workbook(xlsx, data_only=True)["Past Boss Fights"], bosses)
 
     copies, box, examples = 0, 0, []
@@ -45,18 +44,19 @@ def main():
             members, _, _ = match_team(cells, list(caught.items()), names)
             latest.update(members)
             boss = fights["boss_cols"].get(col)
-            fight = boss and conn.execute("SELECT id FROM fights WHERE attempt_id = ? AND battle_id = ?",
-                                          (attempt["id"], bosses[boss])).fetchone()
-            if not fight:
-                continue
-            for catch_id, species in members:
-                changed = conn.execute(
-                    "UPDATE fight_members SET species = ? "
-                    "WHERE fight_id = ? AND catch_id = ? AND species = ? AND species <> ?",
-                    (species, fight["id"], catch_id, caught[catch_id], species)).rowcount
-                copies += changed
-                if changed and len(examples) < 5:
-                    examples.append(f"#{number} {boss}: {caught[catch_id]} -> {species}")
+            for battle_id in bosses.get(boss, []):
+                fight = conn.execute("SELECT id FROM fights WHERE attempt_id = ? AND battle_id = ?",
+                                     (attempt["id"], battle_id)).fetchone()
+                if not fight:
+                    continue
+                for catch_id, species in members:
+                    changed = conn.execute(
+                        "UPDATE fight_members SET species = ? "
+                        "WHERE fight_id = ? AND catch_id = ? AND species = ? AND species <> ?",
+                        (species, fight["id"], catch_id, caught[catch_id], species)).rowcount
+                    copies += changed
+                    if changed and len(examples) < 5:
+                        examples.append(f"#{number} {boss}: {caught[catch_id]} -> {species}")
         for catch_id, species in latest.items():
             box += conn.execute(
                 "UPDATE catches SET species = ? WHERE id = ? AND species = pokemon AND pokemon <> ?",
