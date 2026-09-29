@@ -48,7 +48,10 @@
     <section id="tab-box" class="box-view" hidden>
       <section id="box-detail" class="panel box-detail" aria-label="Selected Pokémon"></section>
       <section class="panel box-list" aria-labelledby="box-list-heading">
-        <h2 id="box-list-heading">Box <span id="box-tab-count" class="muted"></span></h2>
+        <div class="box-head">
+          <h2 id="box-list-heading">Box <span id="box-tab-count" class="muted"></span></h2>
+          <button type="button" class="script-open">Update - Script</button>
+        </div>
         <p id="box-tab-empty" class="hint" hidden>No catches yet &mdash; add some on the Encounters tab.</p>
         <div id="box-tab-grid" class="box-grid"></div>
       </section>
@@ -103,7 +106,10 @@
             <div id="team-grid" class="team-grid"></div>
           </section>
           <section id="box-panel" class="box-panel" aria-label="Box">
-            <h3>Box <span id="box-count" class="muted"></span></h3>
+            <div class="box-head">
+              <h3>Box <span id="box-count" class="muted"></span></h3>
+              <button type="button" class="script-open">Update - Script</button>
+            </div>
             <p class="hint">Drag a Pok&eacute;mon onto a slot, or click it to add/remove. Drag a team member back here to remove it.</p>
             <p id="empty-box" class="hint warn" hidden>No catches yet &mdash; record some on the Encounters tab first.</p>
             <div id="box-grid" class="box-grid"></div>
@@ -185,6 +191,34 @@
         <span id="ko-summary" class="muted" aria-live="polite"></span>
         <button id="ko-clear" type="button" class="danger">Clear arrows</button>
         <button id="ko-done" type="button" class="primary">Done</button>
+      </footer>
+    </div>
+  </dialog>
+
+  <dialog id="script-dialog" class="picker script-dialog" aria-labelledby="script-title">
+    <div class="picker-inner">
+      <header class="picker-head">
+        <div>
+          <h2 id="script-title">Update your box from a script</h2>
+          <p class="muted">Paste Showdown-style sets, with a blank line between Pok&eacute;mon.</p>
+        </div>
+        <form method="dialog"><button class="icon-button" aria-label="Close">&times;</button></form>
+      </header>
+      <div class="picker-body script-body">
+        <p class="script-disclaimer" role="note">Script will only update caught pokemon. Please add a pokemon in the encounters tab if you want a pokemon to be updated via script</p>
+        <label class="field-label" for="script-input">Script</label>
+        <textarea id="script-input" rows="11" spellcheck="false" autocomplete="off"
+                  placeholder="Abomasnow @ Lum Berry&#10;Level: 43&#10;Hasty Nature&#10;Ability: Soundproof&#10;IVs: 4 SpA&#10;- Wood Hammer&#10;- Ice Beam&#10;- Ice Shard&#10;- Earthquake"></textarea>
+        <p class="hint">
+          A set updates the Pok&eacute;mon of that species or its evolutionary line, evolving it if needed.
+          Anything a set leaves out stays as it is. A moves list replaces all four moves, and an IVs line
+          sets all six (stats it doesn't list are 31, as in Showdown). EVs and the like are ignored.
+        </p>
+        <div id="script-preview" class="script-preview" aria-live="polite"></div>
+      </div>
+      <footer class="picker-foot script-foot">
+        <span id="script-summary" class="muted"></span>
+        <button id="script-apply" type="button" class="primary" disabled>Apply</button>
       </footer>
     </div>
   </dialog>
