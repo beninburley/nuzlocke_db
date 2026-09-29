@@ -10,6 +10,7 @@ from datetime import timedelta
 from flask import Flask, g, jsonify, redirect, request, session
 
 import accounts
+import box_script
 import db
 
 app = Flask(__name__, static_folder="static", static_url_path="")
@@ -294,8 +295,8 @@ def game():
         tags = by_battle[trainer["battle_id"]]["tags"]
         tags.extend(t for t in trainer["tags"].split(",") if t and t not in tags)
     sprites = {r["species"]: r["url"] for r in conn.execute("SELECT species, url FROM species_sprites")}
-    evolutions = {r["species"]: json.loads(r["members"])
-                  for r in conn.execute("SELECT species, members FROM evolution_lines")}
+    evolutions = evolution_lines(conn)
+    families = species_families(conn)
     # Autocomplete for box Pokemon details: the names Run & Bun's own trainers use.
     distinct = lambda sql: [r[0] for r in conn.execute(sql)]  # noqa: E731
     suggestions = {
@@ -304,8 +305,18 @@ def game():
         "moves": distinct(" UNION ".join(
             f"SELECT move{i} FROM trainer_pokemon WHERE move{i} IS NOT NULL" for i in range(1, 5)) + " ORDER BY 1"),
     }
-    return jsonify(routes=routes, battles=battles, sprites=sprites, evolutions=evolutions,
+    return jsonify(routes=routes, battles=battles, sprites=sprites, evolutions=evolutions, families=families,
                    suggestions=suggestions, natures=db.NATURES, statuses=db.STATUSES, iv_stats=db.IV_STATS)
+
+
+def evolution_lines(conn):
+    """species -> its evolutionary line (PokeAPI)."""
+    return {r["species"]: json.loads(r["members"]) for r in conn.execute("SELECT species, members FROM evolution_lines")}
+
+
+def species_families(conn):
+    """species -> dupes-clause family id (evolution lines plus regional forms, from the sheet)."""
+    return {r["species"]: r["family_id"] for r in conn.execute("SELECT species, family_id FROM species_families")}
 
 
 @app.get("/api/battles/<int:battle_id>")
@@ -576,6 +587,79 @@ def update_catch(catch_id):
     with conn:
         update_row(conn, "catches", catch_id, fields)
     return jsonify(catch=catch_json(conn.execute("SELECT * FROM catches WHERE id = ?", (catch_id,)).fetchone()))
+
+
+@app.post("/api/attempts/<int:attempt_id>/box-script")
+def run_box_script(attempt_id):
+    """Update box Pokemon from a Showdown-style script (see box_script.py).
+
+    Body: {"script": text, "apply": bool}. Without "apply" it's a preview: each
+    set's matching box Pokemon and the changes it would make, or why it can't
+    be used. With "apply": true, every usable set with changes is saved (all
+    at once) and the updated box Pokemon come back as "catches".
+    """
+    conn = get_db()
+    get_attempt(conn, attempt_id)
+    data = body()
+    script, apply = data.get("script"), data.get("apply", False)
+    if not isinstance(script, str) or len(script) > box_script.MAX_SCRIPT:
+        raise ApiError(f"script must be text of at most {box_script.MAX_SCRIPT} characters")
+    if not isinstance(apply, bool):
+        raise ApiError("apply must be true or false")
+
+    box = conn.execute(
+        "SELECT c.*, r.name AS route FROM catches c JOIN routes r ON r.id = c.route_id "
+        "WHERE c.attempt_id = ? ORDER BY r.position", (attempt_id,)).fetchall()
+    lines, families = evolution_lines(conn), species_families(conn)
+    results, updates, taken = [], {}, {}
+    for s in box_script.parse(script):
+        result = {"line": s.line, "name": s.name, "ignored": s.ignored, "problem": s.problem, "changes": []}
+        results.append(result)
+        if s.problem:
+            continue
+        mon, species, problem = box_script.match(s.name, box, lines, families, taken)
+        if mon is None:
+            # A Pokemon an earlier set already updated? Say so rather than "not in your box".
+            again, _, _ = box_script.match(s.name, box, lines, families)
+            result["problem"] = (f"Line {taken[again['id']]} already updates this {again['species']} "
+                                 f"({again['route']}).") if again and again["id"] in taken else problem
+            continue
+        taken[mon["id"]] = s.line
+        result.update(catch_id=mon["id"], species=mon["species"], route=mon["route"], becomes=species)
+        try:
+            fields = parse_details(conn, {**s.details, "species": species})
+        except ApiError as err:
+            result["problem"] = f"{s.name}: {err.message}"
+            continue
+        result["changes"] = detail_changes(mon, fields)
+        if result["changes"]:
+            updates[mon["id"]] = fields
+
+    catches = []
+    if apply and updates:
+        with conn:
+            for catch_id, fields in updates.items():
+                update_row(conn, "catches", catch_id, fields)
+        catches = [catch_json(r) for r in conn.execute(
+            f"SELECT * FROM catches WHERE id IN ({','.join('?' * len(updates))})", tuple(updates))]
+    return jsonify(sets=results, applied=bool(apply and updates), catches=catches)
+
+
+def detail_changes(row, fields):
+    """What saving `fields` (columns, from parse_details) would change on `row`, for the preview."""
+    changes = [{"field": key, "from": row[key], "to": fields[key]}
+               for key in ("species", "level", "ability", "nature", "item")
+               if key in fields and fields[key] != row[key]]
+    if "move1" in fields:
+        old, new = ([source[f"move{i}"] for i in range(1, 5)] for source in (row, fields))
+        if old != new:
+            changes.append({"field": "moves", "from": old, "to": new})
+    if any(f"iv_{stat}" in fields for stat in db.IV_STATS):
+        old = {stat: row[f"iv_{stat}"] for stat in db.IV_STATS}
+        new = {stat: fields.get(f"iv_{stat}", old[stat]) for stat in db.IV_STATS}
+        if old != new:
+            changes.append({"field": "ivs", "from": old, "to": new})
+    return changes
 
 
 # ---------------------------------------------------------------------------

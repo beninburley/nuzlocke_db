@@ -14,7 +14,12 @@ for anyone who makes an account:
 - **Encounters**: record what you caught on each route. *+ Add catch* only
   offers Pokemon from that route's encounter table (from the sheet's
   *Encounters* tab). Picking one opens a details popup; fill it in, or *Skip*
-  and do it later on the Box tab.
+  and do it later on the Box tab. **Dupes clause**: a Pokemon in the same
+  family as one you've already caught (its evolutionary line, or a family in
+  the sheet's dupes table, which includes regional forms) is greyed out, and
+  the odds of the rest are scaled up to add to 100%. You can still record a
+  dupe after confirming. Routes you haven't caught on yet show *Dupes
+  contained* if their pool has any.
 - **Box**: every Pokemon caught this attempt, on the right. The selected one's
   details are on the left: level, status (OK / Burn / Sleep / Fainted),
   nature, ability, held item, four moves and IVs. Ability, item and move boxes
@@ -22,6 +27,15 @@ for anyone who makes an account:
   evolutionary line (from PokeAPI) and evolves or devolves in one click.
   Fainted Pokemon are greyed out with a "Fainted" stamp, here and on the
   Trainer Battles tab.
+- **Update - Script** (beside *Box* on the Box and Trainer Battles tabs):
+  paste Showdown-style sets to update box Pokemon in bulk. Each set updates
+  the Pokemon of that species or its evolutionary line, evolving it if the
+  set names another stage. It never adds Pokemon. The popup previews every
+  change as you type, and *Update* saves them. Anything a set leaves out stays
+  as it is. A moves list replaces all four moves, and an IVs line sets all six:
+  stats it doesn't list are 31, as in Showdown. EVs, Tera Type and the like
+  are ignored. Nicknames, gender, and Showdown's form names (`Linoone-Galar`
+  for the sheet's `Linoone-G`) are understood.
 - **Trainer Battles**: the slide-out list has one dropdown per split, e.g.
   "Route 104 Aqua Grunt Split". Each lists that split's trainers in game order,
   ending with the level-cap boss. You can also type in the filter box. Pick
@@ -228,6 +242,7 @@ Rules are checked in the API and again by SQLite triggers and constraints:
 ```
 app.py                 Flask app: JSON API, pages, logins
 accounts.py            Password hashing, username/password rules, rate limits, cookie key
+box_script.py          Reading Showdown-style sets and matching them to box Pokemon
 db.py                  SQLite connection, schema setup, migrations, game-data sync
 schema.sql             Tables and integrity triggers
 data/game_data.json    Extracted game data
@@ -251,12 +266,13 @@ account's data only. Changes (anything but GET) need an `X-Requested-With` heade
 | GET | `/api/me` | the logged-in user `{username, role, created_at, attempts}`, or `null` |
 | POST | `/api/me/password` | `{current_password, new_password}`; logs out the account's other sessions |
 | POST | `/api/me/logout-everywhere` | ends every session of the account |
-| GET | `/api/game` | routes (with encounter options), battles, sprites, evolution lines, natures, statuses, suggestions |
+| GET | `/api/game` | routes (with encounter options), battles, sprites, evolution lines, dupes-clause families, natures, statuses, suggestions |
 | GET | `/api/battles/<id>` | a battle's trainers and their teams |
 | GET / POST | `/api/attempts` | `{number?}` |
 | GET / PATCH / DELETE | `/api/attempts/<id>` | `{number?, notes?}` |
 | PUT | `/api/attempts/<id>/catches/<route_id>` | `{pokemon}` (null clears) |
 | PATCH | `/api/catches/<id>` | any of `{species, level, ability, nature, item, moves: [4], ivs: {hp, atk, def, spa, spd, spe}, status}` |
+| POST | `/api/attempts/<id>/box-script` | `{script, apply?}`: each set's box Pokemon and changes (or problem); with `apply: true`, saves them |
 | PUT | `/api/attempts/<id>/fights/<battle_id>` | `{members: [slot] x6, result: "won" or "lost" or null}`; each slot is `null`, `{"id": copy}` (keep) or `{"catch_id": n}` (new copy) |
 | PATCH | `/api/fight-members/<id>` | same fields as a catch; edits that battle's copy only |
 | PUT | `/api/fights/<id>/kos` | `{trainer: key or null, kos: [{member: copy id, enemy: slot, by: "player" or "enemy"}]}` replaces the fight's KOs |
@@ -270,7 +286,6 @@ were against, for battles with alternatives) and `kos`.
 - Tracking which trainers you've beaten or skipped (the *Trainers* tab's Status column)
 - KOs for past attempts (the old sheet's "Killed:" rows are only in each attempt's notes)
 - Failed or skipped encounters (a `-` in the old sheet)
-- Dupes-clause warnings (the family data is already in the DB)
 - Email (password resets happen from a console), deleting an account
 - Anything that depends on roles
 - UI/UX polish

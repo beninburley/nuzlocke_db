@@ -9,6 +9,7 @@ const state = {
   battles: [],           // [{id, name, location, level_cap, group_id, split, tags}] in game order
   sprites: {},           // species -> sprite url (pokeapi.co)
   evolutions: {},        // species -> its evolutionary line (species names)
+  families: {},          // species -> dupes-clause family id (from the sheet)
   natures: [],
   statuses: [],
   ivStats: [],           // ["hp", "atk", "def", "spa", "spd", "spe"]
@@ -172,13 +173,48 @@ function renderEncounters() {
   refreshAttemptLabel();
 }
 
+// --- dupes clause ------------------------------------------------------------------
+
+/** Whether two species count as the same Pokémon: same family in the sheet's dupes table (which
+ *  includes regional forms), or the same evolutionary line. */
+function sameFamily(a, b) {
+  if (a === b) return true;
+  const family = state.families[a];
+  if (family !== undefined && family === state.families[b]) return true;
+  return (state.evolutions[a] ?? []).includes(b) || (state.evolutions[b] ?? []).includes(a);
+}
+
+/** The box Pokémon caught on another route that `pokemon` would be a dupe of, or null. */
+function dupeOf(pokemon, route) {
+  for (const mon of state.catches.values()) {
+    if (mon.route_id !== route.id && (sameFamily(pokemon, mon.pokemon) || sameFamily(pokemon, mon.species))) return mon;
+  }
+  return null;
+}
+
+/** route's options that are dupes -> the box Pokémon each duplicates. */
+function routeDupes(route) {
+  const dupes = new Map();
+  for (const opt of route.options) {
+    const mon = dupes.has(opt.pokemon) ? null : dupeOf(opt.pokemon, route);
+    if (mon) dupes.set(opt.pokemon, mon);
+  }
+  return dupes;
+}
+
+const dupeText = (pokemon, mon) => `${pokemon} is a dupe of your ${mon.species} (${routeName(mon.route_id)})`;
+
 /** "+ Add catch", or the catch itself (click to change) with a remove button. */
 function catchCell(route) {
   const current = state.catches.get(route.id);
   if (!current) {
     const add = el("button", { type: "button", class: "add-catch" }, "+ Add catch");
     add.addEventListener("click", () => openCatchPicker(route));
-    return add;
+    const dupes = routeDupes(route);
+    if (!dupes.size) return add;
+    return el("div", { class: "catch-cell" }, add,
+      el("span", { class: "dupes-badge", title: [...dupes].map(([p, mon]) => dupeText(p, mon)).join("\n") },
+        "Dupes contained"));
   }
   const change = el("button", { type: "button", class: "catch-chip", title: `Change what you caught on ${route.name}` },
     sprite(current.species), el("span", { class: "mon-name" }, current.species),
@@ -190,17 +226,17 @@ function catchCell(route) {
   return el("div", { class: "catch-cell" }, change, remove);
 }
 
-function refreshCatchCell(route) {
-  $(`#encounters-body tr[data-route="${route.id}"] td:last-child`)?.replaceChildren(catchCell(route));
-}
-
 // --- catch picker (popup) ----------------------------------------------------------
 
 function openCatchPicker(route) {
   pickerRoute = route;
   const current = state.catches.get(route.id)?.pokemon;
+  const dupes = routeDupes(route);
   $("#picker-title").textContent = route.name;
-  $("#picker-sub").textContent = current ? `Caught: ${current}. Pick another to change it.` : "What did you catch here?";
+  $("#picker-sub").textContent = [
+    current ? `Caught: ${current}. Pick another to change it.` : "What did you catch here?",
+    dupes.size ? "Greyed-out Pokémon are dupes of ones you've caught; the odds leave them out." : "",
+  ].filter(Boolean).join(" ");
 
   // One grid per encounter method (Land, Fishing, Surf, ...), in the sheet's order.
   const methods = new Map();
@@ -208,28 +244,50 @@ function openCatchPicker(route) {
     if (!methods.has(opt.method)) methods.set(opt.method, []);
     methods.get(opt.method).push(opt);
   }
-  $("#picker-body").replaceChildren(...[...methods].map(([method, options]) =>
-    el("section", { class: "picker-section" },
+  $("#picker-body").replaceChildren(...[...methods].map(([method, options]) => {
+    const odds = oddsWithoutDupes(options, dupes);
+    return el("section", { class: "picker-section" },
       el("h3", {}, method),
-      el("div", { class: "picker-grid" }, ...options.map((opt) => pickerCard(route, opt, current))))));
+      el("div", { class: "picker-grid" }, ...options.map((opt) =>
+        pickerCard(route, opt, current, odds.get(opt), dupes.get(opt.pokemon)))));
+  }));
   $("#picker-remove").hidden = !current;
   $("#catch-picker").showModal();
 }
 
-function pickerCard(route, opt, current) {
+/** Each option's odds (percent) once dupes are left out: the others scaled up to add to 100%.
+ *  Without dupes, the sheet's own figures. */
+function oddsWithoutDupes(options, dupes) {
+  const odds = new Map();
+  const left = options.filter((o) => !dupes.has(o.pokemon) && o.rate);
+  const total = left.reduce((sum, o) => sum + o.rate, 0);
+  const rescale = options.some((o) => dupes.has(o.pokemon) && o.rate);
+  for (const opt of options) {
+    if (dupes.has(opt.pokemon) || !opt.rate) odds.set(opt, null);
+    else odds.set(opt, rescale ? (opt.rate / total) * 100 : opt.rate);
+  }
+  return odds;
+}
+
+const formatOdds = (percent) => `${Math.round(percent * 10) / 10}%`;
+
+function pickerCard(route, opt, current, odds, dupe) {
   // Gift and fossil slots have descriptive "levels" ("Fossil", "Badge 2") instead of numbers.
   const levels = opt.levels ? opt.levels.split(",").join(", ") : "";
   const detail = /[a-z]/i.test(levels) ? levels : levels && `Lv ${levels}`;
+  const rescaled = odds !== null && opt.rate && Math.abs(odds - opt.rate) > 0.01;
   const card = el("button", {
     type: "button",
-    class: "pick-card",
+    class: `pick-card${dupe ? " dupe" : ""}`,
     "aria-pressed": String(opt.pokemon === current),
+    title: dupe ? `${dupeText(opt.pokemon, dupe)}.` : rescaled ? `${formatOdds(opt.rate)} with dupes included` : undefined,
   },
     sprite(opt.pokemon),
     el("span", { class: "mon-name" }, opt.pokemon),
-    el("span", { class: "pick-odds" }, opt.rate ? `${opt.rate}%` : "—"),
-    el("span", { class: "mon-route" }, detail));
+    el("span", { class: "pick-odds" }, dupe ? "Dupe" : odds !== null ? formatOdds(odds) : "—"),
+    el("span", { class: "mon-route" }, dupe ? `of ${dupe.species}` : detail));
   card.addEventListener("click", () => {
+    if (dupe && !confirm(`${dupeText(opt.pokemon, dupe)}. Record it anyway?`)) return;
     $("#catch-picker").close();
     pickCatch(route, opt.pokemon);
   });
@@ -277,8 +335,7 @@ async function saveCatch(route, pokemon) {
       const data = await api("GET", `/attempts/${attemptId}`);
       state.fights = new Map(data.fights.map((f) => [f.battle_id, f]));
     }
-    refreshCatchCell(route);
-    refreshAttemptLabel();
+    renderEncounters();  // every route: dupes depend on the whole box
     renderBox();
     renderFightView();
     return saved;
@@ -293,7 +350,7 @@ async function saveCatchDetails(catchId, fields) {
   const { catch: saved } = await save(() => api("PATCH", `/catches/${catchId}`, fields));
   if (state.attempt?.id !== attemptId) return saved;
   state.catches.set(saved.route_id, saved);
-  refreshCatchCell(state.routes.find((r) => r.id === saved.route_id));
+  renderEncounters();
   renderBoxGrid();
   // Refresh the Box tab's editor too, unless it's holding unsaved edits.
   if (saved.id === state.boxId && !boxEditor?.isDirty()) renderBoxDetail();
@@ -516,6 +573,100 @@ function renderBoxDetail() {
     },
   });
   $("#box-detail").replaceChildren(boxEditor.node);
+}
+
+// ---------------------------------------------------------------------------
+// "Update - Script": update box Pokemon from Showdown-style sets. The server
+// matches each set to a box Pokemon; the popup previews the changes as you
+// type, and Apply saves them.
+// ---------------------------------------------------------------------------
+
+let scriptTimer = null;
+let scriptRuns = 0;  // to ignore a preview overtaken by newer typing
+
+function openScriptDialog() {
+  $("#script-dialog").showModal();
+  previewScript();
+}
+
+function scheduleScriptPreview() {
+  clearTimeout(scriptTimer);
+  $("#script-apply").disabled = true;
+  scriptTimer = setTimeout(previewScript, 400);
+}
+
+async function previewScript(applied = 0) {
+  clearTimeout(scriptTimer);
+  const run = ++scriptRuns;
+  const script = $("#script-input").value;
+  if (!script.trim()) return renderScriptPreview([], applied);
+  try {
+    const { sets } = await api("POST", `/attempts/${state.attempt.id}/box-script`, { script, apply: false });
+    if (run === scriptRuns) renderScriptPreview(sets, applied);
+  } catch (err) {
+    if (run === scriptRuns) $("#script-summary").textContent = `Error: ${err.message}`;
+  }
+}
+
+async function applyScript() {
+  const attemptId = state.attempt.id;
+  $("#script-apply").disabled = true;
+  try {
+    const { catches } = await save(() =>
+      api("POST", `/attempts/${attemptId}/box-script`, { script: $("#script-input").value, apply: true }));
+    if (state.attempt?.id !== attemptId) return;
+    for (const mon of catches) state.catches.set(mon.route_id, mon);
+    renderEncounters();
+    renderBoxGrid();
+    if (!boxEditor?.isDirty()) renderBoxDetail();
+    renderFightView();
+    await previewScript(catches.length);  // the sets just applied now show as up to date
+  } catch {
+    await previewScript();  // save() already showed the error
+  }
+}
+
+function renderScriptPreview(sets, applied) {
+  const ready = sets.filter((s) => !s.problem && s.changes.length).length;
+  const unusable = sets.filter((s) => s.problem).length;
+  $("#script-preview").replaceChildren(...sets.map(scriptSetCard));
+  $("#script-summary").textContent = [
+    applied && `Updated ${applied} Pokémon.`,
+    ready ? `${ready} to update` : sets.length && !applied && "Nothing to update",
+    unusable && `${unusable} set${unusable > 1 ? "s" : ""} can't be used`,
+  ].filter(Boolean).join(" · ");
+  $("#script-apply").disabled = !ready;
+  $("#script-apply").textContent = ready ? `Update ${ready} Pokémon` : "Apply";
+}
+
+const SCRIPT_FIELDS = { species: "Evolves", level: "Level", ability: "Ability", nature: "Nature", item: "Held item",
+  moves: "Moves", ivs: "IVs" };
+
+function scriptValue(field, value) {
+  if (field === "moves") return value.filter(Boolean).join(", ") || "none";
+  if (field === "ivs") return state.ivStats.map((stat) => `${IV_LABELS[stat]} ${value[stat] ?? "?"}`).join(" · ");
+  return value ?? "—";
+}
+
+/** One set in the preview: which box Pokémon it updates and how, or why it can't. */
+function scriptSetCard(set) {
+  const target = set.catch_id ? `your ${set.species} (${set.route})` : "";
+  const body = set.problem
+    ? el("p", { class: "form-error" }, set.problem)
+    : set.changes.length
+      ? el("ul", { class: "script-changes" }, ...set.changes.map((c) => el("li", {},
+        el("span", { class: "field-label" }, SCRIPT_FIELDS[c.field]),
+        el("span", { class: "script-from" }, scriptValue(c.field, c.from)), " → ",
+        el("strong", {}, scriptValue(c.field, c.to)))))
+      : el("p", { class: "muted" }, "Already up to date.");
+  return el("article", { class: `script-set ${set.problem ? "problem" : set.changes.length ? "ready" : "same"}` },
+    el("div", { class: "script-set-head" },
+      sprite(set.becomes ?? set.species ?? set.name),
+      el("div", {},
+        el("strong", {}, set.name || "?"), " ",
+        el("span", { class: "muted" }, [`line ${set.line}`, target].filter(Boolean).join(" · ")))),
+    body,
+    set.ignored.length ? el("p", { class: "script-ignored muted" }, `Ignored: ${set.ignored.join(", ")}`) : "");
 }
 
 // ---------------------------------------------------------------------------
@@ -1450,6 +1601,7 @@ async function boot() {
     state.battles = game.battles;
     state.sprites = game.sprites;
     state.evolutions = game.evolutions;
+    state.families = game.families;
     state.natures = game.natures;
     state.statuses = game.statuses;
     state.ivStats = game.iv_stats;
@@ -1488,6 +1640,9 @@ async function boot() {
     makeDropTarget($("#box-panel"), (drag) => setSlot(drag.fromSlot, null),
       (drag) => drag.fromSlot !== null);
     setupKoBoard();
+    for (const btn of document.querySelectorAll(".script-open")) btn.addEventListener("click", openScriptDialog);
+    $("#script-input").addEventListener("input", scheduleScriptPreview);
+    $("#script-apply").addEventListener("click", () => applyScript());
 
     $("#attempt-select").addEventListener("change", (e) => selectAttempt(Number(e.target.value)));
     $("#new-attempt").addEventListener("click", () => createAttempt().catch(() => {}));
