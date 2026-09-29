@@ -61,7 +61,10 @@ for anyone who makes an account:
   (green arrow), or from an enemy's dot to one of yours for a KO by the enemy
   (red arrow). Clicking one dot and then the other works too, and clicking an
   arrow removes it. Each Pokemon can only be knocked out once per fight, so
-  a new arrow into it replaces the old one. For the rival, pick which starter
+  a new arrow into it replaces the old one. A red arrow marks your Pokemon
+  Fainted, both that fight's copy and the Pokemon in your box. Removing the
+  arrow puts them back to OK (the box Pokemon stays Fainted while another
+  fight still has a red arrow for it). For the rival, pick which starter
   variant you fought.
 - **KO Analytics**: a bar chart of which Pokemon scored the most KOs this
   attempt, with the battles they scored them in.
@@ -275,7 +278,7 @@ account's data only. Changes (anything but GET) need an `X-Requested-With` heade
 | POST | `/api/attempts/<id>/box-script` | `{script, apply?}`: each set's box Pokemon and changes (or problem); with `apply: true`, saves them |
 | PUT | `/api/attempts/<id>/fights/<battle_id>` | `{members: [slot] x6, result: "won" or "lost" or null}`; each slot is `null`, `{"id": copy}` (keep) or `{"catch_id": n}` (new copy) |
 | PATCH | `/api/fight-members/<id>` | same fields as a catch; edits that battle's copy only |
-| PUT | `/api/fights/<id>/kos` | `{trainer: key or null, kos: [{member: copy id, enemy: slot, by: "player" or "enemy"}]}` replaces the fight's KOs |
+| PUT | `/api/fights/<id>/kos` | `{trainer: key or null, kos: [{member: copy id, enemy: slot, by: "player" or "enemy"}]}` replaces the fight's KOs; returns the fight and any box Pokemon whose status changed (red arrows faint them) |
 
 Fights (in `GET /api/attempts/<id>`) include `trainer` (the enemy team the KOs
 were against, for battles with alternatives) and `kos`.

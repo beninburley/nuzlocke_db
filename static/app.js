@@ -1435,8 +1435,39 @@ function saveKos() {
   if (fight?.id === fightId) Object.assign(fight, { trainer: body.trainer, kos: body.kos });
   renderKoTracker();
   renderFightView();
-  const run = saveChain.then(() => save(() => api("PUT", `/fights/${fightId}/kos`, body)));
+  const run = saveChain.then(async () => {
+    const result = await save(() => api("PUT", `/fights/${fightId}/kos`, body));
+    applyAutoFaint(attemptId, battleId, fightId, result);
+  });
   saveChain = run.catch(() => resync(attemptId));
+}
+
+/**
+ * A red arrow means the enemy knocked that Pokémon out, so the server marks
+ * it Fainted: this fight's copy and the box Pokémon (removing the arrow undoes
+ * it). Show those status changes. The arrows themselves are already shown.
+ */
+function applyAutoFaint(attemptId, battleId, fightId, { fight, catches }) {
+  if (state.attempt?.id !== attemptId) return;
+  let changed = catches.length > 0;
+  const local = state.fights.get(battleId);
+  if (local?.id === fightId) {
+    for (const saved of fight.members) {
+      // Update in place: the KO tracker holds these same objects.
+      const member = local.members.find((m) => m.id === saved.id);
+      if (member && member.status !== saved.status) {
+        member.status = saved.status;
+        changed = true;
+      }
+    }
+  }
+  if (!changed) return;
+  for (const mon of catches) state.catches.set(mon.route_id, mon);
+  renderEncounters();
+  renderBoxGrid();
+  if (!boxEditor?.isDirty()) renderBoxDetail();
+  renderFightView();
+  if (koSession?.fightId === fightId && !koSession.drag && $("#ko-dialog").open) renderKoTracker();
 }
 
 function koDotAt(x, y, fromSide) {

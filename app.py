@@ -804,12 +804,49 @@ def set_kos(fight_id):
     if len(set(knocked_out)) != len(knocked_out):
         raise ApiError("a Pokemon can only be knocked out once per fight")
 
+    before = {r[0] for r in conn.execute(
+        "SELECT member_id FROM fight_kos WHERE fight_id = ? AND ko_by = 'enemy'", (fight_id,))}
+    after = {member for member, _, by in rows if by == "enemy"}
     with conn:
         conn.execute("UPDATE fights SET trainer_key = ? WHERE id = ?", (trainer_key, fight_id))
         conn.execute("DELETE FROM fight_kos WHERE fight_id = ?", (fight_id,))
         conn.executemany("INSERT INTO fight_kos (fight_id, member_id, enemy_slot, ko_by) VALUES (?, ?, ?, ?)",
                          [(fight_id, *row) for row in rows])
-    return jsonify(fight=fight_json(conn, fight_id))
+        changed = auto_faint(conn, fainted=after - before, revived=before - after)
+    catches = [catch_json(r) for r in conn.execute(
+        f"SELECT * FROM catches WHERE id IN ({','.join('?' * len(changed))})", tuple(changed))] if changed else []
+    return jsonify(fight=fight_json(conn, fight_id), catches=catches)
+
+
+def auto_faint(conn, fainted, revived):
+    """Keep statuses in step with red arrows (KOs by the enemy).
+
+    A team member knocked out by the enemy has fainted: its copy in this fight
+    and its box Pokemon become Fainted. Taking the arrow away undoes that (back
+    to OK), except that the box Pokemon stays Fainted while any fight still
+    has a red arrow for it. Returns the ids of the box Pokemon that changed.
+    """
+    changed = set()
+    for member_id, status in [(m, "Fainted") for m in fainted] + [(m, "OK") for m in revived]:
+        conn.execute("UPDATE fight_members SET status = ? WHERE id = ? AND (? = 'Fainted' OR status = 'Fainted')",
+                     (status, member_id, status))
+        catch_id = conn.execute("SELECT catch_id FROM fight_members WHERE id = ?", (member_id,)).fetchone()[0]
+        if catch_id is None:  # the box Pokemon was removed; only the copy is left
+            continue
+        if status == "OK":
+            still_fainted = conn.execute(
+                "SELECT 1 FROM fight_kos k JOIN fight_members m ON m.id = k.member_id "
+                "WHERE m.catch_id = ? AND k.ko_by = 'enemy'", (catch_id,)).fetchone()
+            if still_fainted:
+                continue
+            updated = conn.execute("UPDATE catches SET status = 'OK' WHERE id = ? AND status = 'Fainted'",
+                                   (catch_id,)).rowcount
+        else:
+            updated = conn.execute("UPDATE catches SET status = 'Fainted' WHERE id = ? AND status <> 'Fainted'",
+                                   (catch_id,)).rowcount
+        if updated:
+            changed.add(catch_id)
+    return changed
 
 
 @app.patch("/api/fight-members/<int:member_id>")
