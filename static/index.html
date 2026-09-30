@@ -34,6 +34,7 @@
       <button type="button" role="tab" data-tab="box">Box</button>
       <button type="button" role="tab" data-tab="fights">Trainer Battles</button>
       <button type="button" role="tab" data-tab="kos">KO Analytics</button>
+      <button type="button" role="tab" data-tab="brought">Battles Brought</button>
       <button type="button" role="tab" data-tab="notes">Notes</button>
     </nav>
 
@@ -119,12 +120,20 @@
     </section>
 
     <section id="tab-kos" class="panel" hidden>
-      <h2 class="ko-stats-head">Most KOs this attempt <span id="ko-stats-total" class="muted"></span></h2>
+      <h2 class="chart-head">Most KOs this attempt <span id="ko-stats-total" class="muted"></span></h2>
       <p id="ko-stats-empty" class="hint" hidden>
         No KOs recorded yet. Mark a battle <strong>Won</strong> or <strong>Lost</strong> to open the KO tracker,
         or use the KO button next to a finished battle.
       </p>
-      <ol id="ko-chart" class="ko-chart"></ol>
+      <ol id="ko-chart" class="bar-chart kos" aria-label="KOs per Pokémon"></ol>
+    </section>
+
+    <section id="tab-brought" class="panel" hidden>
+      <h2 class="chart-head">Battles each Pok&eacute;mon was brought to <span id="brought-total" class="muted"></span></h2>
+      <p id="brought-empty" class="hint" hidden>
+        No teams recorded yet. Add Pok&eacute;mon to a battle's team on the <strong>Trainer Battles</strong> tab.
+      </p>
+      <ol id="brought-chart" class="bar-chart brought" aria-label="Battles brought to, per Pokémon"></ol>
     </section>
 
     <section id="tab-notes" class="panel" hidden>

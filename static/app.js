@@ -758,6 +758,7 @@ function renderFightView() {
   renderFocus();
   renderEnemy();
   renderKoStats();
+  renderBattleStats();
 }
 
 // --- battle list (drawer) ------------------------------------------------------
@@ -1540,52 +1541,107 @@ function setupKoBoard() {
 }
 
 // ---------------------------------------------------------------------------
-// KO Analytics tab: KOs per Pokemon this attempt, as a horizontal bar chart
+// KO Analytics and Battles Brought tabs: a horizontal bar per box Pokemon
 // ---------------------------------------------------------------------------
 
+/** The tally row for a battle copy's box Pokémon (or, if that's gone, its species), made on first use. */
+function tallyRow(rows, member) {
+  const mon = member.catch_id === null ? null : catchById(member.catch_id);
+  const key = mon ? `box:${mon.id}` : `gone:${member.species}`;
+  if (!rows.has(key)) rows.set(key, newTally(mon, member.species));
+  return rows.get(key);
+}
+
+function newTally(mon, species) {
+  const order = mon ? state.routes.findIndex((r) => r.id === mon.route_id) : Infinity;
+  return { mon, species: mon?.species ?? species, value: 0, battles: new Map(), results: { won: 0, lost: 0, none: 0 }, order };
+}
+
+/** Most first; ties in route order, Pokémon no longer in the box last. */
+const byValue = (a, b) => b.value - a.value || a.order - b.order;
+
+/** "Leader Brawly ×2", "Route 104 Aqua Grunt", ... */
+const battleNames = (battles) => [...battles].map(([name, n]) => (n > 1 ? `${name} ×${n}` : name));
+
+/**
+ * One row per Pokémon: rank, sprite and name, then a bar with its value at the tip
+ * and a line of detail under it. Hovering a row shows its `title`.
+ */
+function renderBarChart(list, rows) {
+  const most = Math.max(1, ...rows.map((row) => row.value));
+  list.replaceChildren(...rows.map((row, i) => el("li", { class: "bar-chart-row", title: row.title },
+    el("span", { class: "bar-chart-rank" }, String(i + 1)),
+    el("span", { class: "bar-chart-mon" },
+      monSprite(row.species, row.mon?.status),
+      el("span", { class: "bar-chart-name" },
+        el("span", { class: "mon-name" }, row.species),
+        el("span", { class: "mon-route" }, row.mon ? routeName(row.mon.route_id) : "no longer in box"))),
+    el("span", { class: "bar-chart-track" },
+      el("span", { class: "bar-chart-bar-line" },
+        el("span", { class: `bar-chart-bar${row.value ? "" : " zero"}`, style: `--share: ${row.value / most}` }),
+        el("strong", { class: "bar-chart-count" }, String(row.value))),
+      el("span", { class: "bar-chart-detail" }, row.detail)))));
+}
+
+/** KO Analytics: KOs scored (green arrows) per Pokémon this attempt. */
 function renderKoStats() {
   if (!state.attempt) return;
-  const order = new Map(state.routes.map((r, i) => [r.id, i]));
-  const rows = new Map();  // box Pokemon (or a copy whose box Pokemon is gone) -> its KOs
+  const rows = new Map();
   for (const fight of state.fights.values()) {
-    const battle = battleById(fight.battle_id);
+    const name = battleById(fight.battle_id)?.name ?? "Unknown battle";
     for (const k of fight.kos ?? []) {
-      if (k.by !== "player") continue;
-      const member = fight.members.find((m) => m.id === k.member);
+      const member = k.by === "player" && fight.members.find((m) => m.id === k.member);
       if (!member) continue;
-      const mon = member.catch_id === null ? null : catchById(member.catch_id);
-      const key = mon ? `box:${mon.id}` : `gone:${member.species}`;
-      if (!rows.has(key)) {
-        rows.set(key, { mon, species: mon?.species ?? member.species, kos: 0, battles: new Map(),
-          order: mon ? order.get(mon.route_id) : Infinity });
-      }
-      const row = rows.get(key);
-      row.kos++;
-      const name = battle?.name ?? "Unknown battle";
+      const row = tallyRow(rows, member);
+      row.value++;
       row.battles.set(name, (row.battles.get(name) ?? 0) + 1);
     }
   }
-  const ranked = [...rows.values()].sort((a, b) => b.kos - a.kos || a.order - b.order);
-  const total = ranked.reduce((sum, row) => sum + row.kos, 0);
-  const most = ranked[0]?.kos ?? 1;
+  const ranked = [...rows.values()].sort(byValue);
+  const total = ranked.reduce((sum, row) => sum + row.value, 0);
   $("#ko-stats-total").textContent = total
     ? `(${total} KO${total === 1 ? "" : "s"} by ${ranked.length} Pokémon)` : "";
   $("#ko-stats-empty").hidden = ranked.length > 0;
-  $("#ko-chart").replaceChildren(...ranked.map((row, i) => {
-    const battles = [...row.battles].map(([name, n]) => (n > 1 ? `${name} ×${n}` : name));
-    return el("li", { class: "ko-chart-row", title: `${row.species}: ${battles.join(", ")}` },
-      el("span", { class: "ko-chart-rank" }, String(i + 1)),
-      el("span", { class: "ko-chart-mon" },
-        monSprite(row.species, row.mon?.status),
-        el("span", { class: "ko-chart-name" },
-          el("span", { class: "mon-name" }, row.species),
-          el("span", { class: "mon-route" }, row.mon ? routeName(row.mon.route_id) : "no longer in box"))),
-      el("span", { class: "ko-chart-track" },
-        el("span", { class: "ko-chart-bar-line" },
-          el("span", { class: "ko-chart-bar", style: `--share: ${row.kos / most}` }),
-          el("strong", { class: "ko-chart-count" }, String(row.kos))),
-        el("span", { class: "ko-chart-battles" }, battles.join(" · "))));
-  }));
+  renderBarChart($("#ko-chart"), ranked.map((row) => ({
+    ...row,
+    detail: battleNames(row.battles).join(" · "),
+    title: `${row.species}: ${battleNames(row.battles).join(", ")}`,
+  })));
+}
+
+/** Battles Brought: how many battles each box Pokémon was on the team for, this attempt. */
+function renderBattleStats() {
+  if (!state.attempt) return;
+  // Every box Pokémon gets a row, so the ones never brought show too.
+  const rows = new Map(box().map((mon) => [`box:${mon.id}`, newTally(mon, mon.species)]));
+  let battles = 0;
+  for (const fight of state.fights.values()) {
+    if (!fight.members.length) continue;
+    battles++;
+    const name = battleById(fight.battle_id)?.name ?? "Unknown battle";
+    for (const member of fight.members) {
+      const row = tallyRow(rows, member);
+      row.value++;
+      row.results[fight.result ?? "none"]++;
+      row.battles.set(name, 1);
+    }
+  }
+  const ranked = [...rows.values()].sort(byValue);
+  const brought = ranked.filter((row) => row.value).length;
+  $("#brought-total").textContent = battles
+    ? `(${battles} battle${battles === 1 ? "" : "s"} with a team · ${brought} of ${ranked.length} Pokémon brought)` : "";
+  $("#brought-empty").hidden = battles > 0;
+  $("#brought-chart").hidden = !battles;
+  renderBarChart($("#brought-chart"), battles ? ranked.map((row) => {
+    const { won, lost, none } = row.results;
+    return {
+      ...row,
+      detail: row.value
+        ? [won && `${won} won`, lost && `${lost} lost`, none && `${none} not marked`].filter(Boolean).join(" · ")
+        : "Not brought to a battle yet",
+      title: row.value ? `${row.species}: ${battleNames(row.battles).join(", ")}` : undefined,
+    };
+  }) : []);
 }
 
 // ---------------------------------------------------------------------------
@@ -1644,7 +1700,7 @@ async function boot() {
     for (const btn of document.querySelectorAll(".tabs button")) {
       btn.addEventListener("click", () => showTab(btn.dataset.tab));
     }
-    showTab(["encounters", "box", "fights", "kos", "notes"].includes(storageGet("tab")) ? storageGet("tab") : "encounters");
+    showTab(["encounters", "box", "fights", "kos", "brought", "notes"].includes(storageGet("tab")) ? storageGet("tab") : "encounters");
 
     $("#drawer-open").addEventListener("click", () =>
       setDrawer($("#tab-fights").classList.contains("drawer-closed")));
