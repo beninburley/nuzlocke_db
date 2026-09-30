@@ -68,6 +68,9 @@ for anyone who makes an account:
   variant you fought.
 - **KO Analytics**: a bar chart of which Pokemon scored the most KOs this
   attempt, with the battles they scored them in.
+- **Battles Brought**: a bar chart of how many battles each box Pokemon was
+  on the team for this attempt, with how many were won, lost or not marked.
+  Pokemon never brought are listed too, with 0.
 - **Notes**: free text per attempt.
 
 Everything saves automatically on change.
