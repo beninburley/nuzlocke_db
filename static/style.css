@@ -732,6 +732,12 @@ button.primary:disabled { opacity: 0.6; }
 .ko-head.player path { fill: var(--ok); }
 .ko-head.enemy path { fill: var(--bad); }
 
+/* Read-only boards (Other Trainer's Solutions): nothing to drag or remove */
+.ko-dot.static { cursor: default; }
+.ko-dot.static::before { transition: none; }
+.ko-arrow.static { cursor: default; }
+.ko-arrow.static:hover .line { stroke-width: 3; stroke-dasharray: none; }
+
 .ko-foot { display: flex; align-items: center; gap: 8px; text-align: left; }
 .ko-foot #ko-summary { flex: 1; font-size: 13px; }
 .ko-armed-hint { color: var(--accent); font-weight: 600; }
@@ -792,6 +798,59 @@ button.primary:disabled { opacity: 0.6; }
 @media (max-width: 600px) {
   .bar-chart-row { grid-template-columns: 18px minmax(0, 1fr); row-gap: 2px; }
   .bar-chart-track { grid-column: 2; }
+}
+
+/* ---------------------------------------------------------------------------
+   Trainer Battles: "See Other Trainer's Solutions" (in place of team + box)
+   --------------------------------------------------------------------------- */
+
+.focus-nav { display: flex; flex-direction: column; align-items: stretch; gap: 6px; }
+#solutions-toggle { font-size: 12px; }
+#solutions-toggle[aria-pressed="true"] { border-color: var(--accent); background: var(--filled); }
+.solutions {
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+  margin-top: 20px;
+}
+.solutions h3 { margin: 0 0 8px; }
+.solutions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 640px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+.solution-item {
+  display: grid;
+  grid-template-columns: 16px 1fr;
+  gap: 2px 6px;
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: none;
+  text-align: left;
+}
+.solution-item:hover { background: var(--row-alt); }
+.solution-item[aria-current="true"] { border-color: var(--accent); background: var(--filled); }
+.solution-name { font-size: 13px; font-weight: 600; }
+.solution-team { grid-column: 2; display: flex; flex-wrap: wrap; }
+.solution-team .sprite { width: 32px; height: 32px; }
+.solution-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.solution-title { flex: 1; min-width: 0; text-align: center; }
+.solution-title h3 { margin: 0; }
+.solution-title span { font-size: 12px; }
+.solution-kos { margin: 6px 0 18px; font-size: 13px; }
+.solutions-chart-head { margin-top: 4px; }
+
+@container (max-width: 760px) {
+  .solutions { grid-template-columns: 1fr; }
+  .solutions-list { max-height: 260px; }
 }
 
 /* ---------------------------------------------------------------------------

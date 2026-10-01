@@ -66,6 +66,14 @@ for anyone who makes an account:
   arrow puts them back to OK (the box Pokemon stays Fainted while another
   fight still has a red arrow for it). For the rival, pick which starter
   variant you fought.
+- **See Other Trainer's Solutions** (under *Fights* on Trainer Battles):
+  swaps your team and box for the teams other attempts brought to the
+  selected battle. That's your own earlier attempts and other trainers'
+  (anonymous: just "Another trainer's attempt #N"). Wins come first, then
+  unmarked fights, then losses. Pick one, or step through with ‹ ›, to see
+  its team and KOs as a read-only KO board; hover a Pokemon for its set.
+  Below, a bar chart shows how many of those teams brought each Pokemon.
+  The button switches back to your team.
 - **KO Analytics**: a bar chart of which Pokemon scored the most KOs this
   attempt, with the battles they scored them in.
 - **Battles Brought**: a bar chart of how many battles each box Pokemon was
@@ -229,8 +237,9 @@ owner.
 
 Rules are checked in the API and again by SQLite triggers and constraints:
 
-- every attempt belongs to one account, and each account sees and changes only its own attempts
-  (anyone else's show up as "not found"); attempt numbers are unique per account
+- every attempt belongs to one account, and each account changes only its own attempts (anyone
+  else's show up as "not found"); attempt numbers are unique per account. The one thing shared
+  is battle teams and KOs in *See Other Trainer's Solutions*, without the account they came from
 - usernames are 3-30 letters, digits, dots, dashes or underscores, unique ignoring case;
   passwords are 8-128 characters
 
@@ -274,6 +283,7 @@ account's data only. Changes (anything but GET) need an `X-Requested-With` heade
 | POST | `/api/me/logout-everywhere` | ends every session of the account |
 | GET | `/api/game` | routes (with encounter options), battles, sprites, evolution lines, dupes-clause families, natures, statuses, suggestions |
 | GET | `/api/battles/<id>` | a battle's trainers and their teams |
+| GET | `/api/battles/<id>/solutions?exclude=<attempt id>` | every other attempt's team and KOs for that battle, yours (`mine`) and other trainers' (anonymous; members by slot) |
 | GET / POST | `/api/attempts` | `{number?}` |
 | GET / PATCH / DELETE | `/api/attempts/<id>` | `{number?, notes?}` |
 | PUT | `/api/attempts/<id>/catches/<route_id>` | `{pokemon}` (null clears) |

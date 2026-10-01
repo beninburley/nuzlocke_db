@@ -349,6 +349,50 @@ def battle_detail(battle_id):
     return jsonify(battle=dict(battle), trainers=trainers)
 
 
+RESULT_ORDER = {"won": 0, None: 1, "lost": 2}
+
+
+@app.get("/api/battles/<int:battle_id>/solutions")
+def battle_solutions(battle_id):
+    """Other attempts' teams for a battle ("See Other Trainer's Solutions").
+
+    Every attempt with a team recorded for this battle, the logged-in user's
+    own and other trainers', except ?exclude=<attempt id> (the one being
+    played). Other trainers stay anonymous: only their attempt number shows,
+    and team members are identified by slot, never by internal id. Wins come
+    first, then unmarked fights, then losses; within those, your own first,
+    newest first.
+    """
+    conn = get_db()
+    if conn.execute("SELECT 1 FROM battles WHERE id = ?", (battle_id,)).fetchone() is None:
+        raise ApiError("battle not found", 404)
+    exclude = request.args.get("exclude", type=int)
+    fights = conn.execute(
+        "SELECT f.id, f.result, f.trainer_key, a.number, a.user_id = ? AS mine FROM fights f "
+        "JOIN attempts a ON a.id = f.attempt_id "
+        "WHERE f.battle_id = ? AND f.attempt_id IS NOT ? "
+        "AND EXISTS (SELECT 1 FROM fight_members m WHERE m.fight_id = f.id)",
+        (user_id(), battle_id, exclude)).fetchall()
+    fights.sort(key=lambda f: (RESULT_ORDER[f["result"]], not f["mine"], -f["id"]))
+    ids = [f["id"] for f in fights]
+    members, kos = {}, {}
+    for chunk in (ids[i:i + 500] for i in range(0, len(ids), 500)):  # SQLite's parameter limit
+        marks = ",".join("?" * len(chunk))
+        for m in conn.execute(f"SELECT * FROM fight_members WHERE fight_id IN ({marks}) ORDER BY slot", chunk):
+            members.setdefault(m["fight_id"], []).append({
+                "slot": m["slot"], "species": m["species"], "level": m["level"], "ability": m["ability"],
+                "nature": m["nature"], "item": m["item"], "moves": [m[f"move{i}"] for i in range(1, 5)],
+            })
+        for k in conn.execute(
+            f"SELECT k.fight_id, m.slot, k.enemy_slot, k.ko_by FROM fight_kos k "
+            f"JOIN fight_members m ON m.id = k.member_id WHERE k.fight_id IN ({marks}) ORDER BY k.id", chunk):
+            kos.setdefault(k["fight_id"], []).append({"member": k["slot"], "enemy": k["enemy_slot"], "by": k["ko_by"]})
+    return jsonify(solutions=[{
+        "mine": bool(f["mine"]), "attempt": f["number"], "result": f["result"], "trainer": f["trainer_key"],
+        "members": members.get(f["id"], []), "kos": kos.get(f["id"], []),
+    } for f in fights])
+
+
 # ---------------------------------------------------------------------------
 # Attempts
 # ---------------------------------------------------------------------------

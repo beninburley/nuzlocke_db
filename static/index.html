@@ -74,7 +74,10 @@
 
       <div class="fight-focus">
         <header class="focus-head">
-          <button id="drawer-open" type="button" aria-controls="boss-drawer" aria-expanded="true">&#9776; Fights</button>
+          <div class="focus-nav">
+            <button id="drawer-open" type="button" aria-controls="boss-drawer" aria-expanded="true">&#9776; Fights</button>
+            <button id="solutions-toggle" type="button" aria-controls="solutions" aria-pressed="false">See Other Trainer's Solutions</button>
+          </div>
           <div class="focus-title">
             <div id="focus-cap" class="focus-cap" hidden></div>
             <h2 id="focus-name"></h2>
@@ -101,7 +104,7 @@
           <div id="enemy-slots" class="enemy-slots"></div>
         </section>
 
-        <div class="focus-body">
+        <div id="focus-body" class="focus-body">
           <section class="team-panel" aria-label="Your team">
             <h3>Your team <span id="team-count" class="muted"></span></h3>
             <div id="team-grid" class="team-grid"></div>
@@ -114,6 +117,29 @@
             <p class="hint">Drag a Pok&eacute;mon onto a slot, or click it to add/remove. Drag a team member back here to remove it.</p>
             <p id="empty-box" class="hint warn" hidden>No catches yet &mdash; record some on the Encounters tab first.</p>
             <div id="box-grid" class="box-grid"></div>
+          </section>
+        </div>
+
+        <!-- See Other Trainer's Solutions: shown instead of your team and box -->
+        <div id="solutions" class="solutions" hidden>
+          <section class="solutions-list-panel" aria-labelledby="solutions-heading">
+            <h3 id="solutions-heading">Previous attempts <span id="solutions-count" class="muted"></span></h3>
+            <p id="solutions-status" class="hint" hidden></p>
+            <ol id="solutions-list" class="solutions-list"></ol>
+          </section>
+          <section id="solution-detail" class="solution-detail" aria-live="polite" hidden>
+            <div class="solution-head">
+              <button id="solution-prev" type="button" class="icon-button" aria-label="Previous attempt">&lsaquo;</button>
+              <div class="solution-title">
+                <h3 id="solution-title"></h3>
+                <span id="solution-position" class="muted"></span>
+              </div>
+              <button id="solution-next" type="button" class="icon-button" aria-label="Next attempt">&rsaquo;</button>
+            </div>
+            <div id="solution-board" class="ko-board"></div>
+            <p id="solution-kos" class="muted solution-kos"></p>
+            <h3 class="solutions-chart-head">Pok&eacute;mon brought to this battle <span id="solutions-chart-total" class="muted"></span></h3>
+            <ol id="solutions-chart" class="bar-chart brought" aria-label="How often each Pokémon was brought to this battle"></ol>
           </section>
         </div>
       </div>
