@@ -893,6 +893,7 @@ function renderFocus() {
   $("#box-count").textContent = `(${mons.length} caught)`;
   $("#empty-box").hidden = mons.length > 0;
   $("#box-grid").replaceChildren(...mons.map((m) => boxMon(m, slots.findIndex((s) => s?.catch_id === m.id))));
+  renderSolutions();  // last: in that view, your team (and its banner) are hidden
 }
 
 // --- focus: enemy team -----------------------------------------------------------
@@ -1249,6 +1250,7 @@ async function openKoTracker(battleId) {
   const enemies = detail.trainers.filter((t) => !t.tags.includes("Tag Partner"));
   const shown = detail.trainers[trainerChoice.get(battleId) ?? savedTrainerIndex(battleId, detail)];
   koSession = {
+    interactive: true,             // a board model (see renderKoBoard) you can draw on
     attemptId,
     battleId,
     fightId: fight.id,
@@ -1263,13 +1265,19 @@ async function openKoTracker(battleId) {
   renderKoTracker();
 }
 
-const koName = (side, index) =>
-  (side === "enemy" ? koSession.trainer?.pokemon[index] : koSession.party[index])?.species ?? "?";
+// A KO board (an enemy team above a team, with arrows between their dots) is
+// drawn from a board model: {trainer (the enemy trainer, with .pokemon), party
+// (six slots of {id, species, level, status} or null), kos ([{member (a party
+// id), enemy (slot), by}]), interactive}. The KO tracker's model is koSession,
+// which you draw on; Other Trainer's Solutions draws read-only ones.
 
-function isKnockedOut(side, index) {
-  if (side === "enemy") return koSession.kos.some((k) => k.by === "player" && k.enemy === index + 1);
-  const id = koSession.party[index]?.id;
-  return koSession.kos.some((k) => k.by === "enemy" && k.member === id);
+const koName = (model, side, index) =>
+  (side === "enemy" ? model.trainer?.pokemon[index] : model.party[index])?.species ?? "?";
+
+function isKnockedOut(model, side, index) {
+  if (side === "enemy") return model.kos.some((k) => k.by === "player" && k.enemy === index + 1);
+  const id = model.party[index]?.id;
+  return model.kos.some((k) => k.by === "enemy" && k.member === id);
 }
 
 function renderKoTracker() {
@@ -1281,17 +1289,22 @@ function renderKoTracker() {
     return tab;
   }) : []));
 
-  const enemyTeam = s.trainer?.pokemon ?? [];
-  const teamless = !s.party.some(Boolean);
-  $("#ko-board").replaceChildren(
-    teamless ? el("p", { class: "hint warn" }, "Add your team to this battle first to record who knocked out whom.") : "",
-    el("h3", { class: "ko-row-label" }, s.trainer ? s.trainer.name : "Enemy team"),
-    el("div", { class: "ko-row enemy" }, ...Array.from({ length: TEAM_SIZE }, (_, i) => koColumn("enemy", i, enemyTeam[i]))),
-    el("div", { class: "ko-row party" }, ...s.party.map((m, i) => koColumn("party", i, m))),
-    el("h3", { class: "ko-row-label" }, "Your team"),
-    svgEl("svg", { class: "ko-arrows" }));
-  drawKoArrows();
+  renderKoBoard($("#ko-board"), s, "Your team");
   renderKoSummary();
+}
+
+/** Draw a board model (see above) into `board`. */
+function renderKoBoard(board, model, teamLabel) {
+  const enemyTeam = model.trainer?.pokemon ?? [];
+  const teamless = model.interactive && !model.party.some(Boolean);
+  board.replaceChildren(
+    teamless ? el("p", { class: "hint warn" }, "Add your team to this battle first to record who knocked out whom.") : "",
+    el("h3", { class: "ko-row-label" }, model.trainer ? model.trainer.name : "Enemy team"),
+    el("div", { class: "ko-row enemy" }, ...Array.from({ length: TEAM_SIZE }, (_, i) => koColumn(model, "enemy", i, enemyTeam[i]))),
+    el("div", { class: "ko-row party" }, ...model.party.map((m, i) => koColumn(model, "party", i, m))),
+    el("h3", { class: "ko-row-label" }, teamLabel),
+    svgEl("svg", { class: "ko-arrows" }));
+  drawKoArrows(board, model);
 }
 
 function renderKoSummary() {
@@ -1300,8 +1313,8 @@ function renderKoSummary() {
   if (s.armed) {
     summary.className = "ko-armed-hint";
     summary.textContent = s.armed.side === "party"
-      ? `Now click the enemy ${koName("party", s.armed.index)} knocked out.`
-      : `Now click the Pokémon ${koName("enemy", s.armed.index)} knocked out.`;
+      ? `Now click the enemy ${koName(s, "party", s.armed.index)} knocked out.`
+      : `Now click the Pokémon ${koName(s, "enemy", s.armed.index)} knocked out.`;
     return;
   }
   const ours = s.kos.filter((k) => k.by === "player").length;
@@ -1309,16 +1322,23 @@ function renderKoSummary() {
   summary.textContent = `${ours} KO${ours === 1 ? "" : "s"} by your team · ${s.kos.length - ours} by the enemy`;
 }
 
-/** One Pokemon with its dot: below it for the enemy, above it for your team. */
-function koColumn(side, index, mon) {
-  const card = el("div", { class: `ko-mon ${side}${mon ? "" : " empty"}${mon && isKnockedOut(side, index) ? " knocked-out" : ""}` },
+/** One Pokemon with its dot: below it for the enemy, above it for the team. */
+function koColumn(model, side, index, mon) {
+  const knockedOut = mon && isKnockedOut(model, side, index);
+  const card = el("div", { class: `ko-mon ${side}${mon ? "" : " empty"}${knockedOut ? " knocked-out" : ""}`, title: mon?.title },
     ...(mon ? [
       monSprite(mon.species, side === "party" ? mon.status : null),
       el("span", { class: "mon-name" }, mon.species),
       el("span", { class: "mon-route" }, mon.level ? `Lv ${mon.level}` : ""),
     ] : [el("span", { class: "slot-empty" }, "—")]));
   const usable = mon && (side === "enemy" || mon.id);
-  const armed = koSession.armed?.side === side && koSession.armed.index === index;
+  const attrs = { "data-side": side, "data-index": String(index) };
+  if (usable && !model.interactive) {
+    return el("div", { class: `ko-col ${side}`, ...attrs },
+      ...(side === "enemy" ? [card, el("span", { class: `ko-dot static ${side}`, ...attrs })]
+        : [el("span", { class: `ko-dot static ${side}`, ...attrs }), card]));
+  }
+  const armed = model.armed?.side === side && model.armed.index === index;
   const dot = usable
     ? el("button", {
       type: "button",
@@ -1334,40 +1354,41 @@ function koColumn(side, index, mon) {
 }
 
 /** The arrows, drawn over the board from dot to dot. */
-function drawKoArrows() {
-  const board = $("#ko-board");
+function drawKoArrows(board, model) {
   const svg = board.querySelector(".ko-arrows");
-  if (!svg || !koSession) return;
+  if (!svg || !model) return;
   const frame = board.getBoundingClientRect();
   svg.setAttribute("viewBox", `0 0 ${frame.width} ${frame.height}`);
   const heads = svgEl("defs", {}, ...["player", "enemy"].map((by) =>
-    svgEl("marker", { id: `ko-head-${by}`, class: `ko-head ${by}`, viewBox: "0 0 10 10", refX: "7", refY: "5",
+    svgEl("marker", { id: `${board.id}-head-${by}`, class: `ko-head ${by}`, viewBox: "0 0 10 10", refX: "7", refY: "5",
       markerWidth: "4", markerHeight: "4", orient: "auto" }, svgEl("path", { d: "M0 0L10 5L0 10z" }))));
-  const arrows = koSession.kos.map((k) => {
-    const party = dotCenter("party", koSession.party.findIndex((m) => m?.id === k.member));
-    const enemy = dotCenter("enemy", k.enemy - 1);
+  const arrows = model.kos.map((k) => {
+    const partyIndex = model.party.findIndex((m) => m?.id === k.member);
+    const party = dotCenter(board, "party", partyIndex);
+    const enemy = dotCenter(board, "enemy", k.enemy - 1);
     if (!party || !enemy) return null;
     const [from, to] = k.by === "player" ? [party, enemy] : [enemy, party];
     // An arrow each way between the same two Pokemon (Destiny Bond...): shift both so both show.
-    const paired = koSession.kos.some((o) => o !== k && o.member === k.member && o.enemy === k.enemy);
-    const partyName = koName("party", koSession.party.findIndex((m) => m?.id === k.member));
-    const enemyName = koName("enemy", k.enemy - 1);
-    const label = k.by === "player" ? `${partyName} knocked out ${enemyName}` : `${enemyName} knocked out your ${partyName}`;
-    return koArrow(from, to, k, paired ? 4 : 0, label);
+    const paired = model.kos.some((o) => o !== k && o.member === k.member && o.enemy === k.enemy);
+    const partyName = koName(model, "party", partyIndex);
+    const enemyName = koName(model, "enemy", k.enemy - 1);
+    const label = k.by === "player" ? `${partyName} knocked out ${enemyName}`
+      : `${enemyName} knocked out ${model.interactive ? "your " : ""}${partyName}`;
+    return koArrow(model, from, to, k, paired ? 4 : 0, label, `${board.id}-head-${k.by}`);
   }).filter(Boolean);
   svg.replaceChildren(heads, ...arrows);
-  if (koSession.drag?.line) svg.append(koSession.drag.line);
+  if (model.drag?.line) svg.append(model.drag.line);
 }
 
-function dotCenter(side, index) {
-  const dot = $(`#ko-board .ko-dot[data-side="${side}"][data-index="${index}"]`);
+function dotCenter(board, side, index) {
+  const dot = board.querySelector(`.ko-dot[data-side="${side}"][data-index="${index}"]`);
   if (!dot) return null;
-  const frame = $("#ko-board").getBoundingClientRect();
+  const frame = board.getBoundingClientRect();
   const r = dot.getBoundingClientRect();
   return { x: r.left + r.width / 2 - frame.left, y: r.top + r.height / 2 - frame.top };
 }
 
-function koArrow(from, to, ko, shift, label) {
+function koArrow(model, from, to, ko, shift, label, markerId) {
   const dx = to.x - from.x;
   const dy = to.y - from.y;
   const length = Math.hypot(dx, dy) || 1;
@@ -1375,10 +1396,14 @@ function koArrow(from, to, ko, shift, label) {
   const [nx, ny] = [-uy * shift, ux * shift];
   const gap = 13;  // start and end just outside the dots
   const d = `M${from.x + ux * gap + nx} ${from.y + uy * gap + ny}L${to.x - ux * gap + nx} ${to.y - uy * gap + ny}`;
+  const line = svgEl("path", { class: "line", d, "marker-end": `url(#${markerId})` });
+  if (!model.interactive) {
+    return svgEl("g", { class: `ko-arrow static ${ko.by}` }, svgEl("title", {}, label), svgEl("path", { class: "hit", d }), line);
+  }
   const arrow = svgEl("g", { class: `ko-arrow ${ko.by}`, tabindex: "0", role: "button", "aria-label": `${label}. Remove` },
     svgEl("title", {}, `${label} (click to remove)`),
     svgEl("path", { class: "hit", d }),
-    svgEl("path", { class: "line", d, "marker-end": `url(#ko-head-${ko.by})` }));
+    line);
   const remove = () => {
     koSession.kos = koSession.kos.filter((k) => k !== ko);
     saveKos();
@@ -1492,7 +1517,7 @@ function setupKoBoard() {
     if (!drag) return;
     if (!drag.moved && Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 6) return;
     drag.moved = true;
-    const start = dotCenter(drag.side, drag.index);
+    const start = dotCenter(board, drag.side, drag.index);
     const frame = board.getBoundingClientRect();
     if (!drag.line) {
       drag.line = svgEl("line", { class: `ko-temp ${drag.side === "party" ? "player" : "enemy"}` });
@@ -1527,7 +1552,7 @@ function setupKoBoard() {
     clickKoDot(side, Number(index));
     $(`#ko-board .ko-dot[data-side="${side}"][data-index="${index}"]`)?.focus();
   });
-  new ResizeObserver(() => drawKoArrows()).observe(board);
+  new ResizeObserver(() => drawKoArrows(board, koSession)).observe(board);
   $("#ko-clear").addEventListener("click", () => {
     if (!koSession?.kos.length || !confirm("Remove every arrow for this fight?")) return;
     koSession.kos = [];
@@ -1565,7 +1590,8 @@ const battleNames = (battles) => [...battles].map(([name, n]) => (n > 1 ? `${nam
 
 /**
  * One row per Pokémon: rank, sprite and name, then a bar with its value at the tip
- * and a line of detail under it. Hovering a row shows its `title`.
+ * and a line of detail under it. Under the name goes `subtitle`, or the box Pokémon's
+ * route. Hovering a row shows its `title`.
  */
 function renderBarChart(list, rows) {
   const most = Math.max(1, ...rows.map((row) => row.value));
@@ -1575,7 +1601,8 @@ function renderBarChart(list, rows) {
       monSprite(row.species, row.mon?.status),
       el("span", { class: "bar-chart-name" },
         el("span", { class: "mon-name" }, row.species),
-        el("span", { class: "mon-route" }, row.mon ? routeName(row.mon.route_id) : "no longer in box"))),
+        el("span", { class: "mon-route" },
+          row.subtitle ?? (row.mon ? routeName(row.mon.route_id) : "no longer in box")))),
     el("span", { class: "bar-chart-track" },
       el("span", { class: "bar-chart-bar-line" },
         el("span", { class: `bar-chart-bar${row.value ? "" : " zero"}`, style: `--share: ${row.value / most}` }),
@@ -1642,6 +1669,146 @@ function renderBattleStats() {
       title: row.value ? `${row.species}: ${battleNames(row.battles).join(", ")}` : undefined,
     };
   }) : []);
+}
+
+// ---------------------------------------------------------------------------
+// See Other Trainer's Solutions: instead of your team and box, the teams other
+// attempts brought to this battle (yours, and other trainers' anonymously),
+// each as a read-only KO board, plus how often each Pokémon was brought.
+// ---------------------------------------------------------------------------
+
+const solutions = {
+  on: false,
+  battleId: null,   // what the list was loaded for
+  attemptId: null,
+  list: null,       // [{mine, attempt, result, trainer, members: [{slot, species, ...}], kos}]; null while loading
+  detail: null,     // the battle's trainers and teams
+  index: 0,         // the attempt shown
+  model: null,      // its board model
+  loads: 0,         // to ignore a load overtaken by a newer one
+};
+
+const RESULT_TEXT = { won: "Won", lost: "Lost" };
+const solutionName = (s) => (s.mine ? `Your attempt #${s.attempt}` : `Another trainer's attempt #${s.attempt}`);
+
+function toggleSolutions() {
+  solutions.on = !solutions.on;
+  renderFocus();  // ends with renderSolutions()
+}
+
+/** Show the solutions or your team, and (re)load the list when the battle or attempt changed. */
+function renderSolutions() {
+  const toggle = $("#solutions-toggle");
+  toggle.setAttribute("aria-pressed", String(solutions.on));
+  toggle.textContent = solutions.on ? "Back to Your Team" : "See Other Trainer's Solutions";
+  $("#focus-body").hidden = solutions.on;
+  $("#solutions").hidden = !solutions.on;
+  if (solutions.on) $("#team-changed").hidden = true;  // it's about your team, which is hidden
+  if (solutions.on && (solutions.battleId !== state.battleId || solutions.attemptId !== state.attempt.id)) {
+    loadSolutions();
+  }
+}
+
+async function loadSolutions() {
+  const run = ++solutions.loads;
+  const battleId = state.battleId;
+  const attemptId = state.attempt.id;
+  Object.assign(solutions, { battleId, attemptId, list: null, detail: null, index: 0, model: null });
+  solutionsStatus("Loading…");
+  $("#solutions-count").textContent = "";
+  $("#solutions-list").replaceChildren();
+  $("#solution-detail").hidden = true;
+  let list;
+  let detail;
+  try {
+    [{ solutions: list }, detail] = await Promise.all([
+      api("GET", `/battles/${battleId}/solutions?exclude=${attemptId}`), loadBattle(battleId)]);
+    if (run !== solutions.loads) return;
+    Object.assign(solutions, { list, detail });
+  } catch (err) {
+    if (run !== solutions.loads) return;
+    solutions.battleId = null;  // try again next time
+    return solutionsStatus(`Couldn't load them: ${err.message}`);
+  }
+  $("#solutions-count").textContent = list.length ? `(${list.length})` : "";
+  solutionsStatus(list.length ? "" : "No other attempt has recorded a team for this battle yet.");
+  $("#solutions-list").replaceChildren(...list.map((s, i) => {
+    const item = el("button", { type: "button", class: `solution-item ${s.result ?? ""}` },
+      el("span", { class: "battle-status", "aria-label": RESULT_TEXT[s.result] ?? "Not marked" },
+        { won: "✓", lost: "✗" }[s.result] ?? "–"),
+      el("span", { class: "solution-name" }, solutionName(s)),
+      el("span", { class: "solution-team", "aria-hidden": "true" }, ...s.members.map((m) => sprite(m.species))));
+    item.addEventListener("click", () => showSolution(i));
+    return el("li", {}, item);
+  }));
+  $("#solution-detail").hidden = !list.length;
+  if (list.length) {
+    showSolution(0);
+    renderSolutionsChart();
+  }
+}
+
+function solutionsStatus(text) {
+  $("#solutions-status").textContent = text;
+  $("#solutions-status").hidden = !text;
+}
+
+/** "Grotle Lv 20 @ Miracle Seed", then nature and ability, then moves: the set, for a tooltip. */
+function setSummary(m) {
+  return [
+    `${m.species}${m.level ? ` Lv ${m.level}` : ""}${m.item ? ` @ ${m.item}` : ""}`,
+    [m.nature && `${m.nature} nature`, m.ability].filter(Boolean).join(" · "),
+    m.moves.filter(Boolean).join(" / "),
+  ].filter(Boolean).join("\n");
+}
+
+/** Show attempt `index` (wrapping round) as a read-only KO board. */
+function showSolution(index) {
+  const list = solutions.list;
+  if (!list?.length) return;
+  solutions.index = (index + list.length) % list.length;
+  const s = list[solutions.index];
+  [...$("#solutions-list").children].forEach((li, i) => {
+    li.firstChild.setAttribute("aria-current", String(i === solutions.index));
+  });
+  $("#solutions-list").children[solutions.index].scrollIntoView({ block: "nearest" });
+  $("#solution-title").textContent = `${solutionName(s)} · ${RESULT_TEXT[s.result] ?? "Result not marked"}`;
+  $("#solution-position").textContent = `${solutions.index + 1} of ${list.length}`;
+
+  const enemies = solutions.detail.trainers.filter((t) => !t.tags.includes("Tag Partner"));
+  const party = Array(TEAM_SIZE).fill(null);
+  // Team members are identified by slot here (other trainers' ids aren't shared).
+  for (const m of s.members) party[m.slot - 1] = { ...m, id: m.slot, title: setSummary(m) };
+  solutions.model = { interactive: false, trainer: enemies.find((t) => t.key === s.trainer) ?? enemies[0], party, kos: s.kos };
+  renderKoBoard($("#solution-board"), solutions.model, s.mine ? "Your team" : "Their team");
+  const ours = s.kos.filter((k) => k.by === "player").length;
+  $("#solution-kos").textContent = s.kos.length
+    ? `${ours} KO${ours === 1 ? "" : "s"} by the team · ${s.kos.length - ours} by the enemy. Hover a Pokémon for its set.`
+    : "No KOs recorded for this attempt. Hover a Pokémon for its set.";
+}
+
+/** How many of the listed teams brought each Pokémon (as used in the fight), most first. */
+function renderSolutionsChart() {
+  const list = solutions.list;
+  const rows = new Map();
+  for (const s of list) {
+    for (const m of s.members) {
+      if (!rows.has(m.species)) rows.set(m.species, newTally(null, m.species));
+      const row = rows.get(m.species);
+      row.value++;
+      row.results[s.result ?? "none"]++;
+    }
+  }
+  const ranked = [...rows.values()].sort((a, b) => b.value - a.value || a.species.localeCompare(b.species));
+  $("#solutions-chart-total").textContent = `(across ${list.length} team${list.length === 1 ? "" : "s"})`;
+  renderBarChart($("#solutions-chart"), ranked.map((row) => {
+    const { won, lost, none } = row.results;
+    return {
+      ...row,
+      subtitle: `in ${Math.round((row.value / list.length) * 100)}% of teams`,
+      detail: [won && `${won} won`, lost && `${lost} lost`, none && `${none} not marked`].filter(Boolean).join(" · "),
+    };
+  }));
 }
 
 // ---------------------------------------------------------------------------
@@ -1728,6 +1895,11 @@ async function boot() {
       (drag) => drag.fromSlot !== null);
     setupKoBoard();
     for (const btn of document.querySelectorAll(".script-open")) btn.addEventListener("click", openScriptDialog);
+    $("#solutions-toggle").addEventListener("click", toggleSolutions);
+    $("#solution-prev").addEventListener("click", () => showSolution(solutions.index - 1));
+    $("#solution-next").addEventListener("click", () => showSolution(solutions.index + 1));
+    const solutionBoard = $("#solution-board");
+    new ResizeObserver(() => drawKoArrows(solutionBoard, solutions.model)).observe(solutionBoard);
     $("#script-input").addEventListener("input", scheduleScriptPreview);
     $("#script-apply").addEventListener("click", () => applyScript());
 
