@@ -66,6 +66,18 @@ CREATE TABLE IF NOT EXISTS trainer_pokemon (
     PRIMARY KEY (trainer_id, slot)
 );
 
+-- Admins' corrections to a trainer's team. Game data is reloaded from
+-- data/game_data.json on every start, which replaces trainer_pokemon; these
+-- edits are applied again after each reload, so they last. Keyed by the
+-- trainer's stable key; `pokemon` is a JSON list of {species, level, item,
+-- ability, nature, moves}. Deleting the row reverts to the spreadsheet's team.
+CREATE TABLE IF NOT EXISTS trainer_edits (
+    trainer_key TEXT    PRIMARY KEY,
+    pokemon     TEXT    NOT NULL,
+    edited_by   INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    edited_at   TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Dupes-clause groups (evolution lines + regional forms).
 CREATE TABLE IF NOT EXISTS species_families (
     species   TEXT    PRIMARY KEY,

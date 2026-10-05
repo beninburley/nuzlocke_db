@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin · Run &amp; Bun Nuzlocke</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body data-page="admin">
+  <header class="topbar">
+    <h1><a class="home-link" href="/">Run &amp; Bun Nuzlocke</a></h1>
+    <a class="button" href="/app">&larr; Back to your tracker</a>
+    <span id="status" role="status" aria-live="polite"></span>
+    <div class="topbar-actions">
+      <a id="admin-link" class="button admin-link" href="/admin" aria-current="page" hidden>Admin</a>
+      <div class="account-menu">
+        <button id="account-button" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="account-popover" hidden>
+          <span id="account-name"></span> <span aria-hidden="true">▾</span>
+        </button>
+        <div id="account-popover" class="account-popover" hidden>
+          <p class="account-who"><strong id="account-username"></strong><span id="account-role" class="muted"></span></p>
+          <a href="/account">Account settings</a>
+          <button id="logout" type="button">Log out</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="admin-main">
+    <!-- Admin home: one card per section (each section is a #hash view) -->
+    <section id="admin-home" class="admin-view" aria-labelledby="admin-home-title">
+      <h2 id="admin-home-title">Admin</h2>
+      <div class="admin-cards">
+        <a class="panel admin-card" href="#roles">
+          <h3>Roles</h3>
+          <p>Every account on the site, and its role.</p>
+        </a>
+        <a class="panel admin-card" href="#battles">
+          <h3>Trainer Battles</h3>
+          <p>Correct an enemy trainer's team when the game data is wrong.</p>
+        </a>
+        <a class="panel admin-card" href="#verification">
+          <h3>Verification Requests</h3>
+          <p>Review requests from trainers.</p>
+        </a>
+      </div>
+    </section>
+
+    <section id="admin-roles" class="admin-view" aria-labelledby="admin-roles-title" hidden>
+      <a class="back-link" href="#">&larr; Admin home</a>
+      <h2 id="admin-roles-title">Roles <span id="users-count" class="muted"></span></h2>
+      <p class="hint">Changing a role saves straight away. You can't change your own, so the site always has an admin.</p>
+      <input id="user-filter" class="admin-filter" type="search" placeholder="Filter by username" aria-label="Filter by username">
+      <div class="panel">
+        <table class="grid admin-users">
+          <thead><tr><th>Username</th><th>Role</th><th>Joined</th><th>Attempts</th></tr></thead>
+          <tbody id="users-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="admin-battles" class="admin-view" aria-labelledby="admin-battles-title" hidden>
+      <a class="back-link" href="#">&larr; Admin home</a>
+      <h2 id="admin-battles-title">Trainer Battles</h2>
+      <div class="admin-battles">
+        <aside class="panel admin-battle-list" aria-label="Battles">
+          <input id="admin-battle-filter" class="admin-filter" type="search" placeholder="Filter trainers or places" aria-label="Filter trainers or places">
+          <ol id="admin-battle-list" class="battle-list"></ol>
+        </aside>
+        <section id="admin-battle" class="panel admin-battle" aria-live="polite">
+          <p class="hint">Pick a battle to see its enemy team.</p>
+        </section>
+      </div>
+    </section>
+
+    <section id="admin-verification" class="admin-view" aria-labelledby="admin-verification-title" hidden>
+      <a class="back-link" href="#">&larr; Admin home</a>
+      <h2 id="admin-verification-title">Verification Requests</h2>
+      <div class="panel">
+        <p class="changed-banner" role="note">Work in Process</p>
+        <button type="button" disabled>Review verification requests</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- Correcting a trainer's team -->
+  <dialog id="team-editor" class="picker team-editor" aria-labelledby="team-title">
+    <form id="team-form" class="picker-inner">
+      <header class="picker-head">
+        <div>
+          <h2 id="team-title"></h2>
+          <p class="muted">Leave a slot's species blank to take that Pok&eacute;mon off the team. Saving keeps the change
+            even when the game data is reloaded; you can revert to the spreadsheet's team later.</p>
+        </div>
+        <button type="button" class="icon-button team-close" aria-label="Close">&times;</button>
+      </header>
+      <div id="team-slots" class="picker-body team-slots"></div>
+      <footer class="picker-foot team-foot">
+        <p class="form-error" role="alert" hidden></p>
+        <button type="button" class="team-close">Cancel</button>
+        <button type="submit" class="primary">Save team</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <datalist id="dl-species"></datalist>
+  <datalist id="dl-moves"></datalist>
+  <datalist id="dl-abilities"></datalist>
+  <datalist id="dl-items"></datalist>
+
+  <script src="site.js"></script>
+  <script src="app.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>

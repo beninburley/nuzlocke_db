@@ -6,7 +6,7 @@
   <title>Nuzlocke Tracker</title>
   <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body data-page="tracker">
   <header class="topbar">
     <h1>Run &amp; Bun Nuzlocke</h1>
     <div class="attempt-controls">
@@ -16,14 +16,17 @@
       <button id="delete-attempt" type="button" class="danger">Delete</button>
     </div>
     <span id="status" role="status" aria-live="polite"></span>
-    <div class="account-menu">
-      <button id="account-button" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="account-popover" hidden>
-        <span id="account-name"></span> <span aria-hidden="true">▾</span>
-      </button>
-      <div id="account-popover" class="account-popover" hidden>
-        <p class="account-who"><strong id="account-username"></strong><span id="account-role" class="muted"></span></p>
-        <a href="/account">Account settings</a>
-        <button id="logout" type="button">Log out</button>
+    <div class="topbar-actions">
+      <a id="admin-link" class="button admin-link" href="/admin" hidden>Admin</a>
+      <div class="account-menu">
+        <button id="account-button" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="account-popover" hidden>
+          <span id="account-name"></span> <span aria-hidden="true">▾</span>
+        </button>
+        <div id="account-popover" class="account-popover" hidden>
+          <p class="account-who"><strong id="account-username"></strong><span id="account-role" class="muted"></span></p>
+          <a href="/account">Account settings</a>
+          <button id="logout" type="button">Log out</button>
+        </div>
       </div>
     </div>
   </header>

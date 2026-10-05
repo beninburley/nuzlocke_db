@@ -1973,4 +1973,5 @@ async function boot() {
   }
 }
 
-boot();
+// The admin page loads this file too, for its enemy-team rendering; only the tracker boots.
+if (document.body.dataset.page === "tracker") boot();

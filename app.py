@@ -108,6 +108,8 @@ def check_api_request():
         raise ApiError("missing X-Requested-With header", 403)
     if request.endpoint not in PUBLIC_API and current_user() is None:
         raise ApiError("log in first", 401)
+    if request.path.startswith("/api/admin/") and current_user()["role"] != "admin":
+        raise ApiError("admins only", 403)
 
 
 def start_session(user):
@@ -265,6 +267,16 @@ def account_page():
     return app.send_static_file("account.html")
 
 
+@app.get("/admin")
+def admin_page():
+    user = current_user()
+    if user is None:
+        return redirect("/login?next=/admin")
+    if user["role"] != "admin":
+        return "Admins only.", 403
+    return app.send_static_file("admin.html")
+
+
 # ---------------------------------------------------------------------------
 # Game data (read-only)
 # ---------------------------------------------------------------------------
@@ -346,7 +358,100 @@ def battle_detail(battle_id):
             "nature": p["nature"],
             "moves": [m for m in (p["move1"], p["move2"], p["move3"], p["move4"]) if m],
         })
+    if current_user()["role"] == "admin":  # who last corrected each team, for the admin page
+        for t in trainers:
+            edit = conn.execute(
+                "SELECT e.edited_at, u.username FROM trainer_edits e LEFT JOIN users u ON u.id = e.edited_by "
+                "WHERE e.trainer_key = ?", (t["key"],)).fetchone()
+            t["edited"] = {"at": edit["edited_at"], "by": edit["username"]} if edit else None
     return jsonify(battle=dict(battle), trainers=trainers)
+
+
+# ---------------------------------------------------------------------------
+# Admin (role "admin" only: see check_api_request)
+# ---------------------------------------------------------------------------
+
+@app.get("/api/admin/users")
+def admin_users():
+    conn = get_db()
+    users = [user_json(conn, u) | {"id": u["id"]} for u in conn.execute("SELECT * FROM users ORDER BY username COLLATE NOCASE")]
+    return jsonify(users=users, roles=accounts.ROLES)
+
+
+@app.patch("/api/admin/users/<int:target_id>")
+def admin_set_role(target_id):
+    """Change an account's role: {"role": one of accounts.ROLES}. Not your own, so there's always an admin."""
+    conn = get_db()
+    target = conn.execute("SELECT * FROM users WHERE id = ?", (target_id,)).fetchone()
+    if target is None:
+        raise ApiError("account not found", 404)
+    if target_id == user_id():
+        raise ApiError("You can't change your own role.", 403)
+    data = body()
+    if set(data) != {"role"} or data["role"] not in accounts.ROLES:
+        raise ApiError(f"role must be one of {', '.join(accounts.ROLES)}")
+    with conn:
+        conn.execute("UPDATE users SET role = ? WHERE id = ?", (data["role"], target_id))
+    return jsonify(user=user_json(conn, conn.execute("SELECT * FROM users WHERE id = ?", (target_id,)).fetchone())
+                   | {"id": target_id})
+
+
+def trainer_by_key(conn, key):
+    trainer = isinstance(key, str) and conn.execute("SELECT * FROM trainers WHERE key = ?", (key,)).fetchone()
+    if not trainer:
+        raise ApiError("trainer not found", 404)
+    return trainer
+
+
+def parse_enemy(conn, mon, slot):
+    """One enemy Pokemon from the admin's team editor -> {species, level, item, ability, nature, moves}."""
+    if not isinstance(mon, dict) or set(mon) - {"species", "level", "item", "ability", "nature", "moves"}:
+        raise ApiError(f"slot {slot}: expected species, level, item, ability, nature and moves")
+    try:
+        details = parse_details(conn, {k: v for k, v in mon.items() if k in ("species", "level", "item", "ability", "nature", "moves")})
+    except ApiError as err:
+        raise ApiError(f"Slot {slot}: {err.message}")
+    if "species" not in details:
+        raise ApiError(f"Slot {slot}: a Pokémon needs a species")
+    return {"species": details["species"], "level": details.get("level"), "item": details.get("item"),
+            "ability": details.get("ability"), "nature": details.get("nature"),
+            "moves": [m for m in (details.get(f"move{i}") for i in range(1, 5)) if m]}
+
+
+@app.put("/api/admin/trainer-team")
+def admin_set_trainer_team():
+    """Correct a trainer's team: {"trainer": key, "pokemon": [1-6 {species, level, item, ability, nature, moves}]}.
+
+    Saved as an edit that's applied again whenever game data reloads.
+    """
+    conn = get_db()
+    data = body()
+    trainer = trainer_by_key(conn, data.get("trainer"))
+    team = data.get("pokemon")
+    if not isinstance(team, list) or not 1 <= len(team) <= TEAM_SIZE:
+        raise ApiError(f"a team has 1 to {TEAM_SIZE} Pokémon")
+    team = [parse_enemy(conn, mon, slot) for slot, mon in enumerate(team, start=1)]
+    with conn:
+        conn.execute(
+            "INSERT INTO trainer_edits (trainer_key, pokemon, edited_by, edited_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP) "
+            "ON CONFLICT (trainer_key) DO UPDATE SET pokemon = excluded.pokemon, edited_by = excluded.edited_by, "
+            "edited_at = excluded.edited_at", (trainer["key"], json.dumps(team), user_id()))
+        db.set_trainer_team(conn, trainer["id"], team)
+    return jsonify(ok=True)
+
+
+@app.post("/api/admin/trainer-team/revert")
+def admin_revert_trainer_team():
+    """Undo the corrections to a trainer's team: back to the spreadsheet's. {"trainer": key}"""
+    conn = get_db()
+    trainer = trainer_by_key(conn, body().get("trainer"))
+    original = db.original_trainer_team(trainer["key"])
+    if original is None:
+        raise ApiError("this trainer isn't in the game data any more", 409)
+    with conn:
+        conn.execute("DELETE FROM trainer_edits WHERE trainer_key = ?", (trainer["key"],))
+        db.set_trainer_team(conn, trainer["id"], original)
+    return jsonify(ok=True)
 
 
 RESULT_ORDER = {"won": 0, None: 1, "lost": 2}

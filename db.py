@@ -320,6 +320,8 @@ def load_battles(conn, battles):
     )
 
     conn.execute("DELETE FROM trainers")  # cascades to trainer_pokemon
+    edits = {r["trainer_key"]: json.loads(r["pokemon"])
+             for r in conn.execute("SELECT trainer_key, pokemon FROM trainer_edits")}
     position = 0
     for battle in battles:
         for trainer in battle["trainers"]:
@@ -330,10 +332,27 @@ def load_battles(conn, battles):
                  ",".join(trainer["tags"]), position),
             )
             position += 1
-            conn.executemany(
-                "INSERT INTO trainer_pokemon (trainer_id, slot, species, level, item, ability, "
-                "nature, move1, move2, move3, move4) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                [(cur.lastrowid, slot, p["species"], p["level"], p["item"], p["ability"],
-                  p["nature"], *(p["moves"] + [None] * 4)[:4])
-                 for slot, p in enumerate(trainer["pokemon"], start=1)],
-            )
+            # An admin's correction to this team wins over the spreadsheet's.
+            set_trainer_team(conn, cur.lastrowid, edits.get(trainer["key"], trainer["pokemon"]))
+
+
+def set_trainer_team(conn, trainer_id, pokemon):
+    """Replace a trainer's team with `pokemon`: [{species, level, item, ability, nature, moves}]."""
+    conn.execute("DELETE FROM trainer_pokemon WHERE trainer_id = ?", (trainer_id,))
+    conn.executemany(
+        "INSERT INTO trainer_pokemon (trainer_id, slot, species, level, item, ability, "
+        "nature, move1, move2, move3, move4) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        [(trainer_id, slot, p["species"], p["level"], p["item"], p["ability"],
+          p["nature"], *(list(p["moves"]) + [None] * 4)[:4])
+         for slot, p in enumerate(pokemon, start=1)],
+    )
+
+
+def original_trainer_team(trainer_key, path=GAME_DATA_PATH):
+    """A trainer's team as the game data (the spreadsheet) has it, or None."""
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    for battle in data["battles"]:
+        for trainer in battle["trainers"]:
+            if trainer["key"] == trainer_key:
+                return trainer["pokemon"]
+    return None

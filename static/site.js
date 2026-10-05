@@ -36,6 +36,8 @@ function setupAccountMenu(user) {
   document.querySelector("#account-username").textContent = user.username;
   document.querySelector("#account-role").textContent = ROLE_LABELS[user.role] ?? user.role;
   button.hidden = false;
+  const adminLink = document.querySelector("#admin-link");
+  if (adminLink) adminLink.hidden = user.role !== "admin";
   const setOpen = (open) => {
     menu.hidden = !open;
     button.setAttribute("aria-expanded", String(open));
@@ -98,7 +100,7 @@ async function landingPage() {
 function loginPage() {
   const params = new URLSearchParams(location.search);
   // Only ever send people on to this site's own pages.
-  const next = ["/app", "/account"].includes(params.get("next")) ? params.get("next") : "/app";
+  const next = ["/app", "/account", "/admin"].includes(params.get("next")) ? params.get("next") : "/app";
   const forms = { login: document.querySelector("#login-form"), signup: document.querySelector("#signup-form") };
 
   const showMode = (mode) => {
