@@ -1827,8 +1827,9 @@ function showSolution(index) {
   $("#solution-kos").textContent = s.kos.length
     ? `${ours} KO${ours === 1 ? "" : "s"} by the team · ${s.kos.length - ours} by the enemy. Hover a Pokémon for its set.`
     : "No KOs recorded for this attempt. Hover a Pokémon for its set.";
-  // Only your own attempts' notes come back (other trainers' notes stay private).
+  // The notes written in that attempt: another trainer's for theirs, never yours.
   $("#solution-notes").hidden = !s.notes;
+  $("#solution-notes-label").textContent = s.mine ? "Your notes from that attempt" : "Their notes from that attempt";
   $("#solution-notes-text").textContent = s.notes ?? "";
 }
 

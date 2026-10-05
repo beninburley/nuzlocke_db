@@ -358,10 +358,10 @@ def battle_solutions(battle_id):
 
     Every attempt with a team recorded for this battle, the logged-in user's
     own and other trainers', except ?exclude=<attempt id> (the one being
-    played). Other trainers stay anonymous: only their attempt number shows,
-    and team members are identified by slot, never by internal id. Wins come
-    first, then unmarked fights, then losses; within those, your own first,
-    newest first.
+    played), each with its team, KOs and notes for the battle. Other trainers
+    stay anonymous: only their attempt number shows, and team members are
+    identified by slot, never by internal id. Wins come first, then unmarked
+    fights, then losses; within those, your own first, newest first.
     """
     conn = get_db()
     if conn.execute("SELECT 1 FROM battles WHERE id = ?", (battle_id,)).fetchone() is None:
@@ -390,8 +390,7 @@ def battle_solutions(battle_id):
     return jsonify(solutions=[{
         "mine": bool(f["mine"]), "attempt": f["number"], "result": f["result"], "trainer": f["trainer_key"],
         "members": members.get(f["id"], []), "kos": kos.get(f["id"], []),
-        # Battle notes are free text, so only your own come back; other trainers' stay private.
-        "notes": f["notes"] if f["mine"] else None,
+        "notes": f["notes"],  # that attempt's own notes for the battle (another trainer's, for theirs)
     } for f in fights])
 
 
