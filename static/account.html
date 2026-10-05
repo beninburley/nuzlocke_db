@@ -10,14 +10,17 @@
   <header class="topbar">
     <h1><a class="home-link" href="/">Run &amp; Bun Nuzlocke</a></h1>
     <a class="button" href="/app">&larr; Back to your tracker</a>
-    <div class="account-menu topbar-end">
-      <button id="account-button" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="account-popover" hidden>
-        <span id="account-name"></span> <span aria-hidden="true">▾</span>
-      </button>
-      <div id="account-popover" class="account-popover" hidden>
-        <p class="account-who"><strong id="account-username"></strong><span id="account-role" class="muted"></span></p>
-        <a href="/account">Account settings</a>
-        <button id="logout" type="button">Log out</button>
+    <div class="topbar-end topbar-actions">
+      <a id="admin-link" class="button admin-link" href="/admin" hidden>Admin</a>
+      <div class="account-menu">
+        <button id="account-button" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="account-popover" hidden>
+          <span id="account-name"></span> <span aria-hidden="true">▾</span>
+        </button>
+        <div id="account-popover" class="account-popover" hidden>
+          <p class="account-who"><strong id="account-username"></strong><span id="account-role" class="muted"></span></p>
+          <a href="/account">Account settings</a>
+          <button id="logout" type="button">Log out</button>
+        </div>
       </div>
     </div>
   </header>

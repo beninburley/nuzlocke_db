@@ -9,7 +9,19 @@ for anyone who makes an account:
   the account page (`/account`), where you can see your details, change your
   password and log out (here or everywhere). Every account has a role:
   sign-ups are *trainers*; the others are *mod*, *content creator* and
-  *admin*. Roles don't change what anyone can do yet.
+  *admin*. Only admins get anything extra so far: the admin page.
+- **Admin** (admins only: the *Admin* button next to the account button,
+  `/admin`): a home page with three sections.
+  - *Roles*: every account, with its role as a drop-down that saves on
+    change. You can't change your own role, so there's always an admin.
+  - *Trainer Battles*: pick a battle to see its enemy team, laid out as on
+    the Trainer Battles tab, and *Edit* it in a popup (species, level, item,
+    ability, nature and moves of each Pokemon; blank a species to remove
+    one). Game data is reloaded from `data/game_data.json` on every start, so
+    corrections are kept in a table of their own (`trainer_edits`) and
+    applied again after each reload. The battle shows who corrected it and
+    when, and can be reverted to the spreadsheet's team.
+  - *Verification Requests*: not built yet ("Work in Process").
 - **Attempts**: pick which run you're on, or start a new one. Each attempt
   in the list shows the split it's on: the one with its first boss it hasn't
   beaten, marked "(lost)" if that's where the run ended.
@@ -274,7 +286,8 @@ data/sprites.json      Species -> PokeAPI sprite URL
 data/evolutions.json   Species -> its evolutionary line (PokeAPI)
 scripts/               Spreadsheet extraction, PokeAPI lookups, history import/backfill, accounts
 static/                Frontend (plain HTML/CSS/JS, no build step): landing.html, login.html,
-                       account.html and site.js for accounts; index.html and app.js for the tracker
+                       account.html and site.js for accounts; index.html and app.js for the tracker;
+                       admin.html and admin.js for admins (reusing app.js's rendering)
 ```
 
 ### API
@@ -290,6 +303,10 @@ account's data only. Changes (anything but GET) need an `X-Requested-With` heade
 | GET | `/api/me` | the logged-in user `{username, role, created_at, attempts}`, or `null` |
 | POST | `/api/me/password` | `{current_password, new_password}`; logs out the account's other sessions |
 | POST | `/api/me/logout-everywhere` | ends every session of the account |
+| GET | `/api/admin/users` | admins only: every account and its role, plus the roles |
+| PATCH | `/api/admin/users/<id>` | admins only: `{role}` (not your own) |
+| PUT | `/api/admin/trainer-team` | admins only: `{trainer: key, pokemon: [1-6 {species, level, item, ability, nature, moves}]}` corrects a trainer's team |
+| POST | `/api/admin/trainer-team/revert` | admins only: `{trainer: key}` goes back to the spreadsheet's team |
 | GET | `/api/game` | routes (with encounter options), battles, sprites, evolution lines, dupes-clause families, natures, statuses, suggestions |
 | GET | `/api/battles/<id>` | a battle's trainers and their teams |
 | GET | `/api/battles/<id>/solutions?exclude=<attempt id>` | every other attempt's team, KOs and notes for that battle, yours (`mine`) and other trainers' (anonymous; members by slot) |
@@ -313,5 +330,5 @@ were against, for battles with alternatives) and `kos`.
 - KOs for past attempts (the old sheet's "Killed:" rows are only in each attempt's notes)
 - Failed or skipped encounters (a `-` in the old sheet)
 - Email (password resets happen from a console), deleting an account
-- Anything that depends on roles
+- Verification requests, and anything for the *mod* and *content creator* roles
 - UI/UX polish
