@@ -77,7 +77,8 @@ for anyone who makes an account:
   (anonymous: just "Another trainer's attempt #N"). Wins come first, then
   unmarked fights, then losses. Pick one, or step through with ‹ ›, to see
   its team and KOs as a read-only KO board; hover a Pokemon for its set.
-  Your own attempts show their battle notes too (other trainers' stay private).
+  Each attempt shows its own notes for the battle: another trainer's notes
+  come with their team, never yours.
   Below, a bar chart shows how many of those teams brought each Pokemon.
   The button switches back to your team.
 - **KO Analytics**: a bar chart of which Pokemon scored the most KOs this
@@ -245,7 +246,7 @@ Rules are checked in the API and again by SQLite triggers and constraints:
 
 - every attempt belongs to one account, and each account changes only its own attempts (anyone
   else's show up as "not found"); attempt numbers are unique per account. The one thing shared
-  is battle teams and KOs in *See Other Trainer's Solutions*, without the account they came from
+  is battle teams, KOs and battle notes in *See Other Trainer's Solutions*, without the account they came from
 - usernames are 3-30 letters, digits, dots, dashes or underscores, unique ignoring case;
   passwords are 8-128 characters
 
@@ -289,7 +290,7 @@ account's data only. Changes (anything but GET) need an `X-Requested-With` heade
 | POST | `/api/me/logout-everywhere` | ends every session of the account |
 | GET | `/api/game` | routes (with encounter options), battles, sprites, evolution lines, dupes-clause families, natures, statuses, suggestions |
 | GET | `/api/battles/<id>` | a battle's trainers and their teams |
-| GET | `/api/battles/<id>/solutions?exclude=<attempt id>` | every other attempt's team and KOs for that battle, yours (`mine`) and other trainers' (anonymous; members by slot) |
+| GET | `/api/battles/<id>/solutions?exclude=<attempt id>` | every other attempt's team, KOs and notes for that battle, yours (`mine`) and other trainers' (anonymous; members by slot) |
 | GET / POST | `/api/attempts` | `{number?}` |
 | GET / PATCH / DELETE | `/api/attempts/<id>` | `{number?, notes?}` |
 | PUT | `/api/attempts/<id>/catches/<route_id>` | `{pokemon}` (null clears) |
