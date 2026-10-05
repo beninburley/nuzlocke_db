@@ -890,9 +890,13 @@ function renderFocus() {
   $("#team-changed").hidden = !slots.some((m) => m && copyChanged(m));
   $("#team-grid").replaceChildren(...slots.map((member, i) => teamSlot(i, member)));
 
-  $("#box-count").textContent = `(${mons.length} caught)`;
+  // "Show Fainted Pokémon" unticked leaves them out of the box (a fainted team member stays in its slot).
+  const shown = $("#show-fainted").checked ? mons : mons.filter((m) => m.status !== "Fainted");
+  const hidden = mons.length - shown.length;
+  $("#box-count").textContent = `(${mons.length} caught${hidden ? ` · ${hidden} fainted hidden` : ""})`;
   $("#empty-box").hidden = mons.length > 0;
-  $("#box-grid").replaceChildren(...mons.map((m) => boxMon(m, slots.findIndex((s) => s?.catch_id === m.id))));
+  $("#all-fainted").hidden = !mons.length || shown.length > 0;
+  $("#box-grid").replaceChildren(...shown.map((m) => boxMon(m, slots.findIndex((s) => s?.catch_id === m.id))));
   renderSolutions();  // last: in that view, your team (and its banner) are hidden
 }
 
@@ -1896,6 +1900,11 @@ async function boot() {
     setupKoBoard();
     for (const btn of document.querySelectorAll(".script-open")) btn.addEventListener("click", openScriptDialog);
     $("#solutions-toggle").addEventListener("click", toggleSolutions);
+    $("#show-fainted").checked = storageGet("showFainted") !== "false";
+    $("#show-fainted").addEventListener("change", (e) => {
+      storageSet("showFainted", String(e.target.checked));
+      renderFocus();
+    });
     $("#solution-prev").addEventListener("click", () => showSolution(solutions.index - 1));
     $("#solution-next").addEventListener("click", () => showSolution(solutions.index + 1));
     const solutionBoard = $("#solution-board");

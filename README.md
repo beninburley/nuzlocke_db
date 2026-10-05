@@ -48,7 +48,9 @@ for anyone who makes an account:
   are won.
   Drag Pokemon from your box (only this attempt's catches) into the six team
   slots. You can also click a box Pokemon to add or remove it. Drag between
-  slots to swap, or back to the box to remove. Mark each fight won or lost.
+  slots to swap, or back to the box to remove. Untick *Show Fainted Pokémon*
+  to leave fainted Pokemon out of the box (remembered per browser). Mark each
+  fight won or lost.
   A team stores **copies**: adding a Pokemon copies it as it is right then, so
   evolving or editing it in the Box later doesn't rewrite past fights (and
   editing a copy doesn't touch the box). Click a team member to see or edit
