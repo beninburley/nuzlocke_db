@@ -400,12 +400,32 @@ def battle_solutions(battle_id):
 
 @app.get("/api/attempts")
 def list_attempts():
-    rows = get_db().execute(
+    """The user's attempts, newest first, each with the split it's on (see current_split)."""
+    conn = get_db()
+    rows = conn.execute(
         "SELECT a.id, a.number, a.notes, a.created_at, "
         "       (SELECT COUNT(*) FROM catches c WHERE c.attempt_id = a.id) AS catch_count "
         "FROM attempts a WHERE a.user_id = ? ORDER BY a.number DESC", (user_id(),)
-    )
-    return jsonify(attempts=[dict(r) for r in rows])
+    ).fetchall()
+    results = {}  # attempt id -> {battle id: result}
+    for f in conn.execute("SELECT f.attempt_id, f.battle_id, f.result FROM fights f "
+                          "JOIN attempts a ON a.id = f.attempt_id WHERE a.user_id = ? AND f.result IS NOT NULL",
+                          (user_id(),)):
+        results.setdefault(f["attempt_id"], {})[f["battle_id"]] = f["result"]
+    bosses = conn.execute(
+        "SELECT b.id, COALESCE(b.split, g.split) AS split FROM battles b "
+        "LEFT JOIN battles g ON g.id = b.group_id WHERE b.level_cap IS NOT NULL ORDER BY b.position").fetchall()
+    return jsonify(attempts=[dict(r, **current_split(bosses, results.get(r["id"], {}))) for r in rows])
+
+
+def current_split(bosses, results):
+    """The split an attempt is on: the one holding its first level-cap battle (in game
+    order) that it hasn't won. {"split": name or None once every boss is beaten,
+    "split_lost": whether that battle was lost, i.e. where the run ended}."""
+    for boss in bosses:
+        if results.get(boss["id"]) != "won":
+            return {"split": boss["split"], "split_lost": results.get(boss["id"]) == "lost"}
+    return {"split": None, "split_lost": False}
 
 
 def attempt_json(row):
