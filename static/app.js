@@ -105,10 +105,7 @@ function storageSet(key, value) {
 async function loadAttempts(preferredId) {
   state.attempts = (await api("GET", "/attempts")).attempts;
   const select = $("#attempt-select");
-  select.replaceChildren(
-    ...state.attempts.map((a) =>
-      el("option", { value: a.id }, `#${a.number} (${a.catch_count} caught)`))
-  );
+  select.replaceChildren(...state.attempts.map((a) => el("option", { value: a.id }, attemptLabel(a))));
   const hasAttempts = state.attempts.length > 0;
   $("#main").hidden = !hasAttempts;
   $("#no-attempts").hidden = hasAttempts;
@@ -134,11 +131,34 @@ async function selectAttempt(id) {
   renderFightView();
 }
 
+/** "#132 · Leader Roxanne Split": an attempt and the split it's on. */
+function attemptLabel(a) {
+  return `#${a.number} · ${a.split ? `${a.split} Split${a.split_lost ? " (lost)" : ""}` : "All bosses beaten"}`;
+}
+
+/**
+ * The split the current attempt is on: the one holding its first level-cap battle
+ * (in game order) it hasn't won, and whether that battle was lost (where the run
+ * ended). The server works out the same for the other attempts in the list.
+ */
+function currentSplit() {
+  for (const battle of state.battles) {
+    if (battle.level_cap === null) continue;
+    const result = state.fights.get(battle.id)?.result;
+    if (result !== "won") {
+      const end = battle.group_id !== null ? battleById(battle.group_id) : battle;
+      return { split: end?.split ?? battle.split, split_lost: result === "lost" };
+    }
+  }
+  return { split: null, split_lost: false };
+}
+
+/** Keep the current attempt's entry in the attempt list (and the catch count) up to date. */
 function refreshAttemptLabel() {
+  if (!state.attempt) return;
   const summary = state.attempts.find((a) => a.id === state.attempt.id);
-  summary.catch_count = state.catches.size;
-  const option = $(`#attempt-select option[value="${state.attempt.id}"]`);
-  option.textContent = `#${summary.number} (${summary.catch_count} caught)`;
+  Object.assign(summary, { catch_count: state.catches.size }, currentSplit());
+  $(`#attempt-select option[value="${state.attempt.id}"]`).textContent = attemptLabel(summary);
   $("#catch-count").textContent = `${state.catches.size}/${state.routes.length}`;
 }
 
@@ -758,6 +778,7 @@ function renderFightView() {
   renderEnemy();
   renderKoStats();
   renderBattleStats();
+  refreshAttemptLabel();  // a result may have moved the attempt to another split
 }
 
 // --- battle list (drawer) ------------------------------------------------------

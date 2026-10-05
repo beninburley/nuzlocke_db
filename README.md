@@ -10,7 +10,9 @@ for anyone who makes an account:
   password and log out (here or everywhere). Every account has a role:
   sign-ups are *trainers*; the others are *mod*, *content creator* and
   *admin*. Roles don't change what anyone can do yet.
-- **Attempts**: pick which run you're on, or start a new one.
+- **Attempts**: pick which run you're on, or start a new one. Each attempt
+  in the list shows the split it's on: the one with its first boss it hasn't
+  beaten, marked "(lost)" if that's where the run ended.
 - **Encounters**: record what you caught on each route. *+ Add catch* only
   offers Pokemon from that route's encounter table (from the sheet's
   *Encounters* tab). Picking one opens a details popup; fill it in, or *Skip*
@@ -291,7 +293,7 @@ account's data only. Changes (anything but GET) need an `X-Requested-With` heade
 | GET | `/api/game` | routes (with encounter options), battles, sprites, evolution lines, dupes-clause families, natures, statuses, suggestions |
 | GET | `/api/battles/<id>` | a battle's trainers and their teams |
 | GET | `/api/battles/<id>/solutions?exclude=<attempt id>` | every other attempt's team, KOs and notes for that battle, yours (`mine`) and other trainers' (anonymous; members by slot) |
-| GET / POST | `/api/attempts` | `{number?}` |
+| GET / POST | `/api/attempts` | `{number?}`; the list gives each attempt's `split` (null once every boss is beaten) and `split_lost` |
 | GET / PATCH / DELETE | `/api/attempts/<id>` | `{number?, notes?}` |
 | PUT | `/api/attempts/<id>/catches/<route_id>` | `{pokemon}` (null clears) |
 | PATCH | `/api/catches/<id>` | any of `{species, level, ability, nature, item, moves: [4], ivs: {hp, atk, def, spa, spd, spe}, status}` |
