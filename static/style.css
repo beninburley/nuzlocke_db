@@ -274,11 +274,14 @@ main, #no-attempts { max-width: 1400px; margin: 0 auto; padding: 12px 16px 40px;
   transform: translateY(-50%);
   opacity: 0.55;
 }
-.ko-edit.has-kos, .ko-edit:hover, .ko-edit:focus-visible { opacity: 1; }
-.ko-edit:not(.has-kos) { border-style: dashed; }
-.ko-icon path { fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.ko-icon .up { stroke: var(--ok); }
-.ko-icon .down { stroke: var(--bad); }
+.ko-edit.has-details, .ko-edit:hover, .ko-edit:focus-visible { opacity: 1; }
+.ko-edit:not(.has-details) { border-style: dashed; }
+/* Notepad and pencil: battle details & notes */
+.details-icon * { stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
+.details-icon .pad { fill: var(--surface); stroke: var(--muted); }
+.details-icon .pad-lines { fill: none; stroke: var(--muted); }
+.details-icon .pencil { fill: var(--surface); stroke: var(--accent); }
+.details-icon .pencil-tip { fill: none; stroke: var(--accent); }
 .won .battle-status { color: var(--ok); }
 .lost .battle-status { color: var(--bad); }
 .boss-item .battle-name { font-weight: 600; }
@@ -527,15 +530,6 @@ main, #no-attempts { max-width: 1400px; margin: 0 auto; padding: 12px 16px 40px;
   .team-slot .sprite { width: 72px; height: 72px; }
 }
 
-#tab-notes label { display: block; font-weight: 600; margin-bottom: 6px; }
-#tab-notes textarea {
-  width: 100%;
-  padding: 8px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  resize: vertical;
-}
-
 /* ---------------------------------------------------------------------------
    Box tab: selected Pokemon's details on the left, the box on the right
    --------------------------------------------------------------------------- */
@@ -737,6 +731,20 @@ button.primary:disabled { opacity: 0.6; }
 .ko-dot.static::before { transition: none; }
 .ko-arrow.static { cursor: default; }
 .ko-arrow.static:hover .line { stroke-width: 3; stroke-dasharray: none; }
+
+/* Battle notes, under the arrows */
+.ko-notes { display: flex; flex-direction: column; gap: 4px; margin-top: 18px; }
+.ko-notes textarea {
+  width: 100%;
+  min-height: 6em;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  resize: vertical;
+}
+.ko-notes .hint { margin: 0; font-size: 12px; }
+.solution-notes { margin: -8px 0 18px; }
+.solution-notes p { margin: 3px 0 0; font-size: 13px; white-space: pre-wrap; }
 
 .ko-foot { display: flex; align-items: center; gap: 8px; text-align: left; }
 .ko-foot #ko-summary { flex: 1; font-size: 13px; }

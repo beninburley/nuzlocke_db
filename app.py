@@ -368,7 +368,7 @@ def battle_solutions(battle_id):
         raise ApiError("battle not found", 404)
     exclude = request.args.get("exclude", type=int)
     fights = conn.execute(
-        "SELECT f.id, f.result, f.trainer_key, a.number, a.user_id = ? AS mine FROM fights f "
+        "SELECT f.id, f.result, f.trainer_key, f.notes, a.number, a.user_id = ? AS mine FROM fights f "
         "JOIN attempts a ON a.id = f.attempt_id "
         "WHERE f.battle_id = ? AND f.attempt_id IS NOT ? "
         "AND EXISTS (SELECT 1 FROM fight_members m WHERE m.fight_id = f.id)",
@@ -390,6 +390,8 @@ def battle_solutions(battle_id):
     return jsonify(solutions=[{
         "mine": bool(f["mine"]), "attempt": f["number"], "result": f["result"], "trainer": f["trainer_key"],
         "members": members.get(f["id"], []), "kos": kos.get(f["id"], []),
+        # Battle notes are free text, so only your own come back; other trainers' stay private.
+        "notes": f["notes"] if f["mine"] else None,
     } for f in fights])
 
 
@@ -558,14 +560,14 @@ def update_row(conn, table, row_id, fields):
 
 
 def fight_json(conn, fight_id):
-    fight = conn.execute("SELECT id, battle_id, result, trainer_key FROM fights WHERE id = ?",
+    fight = conn.execute("SELECT id, battle_id, result, trainer_key, notes FROM fights WHERE id = ?",
                          (fight_id,)).fetchone()
     members = [member_json(m) for m in conn.execute(
         "SELECT * FROM fight_members WHERE fight_id = ? ORDER BY slot", (fight_id,))]
     kos = [{"member": k["member_id"], "enemy": k["enemy_slot"], "by": k["ko_by"]} for k in conn.execute(
         "SELECT member_id, enemy_slot, ko_by FROM fight_kos WHERE fight_id = ? ORDER BY id", (fight_id,))]
     return {"id": fight["id"], "battle_id": fight["battle_id"], "result": fight["result"],
-            "trainer": fight["trainer_key"], "members": members, "kos": kos}
+            "trainer": fight["trainer_key"], "notes": fight["notes"], "members": members, "kos": kos}
 
 
 @app.get("/api/attempts/<int:attempt_id>")
@@ -759,7 +761,9 @@ def set_fight(attempt_id, battle_id):
 
     columns = ", ".join(db.POKEMON_COLUMNS)
     with conn:
-        if not kept and not added and result is None:
+        has_notes = conn.execute("SELECT 1 FROM fights WHERE attempt_id = ? AND battle_id = ? AND notes <> ''",
+                                 (attempt_id, battle_id)).fetchone()
+        if not kept and not added and result is None and not has_notes:  # a fight with notes is kept
             conn.execute("DELETE FROM fights WHERE attempt_id = ? AND battle_id = ?",
                          (attempt_id, battle_id))
             return jsonify(fight=None)
@@ -795,6 +799,29 @@ def set_fight(attempt_id, battle_id):
         conn.executemany(
             "INSERT INTO fight_kos (fight_id, member_id, enemy_slot, ko_by) VALUES (?, ?, ?, ?)",
             [(fight_id, *ko) for ko in kos if ko["member_id"] in kept])
+    return jsonify(fight=fight_json(conn, fight_id))
+
+
+MAX_NOTES = 10_000  # characters of battle notes
+
+
+@app.patch("/api/fights/<int:fight_id>")
+def update_fight(fight_id):
+    """Edit a fight's notes (what happened, what you wish had): {"notes": text}."""
+    conn = get_db()
+    owned = conn.execute("SELECT 1 FROM fights f JOIN attempts a ON a.id = f.attempt_id "
+                         "WHERE f.id = ? AND a.user_id = ?", (fight_id, user_id())).fetchone()
+    if owned is None:
+        raise ApiError("fight not found", 404)
+    data = body()
+    unknown = set(data) - {"notes"}
+    if unknown:
+        raise ApiError(f"unknown field(s): {', '.join(sorted(unknown))}")
+    notes = data.get("notes")
+    if not isinstance(notes, str) or len(notes) > MAX_NOTES:
+        raise ApiError(f"notes must be text of at most {MAX_NOTES} characters")
+    with conn:
+        conn.execute("UPDATE fights SET notes = ? WHERE id = ?", (notes, fight_id))
     return jsonify(fight=fight_json(conn, fight_id))
 
 

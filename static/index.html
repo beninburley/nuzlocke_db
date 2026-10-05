@@ -35,7 +35,6 @@
       <button type="button" role="tab" data-tab="fights">Trainer Battles</button>
       <button type="button" role="tab" data-tab="kos">KO Analytics</button>
       <button type="button" role="tab" data-tab="brought">Battles Brought</button>
-      <button type="button" role="tab" data-tab="notes">Notes</button>
     </nav>
 
     <section id="tab-encounters" class="panel">
@@ -87,7 +86,7 @@
             <button type="button" data-result="won" aria-pressed="false">Won</button>
             <button type="button" data-result="lost" aria-pressed="false">Lost</button>
           </div>
-          <button id="ko-open" type="button" hidden>Edit KOs</button>
+          <button id="ko-open" type="button" hidden>Battle Details &amp; Notes</button>
         </header>
 
         <p id="team-changed" class="changed-banner" role="note" hidden>
@@ -140,6 +139,10 @@
             </div>
             <div id="solution-board" class="ko-board"></div>
             <p id="solution-kos" class="muted solution-kos"></p>
+            <div id="solution-notes" class="solution-notes" hidden>
+              <span class="field-label">Your notes from that attempt</span>
+              <p id="solution-notes-text"></p>
+            </div>
             <h3 class="solutions-chart-head">Pok&eacute;mon brought to this battle <span id="solutions-chart-total" class="muted"></span></h3>
             <ol id="solutions-chart" class="bar-chart brought" aria-label="How often each Pokémon was brought to this battle"></ol>
           </section>
@@ -164,10 +167,6 @@
       <ol id="brought-chart" class="bar-chart brought" aria-label="Battles brought to, per Pokémon"></ol>
     </section>
 
-    <section id="tab-notes" class="panel" hidden>
-      <label for="notes">Notes for this attempt</label>
-      <textarea id="notes" rows="10" placeholder="How did it go? Deaths, rule decisions, how the run ended..."></textarea>
-    </section>
   </main>
 
   <dialog id="catch-picker" class="picker" aria-labelledby="picker-title">
@@ -223,6 +222,12 @@
       <div class="picker-body">
         <div id="ko-trainers" class="trainer-tabs ko-trainers" role="group" aria-label="Enemy team fought"></div>
         <div id="ko-board" class="ko-board"></div>
+        <div class="ko-notes">
+          <label class="field-label" for="ko-notes">Notes</label>
+          <textarea id="ko-notes" rows="4" maxlength="10000" disabled
+                    placeholder="What happened, what you wish had happened, what to try next time…"></textarea>
+          <p class="hint">Saved as you type.</p>
+        </div>
       </div>
       <footer class="picker-foot ko-foot">
         <span id="ko-summary" class="muted" aria-live="polite"></span>
