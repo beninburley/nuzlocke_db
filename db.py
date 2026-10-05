@@ -13,7 +13,7 @@ EVOLUTIONS_PATH = ROOT / "data" / "evolutions.json"
 
 # Bump when schema.sql changes in a way existing databases need migrating for,
 # and add a step to migrate().
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 
 # The site owner's account. Attempts recorded before accounts existed are
 # given to it (as an admin, without a password until one is set with
@@ -81,6 +81,9 @@ def migrate(conn):
     if version < 4 and "user_id" not in columns(conn, "attempts"):
         backup(conn, "v3")
         migrate_accounts(conn)
+    if version < 5:
+        backup(conn, "v4")
+        add_column(conn, "fights", "notes", "TEXT NOT NULL DEFAULT ''")  # v4 -> v5: notes per battle
     problems = conn.execute("PRAGMA foreign_key_check").fetchall()
     if problems:
         raise RuntimeError(f"migration left broken references: {[tuple(p) for p in problems]}")

@@ -109,7 +109,7 @@ CREATE TABLE IF NOT EXISTS attempts (
     id         INTEGER PRIMARY KEY,
     user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     number     INTEGER NOT NULL,
-    notes      TEXT    NOT NULL DEFAULT '',
+    notes      TEXT    NOT NULL DEFAULT '',  -- general notes; no longer shown (notes are per battle now)
     created_at TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (user_id, number)
 );
@@ -168,6 +168,7 @@ CREATE TABLE IF NOT EXISTS fights (
     -- The enemy team the KOs were against (a trainers.key), for battles with
     -- alternative teams. NULL = the battle's first enemy trainer.
     trainer_key TEXT,
+    notes       TEXT NOT NULL DEFAULT '',  -- what happened in this battle, in the user's words
     UNIQUE (attempt_id, battle_id)
 );
 

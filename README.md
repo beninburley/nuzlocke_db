@@ -56,8 +56,9 @@ for anyone who makes an account:
   editing a copy doesn't touch the box). Click a team member to see or edit
   that fight's copy. If any copy differs from the box, the fight shows *This
   fight used Pokémon that have since been changed*.
-- **KO tracker**: marking a battle Won or Lost opens it, and the KO button
-  next to every finished battle (or *Edit KOs*) reopens it. The enemy team
+- **Battle Details & Notes** (the KO tracker): marking a battle Won or Lost
+  opens it, and so do *Battle Details & Notes* and the notepad-and-pencil
+  icon next to every battle you've recorded anything for. The enemy team
   sits above yours with a dot under each enemy and over each of your
   Pokemon. Drag from one of your dots to an enemy's for a KO by your Pokemon
   (green arrow), or from an enemy's dot to one of yours for a KO by the enemy
@@ -67,13 +68,16 @@ for anyone who makes an account:
   Fainted, both that fight's copy and the Pokemon in your box. Removing the
   arrow puts them back to OK (the box Pokemon stays Fainted while another
   fight still has a red arrow for it). For the rival, pick which starter
-  variant you fought.
+  variant you fought. Below the arrows is the battle's **Notes** box: what
+  happened, what you wish had, what to try next time. It saves as you type.
+  A battle with notes is kept even if you clear its team and result.
 - **See Other Trainer's Solutions** (under *Fights* on Trainer Battles):
   swaps your team and box for the teams other attempts brought to the
   selected battle. That's your own earlier attempts and other trainers'
   (anonymous: just "Another trainer's attempt #N"). Wins come first, then
   unmarked fights, then losses. Pick one, or step through with ‹ ›, to see
   its team and KOs as a read-only KO board; hover a Pokemon for its set.
+  Your own attempts show their battle notes too (other trainers' stay private).
   Below, a bar chart shows how many of those teams brought each Pokemon.
   The button switches back to your team.
 - **KO Analytics**: a bar chart of which Pokemon scored the most KOs this
@@ -81,7 +85,6 @@ for anyone who makes an account:
 - **Battles Brought**: a bar chart of how many battles each box Pokemon was
   on the team for this attempt, with how many were won, lost or not marked.
   Pokemon never brought are listed too, with 0.
-- **Notes**: free text per attempt.
 
 Everything saves automatically on change.
 
@@ -233,7 +236,8 @@ on startup. It first saves a copy next to it (e.g. `nuzlocke.backup-v3.db`).
 Upgrading to v3 splits the Museum grunts and Tate & Liza into a battle per
 trainer; fights already recorded there get the same team and result on both.
 Upgrading to v4 adds accounts and gives every existing attempt to the site
-owner.
+owner. Upgrading to v5 gives each battle its own notes; the old per-attempt
+notes stay in the database (`attempts.notes`) but are no longer shown.
 
 ## Rules enforced
 
@@ -293,6 +297,7 @@ account's data only. Changes (anything but GET) need an `X-Requested-With` heade
 | POST | `/api/attempts/<id>/box-script` | `{script, apply?}`: each set's box Pokemon and changes (or problem); with `apply: true`, saves them |
 | PUT | `/api/attempts/<id>/fights/<battle_id>` | `{members: [slot] x6, result: "won" or "lost" or null}`; each slot is `null`, `{"id": copy}` (keep) or `{"catch_id": n}` (new copy) |
 | PATCH | `/api/fight-members/<id>` | same fields as a catch; edits that battle's copy only |
+| PATCH | `/api/fights/<id>` | `{notes}`: the battle's notes (at most 10,000 characters) |
 | PUT | `/api/fights/<id>/kos` | `{trainer: key or null, kos: [{member: copy id, enemy: slot, by: "player" or "enemy"}]}` replaces the fight's KOs; returns the fight and any box Pokemon whose status changed (red arrows faint them) |
 
 Fights (in `GET /api/attempts/<id>`) include `trainer` (the enemy team the KOs

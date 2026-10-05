@@ -132,7 +132,6 @@ async function selectAttempt(id) {
   renderEncounters();
   renderBox();
   renderFightView();
-  $("#notes").value = state.attempt.notes;
 }
 
 function refreshAttemptLabel() {
@@ -807,20 +806,22 @@ function splitResult(battles) {
   return { status: null, title: "Not finished" };
 }
 
-/** A battle in the list, with a KO button once it has a result. */
+/** A battle in the list, with a details & notes button once anything is recorded for it. */
 function battleItem(battle) {
   const fight = state.fights.get(battle.id);
   const item = el("li", { class: "battle-item" },
     battleButton(battle, battle.level_cap !== null ? "boss-item" : "trainer-item"));
-  if (fight?.result) {
+  if (fight) {
     const kos = fight.kos ?? [];
     const ours = kos.filter((k) => k.by === "player").length;
+    const recorded = [kos.length && `${ours} KO${ours === 1 ? "" : "s"} by your team, ${kos.length - ours} by the enemy`,
+      fight.notes && "notes"].filter(Boolean);
     const button = el("button", {
       type: "button",
-      class: `ko-edit${kos.length ? " has-kos" : ""}`,
-      title: kos.length ? `Edit KOs (${ours} by your team, ${kos.length - ours} by the enemy)` : "Record KOs",
-      "aria-label": `KOs for ${battle.name}`,
-    }, koIcon());
+      class: `ko-edit${recorded.length ? " has-details" : ""}`,
+      title: `Battle details & notes${recorded.length ? ` (${recorded.join("; ")})` : ""}`,
+      "aria-label": `Battle details & notes for ${battle.name}`,
+    }, detailsIcon());
     button.addEventListener("click", () => {
       selectBattle(battle.id);
       openKoTracker(battle.id);
@@ -831,11 +832,13 @@ function battleItem(battle) {
   return item;
 }
 
-/** Green arrow up, red arrow down: the KO tracker's two kinds of arrow. */
-function koIcon() {
-  return svgEl("svg", { class: "ko-icon", viewBox: "0 0 16 16", width: "16", height: "16", "aria-hidden": "true" },
-    svgEl("path", { class: "up", d: "M5 13V3.5M2.2 6.3 5 3.5l2.8 2.8" }),
-    svgEl("path", { class: "down", d: "M11 3v9.5m-2.8-2.8 2.8 2.8 2.8-2.8" }));
+/** A notepad with a pencil: battle details & notes. */
+function detailsIcon() {
+  return svgEl("svg", { class: "details-icon", viewBox: "0 0 16 16", width: "16", height: "16", "aria-hidden": "true" },
+    svgEl("rect", { class: "pad", x: "1.5", y: "2", width: "9.5", height: "12", rx: "1.2" }),
+    svgEl("path", { class: "pad-lines", d: "M3.8 5.5h5M3.8 8h3.5M3.8 10.5h2.2" }),
+    svgEl("path", { class: "pencil", d: "M12.6 2.4l1.9 1.9-5.6 5.6-2.5.6.6-2.5z" }),
+    svgEl("path", { class: "pencil-tip", d: "M7 8.5l1.4 1.4" }));
 }
 
 function battleButton(battle, className) {
@@ -884,7 +887,7 @@ function renderFocus() {
   for (const btn of document.querySelectorAll(".result-toggle button")) {
     btn.setAttribute("aria-pressed", fight?.result === btn.dataset.result);
   }
-  $("#ko-open").hidden = !fight?.result;
+  $("#ko-open").hidden = !fight;  // once a team, result or notes is recorded
 
   $("#team-count").textContent = `${slots.filter(Boolean).length}/${TEAM_SIZE}`;
   $("#team-changed").hidden = !slots.some((m) => m && copyChanged(m));
@@ -1139,11 +1142,11 @@ function saveFight(slots, result) {
   const members = slots.flatMap((m, i) => (m ? [{ ...m, slot: i + 1 }] : []));
   // Saved copies are kept by id; new ones are copied from their box Pokemon.
   const payload = slots.map((m) => (m ? (m.id ? { id: m.id } : { catch_id: m.catch_id }) : null));
-  if (members.length || result) {
-    const previous = state.fights.get(battleId);
+  const previous = state.fights.get(battleId);
+  if (members.length || result || previous?.notes) {  // a fight with notes stays, even if emptied
     const kept = new Set(members.map((m) => m.id));
     state.fights.set(battleId, {
-      trainer: null, ...previous, battle_id: battleId, result, members,
+      trainer: null, notes: "", ...previous, battle_id: battleId, result, members,
       kos: (previous?.kos ?? []).filter((k) => kept.has(k.member)),  // a removed copy's KOs go with it
     });
   } else {
@@ -1217,23 +1220,27 @@ function setDrawer(open) {
 }
 
 // ---------------------------------------------------------------------------
-// KO tracker: the enemy team above your team, with a dot between each. An
-// arrow from your Pokemon to an enemy (green) is a KO by your Pokemon; one from
-// an enemy to your Pokemon (red) is a KO by the enemy. Changes save as you go.
+// Battle details & notes (the KO tracker): the enemy team above your team, with
+// a dot between each. An arrow from your Pokemon to an enemy (green) is a KO by
+// your Pokemon; one from an enemy to your Pokemon (red) is a KO by the enemy.
+// Below the arrows, the battle's notes. Changes save as you go.
 // ---------------------------------------------------------------------------
 
 let koSession = null;  // the fight open in the KO tracker (see openKoTracker)
 let koOpens = 0;       // to ignore a load that finishes after the tracker was reopened
+let notesTimer = null;
 
 async function openKoTracker(battleId) {
   const dialog = $("#ko-dialog");
   const attemptId = state.attempt.id;
   const open = ++koOpens;
+  saveNotes();  // anything still unsaved from the battle open before
   koSession = null;
-  $("#ko-title").textContent = `KOs: ${battleById(battleId).name}`;
+  $("#ko-title").textContent = `${battleById(battleId).name}: Battle Details & Notes`;
   $("#ko-trainers").replaceChildren();
   $("#ko-summary").textContent = "";
   $("#ko-board").replaceChildren(el("p", { class: "hint" }, "Loading…"));
+  Object.assign($("#ko-notes"), { value: "", disabled: true });
   if (!dialog.open) dialog.showModal();
 
   let detail;
@@ -1266,7 +1273,28 @@ async function openKoTracker(battleId) {
     armed: null,                   // {side, index}: the first dot clicked, waiting for the second
     drag: null,                    // {side, index, x, y, moved} while dragging from a dot
   };
+  Object.assign($("#ko-notes"), { value: fight.notes ?? "", disabled: false });
   renderKoTracker();
+}
+
+/** Notes save a moment after you stop typing (and straight away when the popup closes). */
+function scheduleNotesSave() {
+  clearTimeout(notesTimer);
+  notesTimer = setTimeout(saveNotes, 700);
+}
+
+function saveNotes() {
+  clearTimeout(notesTimer);
+  const input = $("#ko-notes");
+  if (!koSession || input.disabled) return;
+  const { attemptId, battleId, fightId } = koSession;
+  const notes = input.value;
+  const fight = state.fights.get(battleId);
+  if (fight?.id !== fightId || (fight.notes ?? "") === notes) return;
+  fight.notes = notes;
+  renderBattleList();  // the battle's details icon shows it has notes
+  const run = saveChain.then(() => save(() => api("PATCH", `/fights/${fightId}`, { notes })));
+  saveChain = run.catch(() => resync(attemptId));
 }
 
 // A KO board (an enemy team above a team, with arrows between their dots) is
@@ -1563,9 +1591,19 @@ function setupKoBoard() {
     koSession.armed = null;
     saveKos();
   });
-  $("#ko-done").addEventListener("click", () => $("#ko-dialog").close());
-  // The close event arrives asynchronously: by then the tracker may be open again for another fight.
-  $("#ko-dialog").addEventListener("close", (e) => { if (!e.currentTarget.open) koSession = null; });
+  $("#ko-done").addEventListener("click", () => {
+    saveNotes();
+    $("#ko-dialog").close();
+  });
+  $("#ko-notes").addEventListener("input", scheduleNotesSave);
+  $("#ko-notes").addEventListener("change", saveNotes);
+  // The close event arrives asynchronously: by then the tracker may be open again for another
+  // fight (whose opening already saved this one's notes).
+  $("#ko-dialog").addEventListener("close", (e) => {
+    if (e.currentTarget.open) return;
+    saveNotes();
+    koSession = null;
+  });
   $("#ko-open").addEventListener("click", () => openKoTracker(state.battleId));
 }
 
@@ -1789,6 +1827,9 @@ function showSolution(index) {
   $("#solution-kos").textContent = s.kos.length
     ? `${ours} KO${ours === 1 ? "" : "s"} by the team · ${s.kos.length - ours} by the enemy. Hover a Pokémon for its set.`
     : "No KOs recorded for this attempt. Hover a Pokémon for its set.";
+  // Only your own attempts' notes come back (other trainers' notes stay private).
+  $("#solution-notes").hidden = !s.notes;
+  $("#solution-notes-text").textContent = s.notes ?? "";
 }
 
 /** How many of the listed teams brought each Pokémon (as used in the fight), most first. */
@@ -1813,18 +1854,6 @@ function renderSolutionsChart() {
       detail: [won && `${won} won`, lost && `${lost} lost`, none && `${none} not marked`].filter(Boolean).join(" · "),
     };
   }));
-}
-
-// ---------------------------------------------------------------------------
-// Notes tab
-// ---------------------------------------------------------------------------
-
-async function onNotesChange() {
-  const notes = $("#notes").value;
-  const current = state.attempt;
-  if (!current || notes === current.notes) return;
-  const { attempt } = await save(() => api("PATCH", `/attempts/${current.id}`, { notes }));
-  if (state.attempt?.id === attempt.id) state.attempt = attempt;
 }
 
 // ---------------------------------------------------------------------------
@@ -1871,7 +1900,7 @@ async function boot() {
     for (const btn of document.querySelectorAll(".tabs button")) {
       btn.addEventListener("click", () => showTab(btn.dataset.tab));
     }
-    showTab(["encounters", "box", "fights", "kos", "brought", "notes"].includes(storageGet("tab")) ? storageGet("tab") : "encounters");
+    showTab(["encounters", "box", "fights", "kos", "brought"].includes(storageGet("tab")) ? storageGet("tab") : "encounters");
 
     $("#drawer-open").addEventListener("click", () =>
       setDrawer($("#tab-fights").classList.contains("drawer-closed")));
@@ -1915,7 +1944,6 @@ async function boot() {
     $("#attempt-select").addEventListener("change", (e) => selectAttempt(Number(e.target.value)));
     $("#new-attempt").addEventListener("click", () => createAttempt().catch(() => {}));
     $("#delete-attempt").addEventListener("click", () => deleteAttempt().catch(() => {}));
-    $("#notes").addEventListener("change", () => onNotesChange().catch(() => {}));
 
     await loadAttempts();
   } catch (err) {
