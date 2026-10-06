@@ -10,6 +10,7 @@ SCHEMA_PATH = ROOT / "schema.sql"
 GAME_DATA_PATH = ROOT / "data" / "game_data.json"
 SPRITES_PATH = ROOT / "data" / "sprites.json"
 EVOLUTIONS_PATH = ROOT / "data" / "evolutions.json"
+POKEDEX_PATH = ROOT / "data" / "pokedex.json"  # every move, ability and held item (PokeAPI)
 
 # Bump when schema.sql changes in a way existing databases need migrating for,
 # and add a step to migrate().
@@ -281,12 +282,14 @@ def load_game_data(conn, path=GAME_DATA_PATH):
             [(species, fid) for fid, family in enumerate(data["families"]) for species in family],
         )
 
+        # Every species the app knows: the sheet's, plus the whole Pokédex
+        # (scripts/fetch_pokedex.py). A few have no sprite on PokeAPI yet: ''.
         conn.execute("DELETE FROM species_sprites")
         if SPRITES_PATH.exists():
             sprites = json.loads(SPRITES_PATH.read_text(encoding="utf-8"))
             conn.executemany(
                 "INSERT INTO species_sprites (species, url) VALUES (?, ?)",
-                [(species, url) for species, url in sprites.items() if url],
+                [(species, url or "") for species, url in sprites.items()],
             )
 
         conn.execute("DELETE FROM evolution_lines")
@@ -346,6 +349,14 @@ def set_trainer_team(conn, trainer_id, pokemon):
           p["nature"], *(list(p["moves"]) + [None] * 4)[:4])
          for slot, p in enumerate(pokemon, start=1)],
     )
+
+
+def pokedex_names():
+    """{"moves", "abilities", "items"}: every name PokeAPI has (empty lists without the file)."""
+    if not POKEDEX_PATH.exists():
+        return {"moves": [], "abilities": [], "items": []}
+    data = json.loads(POKEDEX_PATH.read_text(encoding="utf-8"))
+    return {key: data.get(key, []) for key in ("moves", "abilities", "items")}
 
 
 def original_trainer_team(trainer_key, path=GAME_DATA_PATH):
