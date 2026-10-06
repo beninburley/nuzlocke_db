@@ -210,6 +210,18 @@ re-extracting game data if new species appear:
 .venv\Scripts\python.exe scripts\fetch_sprites.py
 ```
 
+**The whole Pokédex** comes from PokeAPI too, so species, moves, abilities and
+held items the spreadsheet never mentions can still be picked (e.g. when
+correcting a trainer's team). The script adds every Pokémon and battle form to
+`data/sprites.json`, named the sheet's way and without doubling forms the sheet
+already has. It also writes every move, ability and held item's name to
+`data/pokedex.json` for autocomplete. Gigantamax, Totem and costume forms are
+left out. Re-run it when new Pokémon come out:
+
+```powershell
+.venv\Scripts\python.exe scriptsetch_pokedex.py
+```
+
 **Evolution lines** come from PokeAPI's evolution chains, cached in
 `data/evolutions.json`. Regional forms keep their line (Growlithe-H ->
 Arcanine-H). Re-run after re-extracting game data:
@@ -282,7 +294,8 @@ box_script.py          Reading Showdown-style sets and matching them to box Poke
 db.py                  SQLite connection, schema setup, migrations, game-data sync
 schema.sql             Tables and integrity triggers
 data/game_data.json    Extracted game data
-data/sprites.json      Species -> PokeAPI sprite URL
+data/sprites.json      Species -> PokeAPI sprite URL (the sheet's species plus the whole Pokédex)
+data/pokedex.json      Every move, ability and held item name (PokeAPI)
 data/evolutions.json   Species -> its evolutionary line (PokeAPI)
 scripts/               Spreadsheet extraction, PokeAPI lookups, history import/backfill, accounts
 static/                Frontend (plain HTML/CSS/JS, no build step): landing.html, login.html,

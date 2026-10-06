@@ -309,14 +309,18 @@ def game():
     sprites = {r["species"]: r["url"] for r in conn.execute("SELECT species, url FROM species_sprites")}
     evolutions = evolution_lines(conn)
     families = species_families(conn)
-    # Autocomplete for box Pokemon details: the names Run & Bun's own trainers use.
+    # Autocomplete for Pokemon details: every move, ability and held item
+    # (PokeAPI), plus the names Run & Bun's own trainers use (some spelled
+    # the sheet's way).
     distinct = lambda sql: [r[0] for r in conn.execute(sql)]  # noqa: E731
+    dex = db.pokedex_names()
     suggestions = {
-        "abilities": distinct("SELECT DISTINCT ability FROM trainer_pokemon WHERE ability IS NOT NULL ORDER BY 1"),
-        "items": distinct("SELECT DISTINCT item FROM trainer_pokemon WHERE item IS NOT NULL ORDER BY 1"),
+        "abilities": distinct("SELECT DISTINCT ability FROM trainer_pokemon WHERE ability IS NOT NULL"),
+        "items": distinct("SELECT DISTINCT item FROM trainer_pokemon WHERE item IS NOT NULL"),
         "moves": distinct(" UNION ".join(
-            f"SELECT move{i} FROM trainer_pokemon WHERE move{i} IS NOT NULL" for i in range(1, 5)) + " ORDER BY 1"),
+            f"SELECT move{i} FROM trainer_pokemon WHERE move{i} IS NOT NULL" for i in range(1, 5))),
     }
+    suggestions = {key: sorted(set(names) | set(dex[key]), key=str.lower) for key, names in suggestions.items()}
     return jsonify(routes=routes, battles=battles, sprites=sprites, evolutions=evolutions, families=families,
                    suggestions=suggestions, natures=db.NATURES, statuses=db.STATUSES, iv_stats=db.IV_STATS)
 
