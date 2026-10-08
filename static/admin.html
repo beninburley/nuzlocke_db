@@ -4,7 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Admin · Run &amp; Bun Nuzlocke</title>
+  <link rel="stylesheet" href="tokens.css">
   <link rel="stylesheet" href="style.css">
+  <script src="theme.js"></script>
 </head>
 <body data-page="admin">
   <header class="topbar">
@@ -12,6 +14,10 @@
     <a class="button" href="/app">&larr; Back to your tracker</a>
     <span id="status" role="status" aria-live="polite"></span>
     <div class="topbar-actions">
+      <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Dark theme" aria-pressed="false">
+        <svg class="icon icon-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+        <svg class="icon icon-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+      </button>
       <a id="admin-link" class="button admin-link" href="/admin" aria-current="page" hidden>Admin</a>
       <div class="account-menu">
         <button id="account-button" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="account-popover" hidden>

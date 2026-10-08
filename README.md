@@ -297,10 +297,13 @@ data/game_data.json    Extracted game data
 data/sprites.json      Species -> PokeAPI sprite URL (the sheet's species plus the whole Pokédex)
 data/pokedex.json      Every move, ability and held item name (PokeAPI)
 data/evolutions.json   Species -> its evolutionary line (PokeAPI)
-scripts/               Spreadsheet extraction, PokeAPI lookups, history import/backfill, accounts
+scripts/               Spreadsheet extraction, PokeAPI lookups, history import/backfill, accounts,
+                       build_tokens.py (design-system/tokens.json -> static/tokens.css)
+design-system/         nuzhub's design system: tokens, fonts, component specs (the source of truth for styling)
 static/                Frontend (plain HTML/CSS/JS, no build step): landing.html, login.html,
                        account.html and site.js for accounts; index.html and app.js for the tracker;
-                       admin.html and admin.js for admins (reusing app.js's rendering)
+                       admin.html and admin.js for admins (reusing app.js's rendering); tokens.css
+                       (generated) and theme.js (light/dark toggle) on every page
 ```
 
 ### API
