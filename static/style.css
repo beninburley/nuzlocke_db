@@ -14,8 +14,8 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-button, select, textarea, input { font: inherit; color: inherit; }
-a { color: var(--emerald-strong); }
+:where(button, select, textarea, input) { font: inherit; color: inherit; }
+:where(a) { color: var(--emerald-strong); }
 ::placeholder { color: var(--ink-subtle); }
 
 /* One focus ring for everything interactive; blue so it shows against emerald */
@@ -34,7 +34,6 @@ a { color: var(--emerald-strong); }
 }
 
 /* Theme toggle: a moon in light theme, a sun in dark */
-.theme-toggle { display: inline-grid; place-items: center; padding: 4px; }
 .theme-toggle .icon-sun { display: none; }
 [data-theme="dark"] .theme-toggle .icon-sun { display: block; }
 [data-theme="dark"] .theme-toggle .icon-moon { display: none; }
@@ -43,22 +42,259 @@ a { color: var(--emerald-strong); }
   :root:not([data-theme="light"]) .theme-toggle .icon-moon { display: none; }
 }
 
-button {
-  padding: 4px 10px;
-  border: 1px solid var(--line-strong);
-  border-radius: 6px;
-  background: var(--surface);
-  cursor: pointer;
-}
-button:hover { border-color: var(--emerald); }
-button.danger:hover { border-color: var(--danger); color: var(--danger); }
+/* ---------------------------------------------------------------------------
+   Shared components (design-system/components): buttons, fields, tabs, cards,
+   tables and chips. The :where() rules have zero specificity, so a screen's
+   own class rules always win over them.
+   --------------------------------------------------------------------------- */
 
-select {
-  padding: 3px 4px;
+/* Density: roomy unless a screen says otherwise. Phones and touch screens always
+   get 44px tap targets. Cards have no outline in light theme, a hairline in dark. */
+:root { --control: var(--control-md); --card-pad: var(--space-5); --card-line: transparent; }
+@media (max-width: 639.98px), (pointer: coarse) {  /* below --bp-tablet */
+  :root { --control: var(--control-touch); }
+}
+[data-theme="dark"] { --card-line: var(--line); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --card-line: var(--line); }
+}
+
+/* Button: outlined by default; .primary (one per view), .danger, .ghost, .small */
+:where(button, a.button) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--control);
+  padding: 0 var(--space-4);
   border: 1px solid var(--line-strong);
-  border-radius: 4px;
+  border-radius: var(--radius-md);
   background: var(--surface);
+  color: var(--ink);
+  font: var(--text-label);
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 160ms ease-out, border-color 160ms ease-out, box-shadow 160ms ease-out, transform 160ms ease-out;
+}
+:where(button, a.button):hover { background: var(--surface-hover); }
+:where(button, a.button):active { transform: translateY(1px); }
+:where(button.primary, a.button.primary) {
+  background: var(--emerald);
+  border-color: var(--emerald);
+  color: var(--on-emerald);
+  box-shadow: var(--shadow-1);
+}
+:where(button.primary, a.button.primary):hover { background: var(--emerald-strong); border-color: var(--emerald-strong); }
+:where(button.danger) { border-color: var(--danger); color: var(--danger); }
+:where(button.danger):hover { background: var(--danger-soft); }
+:where(button.ghost, a.button.ghost) { border-color: transparent; background: transparent; color: var(--emerald-strong); }
+:where(button.small, a.button.small) { min-height: var(--control-sm); padding: 0 var(--space-3); border-radius: var(--radius-sm); }
+:where(button):disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+:where(button):disabled:hover { background: var(--surface); }
+:where(button.primary):disabled:hover { background: var(--emerald); border-color: var(--emerald); }
+/* Icon-only buttons are square */
+:where(.icon-button, .theme-toggle) { width: var(--control); padding: 0; font-size: var(--icon-md); line-height: 1; }
+
+/* Buttons that are list rows, cards or slots rather than buttons to look at:
+   they keep their own layout and type and only share the reset above. */
+:where(.group-toggle, .boss-item, .trainer-item, .solution-item, .pick-card, .box-mon, .catch-chip, .ko-dot) {
+  min-height: 0;
+  gap: 0;
+  align-items: normal;
+  justify-content: normal;
+  font: inherit;
+}
+/* Small round remove/edit buttons on slots keep their own size */
+:where(.catch-remove, .team-slot .remove, .ko-edit) { min-height: 0; }
+
+/* Text fields, selects and text areas */
+:where(input:not([type="checkbox"], [type="radio"]), select, textarea) {
+  min-height: var(--control);
   max-width: 100%;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font: var(--text-body);
+}
+:where(textarea) { padding: var(--space-2) var(--space-3); resize: vertical; }
+/* Search is a pill on a well */
+:where(input[type="search"]) { padding: 0 var(--space-4); border-radius: var(--radius-pill); background: var(--surface-sunken); }
+:where(input[type="search"])::placeholder { color: var(--ink-muted); }
+:where(input[type="checkbox"], input[type="radio"]) { width: var(--icon-sm); height: var(--icon-sm); accent-color: var(--emerald); }
+:where(.is-invalid) { border-color: var(--danger); }
+@media (max-width: 639.98px) {
+  /* 16px stops iOS zooming in on tap */
+  :where(input, select, textarea) { font-size: 16px; }
+}
+.field { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; margin: 0; }
+.field-label { font: var(--text-label); color: var(--ink); }
+.hint { margin: 0 0 var(--space-3); color: var(--ink-muted); }
+.hint.warn { color: var(--danger); }
+.form-error { margin: 0; color: var(--danger); }
+.form-done { margin: 0; color: var(--emerald-strong); }
+
+/* Tabs: a segmented pill. Used for page tabs (aria-selected) and for
+   one-of-several pickers (aria-pressed). */
+:where(.tabs, .auth-tabs, .trainer-tabs, .result-toggle) {
+  display: inline-flex;
+  gap: var(--space-1);
+  max-width: 100%;
+  padding: var(--space-1);
+  overflow-x: auto;
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+}
+:where(.tabs, .auth-tabs, .trainer-tabs, .result-toggle) > :where(button) {
+  flex: none;
+  min-height: calc(var(--control) - 2 * var(--space-1));
+  padding: 0 var(--space-4);
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+:where(.tabs, .auth-tabs, .trainer-tabs, .result-toggle) > :where(button):hover { background: transparent; color: var(--ink); }
+:where(.tabs, .auth-tabs, .trainer-tabs, .result-toggle) > :where(button[aria-selected="true"], button[aria-pressed="true"]) {
+  background: var(--surface);
+  color: var(--emerald-strong);
+  box-shadow: var(--shadow-1);
+}
+.pill { font: var(--text-caption); color: inherit; }
+
+/* Card: a surface that lifts off the page. Dialogs and menus float higher. */
+.panel {
+  padding: var(--card-pad);
+  border: 1px solid var(--card-line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+}
+a.panel { color: inherit; text-decoration: none; transition: box-shadow 160ms ease-out, transform 160ms ease-out; }
+a.panel:hover { box-shadow: var(--shadow-2); transform: translateY(-2px); }
+
+/* Data table: overline headers on a well, hairline rows, numbers right-aligned */
+.grid { width: 100%; border-collapse: separate; border-spacing: 0; font: var(--text-body-dense); }
+.grid th, .grid td { height: var(--row-dense); padding: 0 var(--space-3); text-align: left; vertical-align: middle; }
+.grid thead th {
+  position: sticky;
+  top: 0;
+  background: var(--surface-sunken);
+  color: var(--ink-muted);
+  font: var(--text-overline);
+  letter-spacing: var(--text-overline-tracking);
+  text-transform: uppercase;
+}
+.grid thead th:first-child { border-radius: var(--radius-sm) 0 0 var(--radius-sm); }
+.grid thead th:last-child { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+.grid tbody td { border-top: 1px solid var(--line); }
+.grid tbody tr:first-child td { border-top: 0; }
+.grid tbody tr:hover td { background: var(--surface-hover); }
+.grid tr.is-selected td { background: var(--emerald-soft); }
+.grid .num { text-align: right; font: var(--text-data); }
+.grid td:first-child { white-space: nowrap; }
+
+/* State chip: a Pokémon's state (or battle status) as icon plus word. Sizes as in
+   design-system/components/bundle.css. In tight spots the word is visually hidden. */
+.state-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: calc(var(--icon-sm) + 2 * var(--space-1));
+  padding: 0 var(--space-2) 0 6px;
+  border-radius: var(--radius-pill);
+  font: var(--text-caption);
+  font-weight: 600;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.state-chip .icon { width: 14px; height: 14px; }
+.state-chip.alive   { background: var(--state-alive);   color: var(--state-alive-ink); }
+.state-chip.fainted { background: var(--state-fainted); color: var(--state-fainted-ink); }
+.state-chip.boxed   { background: var(--state-boxed);   color: var(--state-boxed-ink); }
+.state-chip.caught  { background: var(--state-caught);  color: var(--state-caught-ink); }
+.state-chip.missed  { background: var(--state-missed);  color: var(--state-missed-ink); }
+.state-chip.gift    { background: var(--state-gift);    color: var(--state-gift-ink); }
+.state-chip.trade   { background: var(--state-trade);   color: var(--state-trade-ink); }
+/* Battle statuses aren't run states: feedback colors */
+.state-chip.burn    { background: var(--warning-soft);  color: var(--warning); }
+.state-chip.sleep   { background: var(--info-soft);     color: var(--info); }
+/* Small sprites (KO board, charts) show the icon alone; the sprite's tooltip says "has fainted" */
+:is(.ko-mon, .bar-chart-mon) .state-chip { padding: 0 var(--space-1); }
+:is(.ko-mon, .bar-chart-mon) .state-chip-label, .visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Small labels: tags, badges, filter chips */
+.tag, .cap-badge, .dupes-badge, .changed-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  font: var(--text-caption);
+  white-space: nowrap;
+}
+.tag { margin-left: var(--space-1); border-color: var(--line); background: var(--surface-sunken); color: var(--ink-muted); vertical-align: 1px; }
+.tag.boss { border-color: var(--line-strong); color: var(--ink); }
+.cap-badge, .dupes-badge { background: var(--info-soft); color: var(--info); }
+.dupes-badge { cursor: help; }
+.changed-tag { background: var(--warning-soft); color: var(--warning); }
+
+/* Banners */
+.changed-banner, .script-disclaimer {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--warning-soft);
+  color: var(--warning);
+  font: var(--text-body-dense);
+}
+
+/* Type badge: a Pokémon type in its color, always with its name */
+.type-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 64px;
+  height: calc(var(--icon-sm) + 6px);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  color: var(--type-on-dark);
+  font: var(--text-overline);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.type-badge + .type-badge { margin-left: var(--space-1); }
+.type-badge.normal { background: var(--type-normal); }
+.type-badge.fire { background: var(--type-fire); }
+.type-badge.water { background: var(--type-water); }
+.type-badge.electric { background: var(--type-electric); }
+.type-badge.grass { background: var(--type-grass); }
+.type-badge.ice { background: var(--type-ice); }
+.type-badge.ground { background: var(--type-ground); }
+.type-badge.flying { background: var(--type-flying); }
+.type-badge.psychic { background: var(--type-psychic); }
+.type-badge.bug { background: var(--type-bug); }
+.type-badge.rock { background: var(--type-rock); }
+.type-badge.steel { background: var(--type-steel); }
+.type-badge.fairy { background: var(--type-fairy); }
+.type-badge.fighting { background: var(--type-fighting); color: var(--type-on-light); }
+.type-badge.poison { background: var(--type-poison); color: var(--type-on-light); }
+.type-badge.ghost { background: var(--type-ghost); color: var(--type-on-light); }
+.type-badge.dragon { background: var(--type-dragon); color: var(--type-on-light); }
+.type-badge.dark { background: var(--type-dark); color: var(--type-on-light); }
+
+/* Reduced motion: no movement, color changes stay */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after { animation: none !important; transition-property: background-color, border-color, color, box-shadow, opacity !important; }
+  :where(button, a.button):active, a.panel:hover { transform: none; }
 }
 
 .topbar {
@@ -81,29 +317,7 @@ select {
 
 main, #no-attempts { max-width: 1400px; margin: 0 auto; padding: 12px 16px 40px; }
 
-.tabs { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 12px; }
-.tabs button { border-radius: 6px 6px 0 0; }
-.tabs button[aria-selected="true"] {
-  background: var(--emerald);
-  border-color: var(--emerald);
-  color: var(--on-emerald);
-}
-.pill { font-size: 12px; opacity: 0.8; }
-
-.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
-.hint { margin: 0 0 10px; color: var(--ink-muted); }
-.hint.warn { color: var(--danger); }
-
-.grid { border-collapse: collapse; width: 100%; }
-.grid th, .grid td {
-  padding: 4px 8px;
-  border-bottom: 1px solid var(--line);
-  text-align: left;
-  vertical-align: middle;
-}
-.grid thead th { position: sticky; top: 0; background: var(--surface); font-weight: 600; }
-.grid tbody tr:nth-child(even) { background: var(--surface-hover); }
-.grid td:first-child { white-space: nowrap; }
+.tabs { margin-bottom: var(--space-3); }
 
 /* Encounters: "+ Add catch" or the catch itself */
 #encounters-body td { height: 46px; }
@@ -129,8 +343,8 @@ main, #no-attempts { max-width: 1400px; margin: 0 auto; padding: 12px 16px 40px;
   width: min(760px, calc(100vw - 32px));
   max-height: 85vh;
   padding: 0;
-  border: 1px solid var(--line);
-  border-radius: 12px;
+  border: 1px solid var(--card-line);
+  border-radius: var(--radius-xl);
   background: var(--surface-raised);
   color: var(--ink);
   box-shadow: var(--shadow-4);
@@ -171,17 +385,6 @@ main, #no-attempts { max-width: 1400px; margin: 0 auto; padding: 12px 16px 40px;
 .pick-card.dupe { opacity: 0.45; filter: grayscale(1); border-style: dashed; }
 .pick-card.dupe:hover { opacity: 0.7; }
 .pick-card.dupe .pick-odds { color: var(--ink-muted); }
-.dupes-badge {
-  padding: 1px 8px;
-  border: 1px solid var(--info-soft);
-  border-radius: 10px;
-  background: var(--info-soft);
-  color: var(--info);
-  font-size: 11px;
-  font-weight: 600;
-  white-space: nowrap;
-  cursor: help;
-}
 .picker-foot { padding: 10px 16px; border-top: 1px solid var(--line); text-align: right; }
 .picker-foot:has(> [hidden]:only-child) { display: none; }
 
@@ -202,8 +405,9 @@ main, #no-attempts { max-width: 1400px; margin: 0 auto; padding: 12px 16px 40px;
   max-height: calc(100vh - 80px);
   overflow-y: auto;
   background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  border: 1px solid var(--card-line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
   animation: drawer-slide-out 0.3s ease-out;
   transition: margin-left 0.25s ease, opacity 0.25s ease;
 }
@@ -224,16 +428,10 @@ main, #no-attempts { max-width: 1400px; margin: 0 auto; padding: 12px 16px 40px;
   border-bottom: 1px solid var(--line);
 }
 .drawer-head h2 { margin: 0; font-size: 15px; }
-.icon-button { padding: 0 8px; font-size: 16px; line-height: 24px; }
 .drawer-scrim { display: none; }
 
 .drawer-filter { padding: 8px 8px 4px; }
-.drawer-filter input {
-  width: 100%;
-  padding: 5px 8px;
-  border: 1px solid var(--line-strong);
-  border-radius: 6px;
-}
+.drawer-filter input { width: 100%; }
 .drawer-empty { padding: 8px 12px; }
 
 .battle-list, .trainer-list { list-style: none; margin: 0; padding: 0; }
@@ -303,20 +501,7 @@ main, #no-attempts { max-width: 1400px; margin: 0 auto; padding: 12px 16px 40px;
 .won .battle-status { color: var(--emerald-strong); }
 .lost .battle-status { color: var(--danger); }
 .boss-item .battle-name { font-weight: 600; }
-.tag.boss { border-color: var(--line-strong); background: var(--surface-sunken); color: var(--ink); }
 .battle-meta { grid-column: 2; font-size: 12px; color: var(--ink-muted); }
-.tag {
-  display: inline-block;
-  margin-left: 4px;
-  padding: 0 5px;
-  border-radius: 8px;
-  background: var(--surface-sunken);
-  border: 1px solid var(--line);
-  color: var(--ink-muted);
-  font-size: 10px;
-  font-weight: normal;
-  vertical-align: 1px;
-}
 
 .fight-focus {
   flex: 1;
@@ -324,33 +509,21 @@ main, #no-attempts { max-width: 1400px; margin: 0 auto; padding: 12px 16px 40px;
   container-type: inline-size;
   padding: 16px;
   background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  border: 1px solid var(--card-line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
 }
 .focus-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-bottom: 16px; }
 .focus-title h2 { margin: 0; font-size: 20px; }
 .focus-cap { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; margin-bottom: 3px; font-size: 13px; }
-.cap-badge {
-  padding: 1px 9px;
-  border: 1px solid var(--info-soft);
-  border-radius: 12px;
-  background: var(--info-soft);
-  color: var(--info);
-}
-.result-toggle { margin-left: auto; display: inline-flex; }
-.result-toggle button { border-radius: 0; }
-.result-toggle button:first-child { border-radius: 6px 0 0 6px; }
-.result-toggle button:last-child { border-radius: 0 6px 6px 0; border-left: 0; }
-.result-toggle [data-result="won"][aria-pressed="true"] { background: var(--emerald); border-color: var(--emerald); color: var(--on-emerald); }
-.result-toggle [data-result="lost"][aria-pressed="true"] { background: var(--danger); border-color: var(--danger); color: var(--surface); }
+.result-toggle { margin-left: auto; }
+.result-toggle [data-result="won"][aria-pressed="true"] { background: var(--emerald); color: var(--on-emerald); }
+.result-toggle [data-result="lost"][aria-pressed="true"] { background: var(--danger); color: var(--surface); }
 
 .fight-focus h3 { margin: 0 0 8px; font-size: 14px; }
 
 .enemy-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin-bottom: 8px; }
 .enemy-head h3 { margin: 0; }
-.trainer-tabs { display: inline-flex; flex-wrap: wrap; gap: 4px; }
-.trainer-tabs button { padding: 2px 10px; border-radius: 12px; font-size: 12px; }
-.trainer-tabs button[aria-pressed="true"] { background: var(--emerald); border-color: var(--emerald); color: var(--on-emerald); }
 
 /* Enemy team: six columns, each a slot with the Pokemon's set listed below it */
 .enemy-slots { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
@@ -561,31 +734,12 @@ main, #no-attempts { max-width: 1400px; margin: 0 auto; padding: 12px 16px 40px;
 .box-detail { position: sticky; top: 64px; }
 .box-list h2 { margin: 0 0 8px; font-size: 16px; }
 .box-list .box-grid { max-height: none; }
-button.box-mon { background: none; font: inherit; }
+button.box-mon { background: none; }
 .box-mon[aria-current="true"] { border-color: var(--emerald); background: var(--emerald-soft); }
 /* Fainted: the sprite greyed out under a diagonal stamp */
 .fainted-sprite { position: relative; display: inline-grid; place-items: center; }
-.fainted-sprite .sprite { filter: grayscale(1); opacity: 0.45; }
-.fainted-stamp {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  padding: 0 5px;
-  border: 2px solid var(--state-fainted);
-  border-radius: 4px;
-  background: var(--state-fainted);
-  color: var(--state-fainted-ink);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  line-height: 1.4;
-  text-transform: uppercase;
-  white-space: nowrap;
-  transform: translate(-50%, -50%) rotate(-28deg);
-  pointer-events: none;
-}
-.team-slot .fainted-stamp, .editor-sprite .fainted-stamp { font-size: 13px; }
-.bar-chart-mon .fainted-stamp, .ko-mon .fainted-stamp { padding: 0 3px; border-width: 1.5px; font-size: 8px; }
+.fainted-sprite .sprite { filter: grayscale(1); opacity: 0.55; }
+.fainted-sprite > .state-chip { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); pointer-events: none; }
 
 @media (max-width: 900px) {
   .box-view { grid-template-columns: 1fr; }
@@ -601,21 +755,7 @@ button.box-mon { background: none; font: inherit; }
 .editor-title p { margin: 2px 0 0; font-size: 13px; }
 .evolve-button { align-self: flex-start; }
 .editor-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
-.field { display: flex; flex-direction: column; gap: 3px; min-width: 0; margin: 0; }
-.field-label {
-  color: var(--ink-muted);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-.pokemon-editor input, .pokemon-editor select {
-  width: 100%;
-  padding: 5px 7px;
-  border: 1px solid var(--line-strong);
-  border-radius: 6px;
-  background: var(--surface);
-}
+.pokemon-editor input, .pokemon-editor select { width: 100%; }
 .pokemon-editor input:invalid { border-color: var(--danger); }
 .moves-grid {
   display: grid;
@@ -628,47 +768,21 @@ button.box-mon { background: none; font: inherit; }
 }
 .ivs-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
 .iv { display: flex; flex-direction: column; align-items: center; gap: 2px; color: var(--ink-muted); font-size: 11px; }
-.iv input { padding: 5px 2px; text-align: center; }
+.iv input { padding: 0 var(--space-1); text-align: center; }
 .editor-actions { display: flex; justify-content: flex-end; gap: 8px; }
-button.primary { background: var(--emerald); border-color: var(--emerald); color: var(--on-emerald); }
-button.primary:disabled { opacity: 0.6; }
 .details-dialog { width: min(560px, calc(100vw - 32px)); }
 
 /* Status, and battle copies that differ from the box */
-.status-badge {
-  display: inline-block;
-  padding: 0 6px;
-  border-radius: 8px;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-}
-.status-badge.burn { background: var(--warning-soft); color: var(--warning); }
-.status-badge.sleep { background: var(--info-soft); color: var(--info); }
-.status-badge.fainted { background: var(--state-fainted); color: var(--state-fainted-ink); }
-.catch-chip .status-badge { margin-left: 2px; }
+.catch-chip .state-chip { margin-left: var(--space-1); }
 .catch-chip .mon-route { margin-left: 2px; }
 .changed-tag {
   position: absolute;
   top: 4px;
   left: 4px;
-  padding: 0 5px;
-  border: 1px solid var(--warning-soft);
-  border-radius: 8px;
-  background: var(--warning-soft);
-  color: var(--warning);
-  font-size: 10px;
 }
 .team-slot.filled { cursor: pointer; }
 .changed-banner {
-  margin: 0 0 14px;
-  padding: 8px 12px;
-  border: 1px solid var(--warning-soft);
-  border-radius: 8px;
-  background: var(--warning-soft);
-  color: var(--warning);
-  font-size: 13px;
+  margin: 0 0 var(--space-4);
 }
 
 /* ---------------------------------------------------------------------------
@@ -750,15 +864,8 @@ button.primary:disabled { opacity: 0.6; }
 
 /* Battle notes, under the arrows */
 .ko-notes { display: flex; flex-direction: column; gap: 4px; margin-top: 18px; }
-.ko-notes textarea {
-  width: 100%;
-  min-height: 6em;
-  padding: 8px;
-  border: 1px solid var(--line-strong);
-  border-radius: 6px;
-  resize: vertical;
-}
-.ko-notes .hint { margin: 0; font-size: 12px; }
+.ko-notes textarea { width: 100%; min-height: 6em; }
+.ko-notes .hint { margin: 0; font: var(--text-caption); }
 .solution-notes { margin: -8px 0 18px; }
 .solution-notes p { margin: 3px 0 0; font-size: 13px; white-space: pre-wrap; }
 
@@ -829,7 +936,6 @@ button.primary:disabled { opacity: 0.6; }
    --------------------------------------------------------------------------- */
 
 .focus-nav { display: flex; flex-direction: column; align-items: stretch; gap: 6px; }
-#solutions-toggle { font-size: 12px; }
 #solutions-toggle[aria-pressed="true"] { border-color: var(--emerald); background: var(--emerald-soft); }
 .solutions {
   display: grid;
@@ -883,7 +989,6 @@ button.primary:disabled { opacity: 0.6; }
 
 .box-head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin-bottom: 8px; }
 .box-head h2, .box-head h3 { margin: 0; }
-.script-open { padding: 2px 10px; font-size: 12px; }
 .check { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; cursor: pointer; user-select: none; }
 .check input { margin: 0; }
 .script-dialog { width: min(720px, calc(100vw - 32px)); }
@@ -891,23 +996,13 @@ button.primary:disabled { opacity: 0.6; }
 .script-body > * { flex-shrink: 0; }  /* the body scrolls; nothing in it should squash */
 .script-disclaimer {
   margin: 0;
-  padding: 8px 12px;
-  border: 1px solid var(--warning-soft);
-  border-radius: 8px;
-  background: var(--warning-soft);
-  color: var(--warning);
-  font-size: 13px;
 }
 #script-input {
   width: 100%;
   min-height: 12em;
-  padding: 8px;
-  border: 1px solid var(--line-strong);
-  border-radius: 6px;
-  font: 13px/1.45 ui-monospace, SFMono-Regular, Consolas, monospace;
-  resize: vertical;
+  font: 13px/1.45 ui-monospace, SFMono-Regular, Consolas, monospace;  /* no monospace token */
 }
-.script-body .hint { margin: 0; font-size: 12px; }
+.script-body .hint { margin: 0; font: var(--text-caption); }
 .script-preview { display: flex; flex-direction: column; gap: 8px; }
 .script-set { padding: 8px 10px; border: 1px solid var(--line); border-left-width: 4px; border-radius: 8px; }
 .script-set.ready { border-left-color: var(--emerald); }
@@ -933,17 +1028,9 @@ button.primary:disabled { opacity: 0.6; }
 .back-link { color: var(--emerald-strong); font-size: 13px; text-decoration: none; }
 .back-link:hover { text-decoration: underline; }
 .admin-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
-.admin-card { color: inherit; text-decoration: none; }
-.admin-card:hover { border-color: var(--emerald); }
 .admin-card h3 { margin: 0 0 6px; font-size: 15px; color: var(--emerald-strong); }
 .admin-card p { margin: 0; color: var(--ink-muted); }
-.admin-filter {
-  width: min(320px, 100%);
-  margin-bottom: 10px;
-  padding: 5px 8px;
-  border: 1px solid var(--line-strong);
-  border-radius: 6px;
-}
+.admin-filter { width: min(320px, 100%); margin-bottom: var(--space-3); }
 .admin-users td { vertical-align: middle; }
 
 .admin-battles { display: grid; grid-template-columns: minmax(240px, 300px) minmax(0, 1fr); gap: 16px; align-items: start; }
@@ -968,13 +1055,7 @@ button.primary:disabled { opacity: 0.6; }
 .slot-head .field { flex: 1; }
 .slot-sprite { display: grid; place-items: center; width: 56px; height: 56px; flex: none; border-radius: 8px; background: var(--surface-sunken); }
 .slot-sprite .sprite { width: 56px; height: 56px; }
-.team-slots input, .team-slots select {
-  width: 100%;
-  padding: 5px 7px;
-  border: 1px solid var(--line-strong);
-  border-radius: 6px;
-  background: var(--surface);
-}
+.team-slots input, .team-slots select { width: 100%; }
 .team-slots input:invalid { border-color: var(--danger); }
 .team-foot { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
 .team-foot .form-error { flex: 1; text-align: left; }
@@ -984,17 +1065,6 @@ button.primary:disabled { opacity: 0.6; }
    (plain for now; the look gets designed later)
    --------------------------------------------------------------------------- */
 
-a.button {
-  display: inline-block;
-  padding: 4px 12px;
-  border: 1px solid var(--line-strong);
-  border-radius: 6px;
-  background: var(--surface);
-  color: var(--ink);
-  text-decoration: none;
-}
-a.button:hover { border-color: var(--emerald); }
-a.button.primary { background: var(--emerald); border-color: var(--emerald); color: var(--on-emerald); }
 .topbar-end { margin-left: auto; }
 .home-link { color: inherit; text-decoration: none; }
 
@@ -1010,43 +1080,33 @@ a.button.primary { background: var(--emerald); border-color: var(--emerald); col
   flex-direction: column;
   gap: 6px;
   min-width: 200px;
-  padding: 10px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  padding: var(--space-2);
+  border: 1px solid var(--card-line);
+  border-radius: var(--radius-md);
   background: var(--surface-raised);
   box-shadow: var(--shadow-3);
 }
 .account-who { display: flex; flex-direction: column; margin: 0 0 4px; }
 .account-popover a { color: var(--emerald-strong); }
-.account-popover button { text-align: left; }
+.account-popover button { justify-content: flex-start; }
 
 .landing { max-width: 960px; margin: 0 auto; padding: 32px 16px 48px; }
 .hero { margin-bottom: 32px; }
 .hero h2 { margin: 0 0 10px; font-size: 32px; }
 .hero p { max-width: 640px; margin: 0 0 16px; font-size: 16px; }
 .hero-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-.hero-actions .button { padding: 8px 16px; }
 .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
 .features h3 { margin: 0 0 6px; font-size: 15px; }
 .features p { margin: 0; color: var(--ink-muted); }
 
 .auth-main { display: flex; justify-content: center; padding: 40px 16px; }
 .auth-card { width: min(400px, 100%); }
-.auth-tabs { display: flex; gap: 4px; margin-bottom: 14px; }
+.auth-tabs { display: flex; margin-bottom: var(--space-4); }
 .auth-tabs button { flex: 1; }
-.auth-tabs button[aria-selected="true"] { background: var(--emerald); border-color: var(--emerald); color: var(--on-emerald); }
 .auth-form { display: flex; flex-direction: column; gap: 10px; }
-.auth-form input {
-  width: 100%;
-  padding: 7px 9px;
-  border: 1px solid var(--line-strong);
-  border-radius: 6px;
-  background: var(--surface);
-}
-.auth-form .hint { margin: -6px 0 0; font-size: 12px; }
-.auth-form button[type="submit"] { align-self: flex-start; padding: 6px 16px; }
-.form-error { margin: 0; color: var(--danger); }
-.form-done { margin: 0; color: var(--emerald-strong); }
+.auth-form input { width: 100%; }
+.auth-form .hint { margin: 0; font: var(--text-caption); }
+.auth-form button[type="submit"] { align-self: flex-start; }
 
 .account-main { display: flex; flex-direction: column; gap: 16px; max-width: 560px; margin: 0 auto; padding: 24px 16px 48px; }
 .account-main h2 { margin: 0 0 12px; font-size: 16px; }

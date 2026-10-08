@@ -406,11 +406,28 @@ function catchById(id) {
 
 const routeName = (routeId) => state.routes.find((r) => r.id === routeId)?.name ?? "";
 
-function statusBadge(status) {
-  return status && status !== "OK" ? el("span", { class: `status-badge ${status.toLowerCase()}` }, status) : "";
+/** Lucide icons (as in design-system/assets/StateIcons): skull, flame, moon. */
+const STATE_ICONS = {
+  fainted: [["path", { d: "m12.5 17-.5-1-.5 1h1z" }],
+    ["path", { d: "M15 22a1 1 0 0 0 1-1v-1a2 2 0 0 0 1.56-3.25 8 8 0 1 0-11.12 0A2 2 0 0 0 8 20v1a1 1 0 0 0 1 1z" }],
+    ["circle", { cx: "15", cy: "12", r: "1" }], ["circle", { cx: "9", cy: "12", r: "1" }]],
+  burn: [["path", { d: "M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" }]],
+  sleep: [["path", { d: "M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" }]],
+};
+
+/** A state chip: icon plus word ("Fainted"). */
+function stateChip(status) {
+  const key = status.toLowerCase();
+  const icon = svgEl("svg", { class: "icon", viewBox: "0 0 24 24", "aria-hidden": "true" },
+    ...(STATE_ICONS[key] ?? []).map(([tag, attrs]) => svgEl(tag, attrs)));
+  return el("span", { class: `state-chip ${key}` }, icon, el("span", { class: "state-chip-label" }, status));
 }
 
-/** The status badge for a Pokemon shown with monSprite, which stamps "Fainted" on the sprite itself. */
+function statusBadge(status) {
+  return status && status !== "OK" ? stateChip(status) : "";
+}
+
+/** The status badge for a Pokemon shown with monSprite, which puts the "Fainted" chip on the sprite itself. */
 const spriteStatusBadge = (status) => statusBadge(status === "Fainted" ? null : status);
 
 /**
@@ -744,11 +761,10 @@ function sprite(species) {
   return img;
 }
 
-/** A Pokemon's sprite; greyed out with a diagonal "Fainted" stamp if it has fainted. */
+/** A Pokemon's sprite; greyed out with a "Fainted" chip if it has fainted. */
 function monSprite(species, status) {
   if (status !== "Fainted") return sprite(species);
-  return el("span", { class: "fainted-sprite", title: `${species} has fainted` },
-    sprite(species), el("span", { class: "fainted-stamp", "aria-hidden": "true" }, "Fainted"));
+  return el("span", { class: "fainted-sprite", title: `${species} has fainted` }, sprite(species), stateChip("Fainted"));
 }
 
 function monLabel(mon) {
