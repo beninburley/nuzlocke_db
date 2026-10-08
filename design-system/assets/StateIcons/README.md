@@ -1,0 +1,1 @@
+Run-state icons from Lucide 0.460.0 (ISC License): alive = heart-pulse, fainted = skull, boxed = archive, caught = circle-check, missed = circle-slash, gift = gift, trade = arrow-left-right. The files are single-ink, stroked in `ink` (#13201a). In code, inline the SVG and use `stroke="currentColor"` so the icon takes the chip's `state-<name>-ink` color.

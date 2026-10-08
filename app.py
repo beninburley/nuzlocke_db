@@ -6,8 +6,9 @@ import json
 import os
 import sqlite3
 from datetime import timedelta
+from pathlib import Path
 
-from flask import Flask, g, jsonify, redirect, request, session
+from flask import Flask, g, jsonify, redirect, request, send_from_directory, session
 
 import accounts
 import box_script
@@ -275,6 +276,12 @@ def admin_page():
     if user["role"] != "admin":
         return "Admins only.", 403
     return app.send_static_file("admin.html")
+
+
+@app.get("/design-system/fonts/<path:name>")
+def design_system_font(name):
+    # The fonts stay in the design system folder (its source of truth); static/tokens.css loads them from here.
+    return send_from_directory(Path(app.root_path) / "design-system" / "fonts", name, max_age=365 * 24 * 3600)
 
 
 # ---------------------------------------------------------------------------

@@ -1,0 +1,256 @@
+/* Generated from design-system/tokens.json by scripts/build_tokens.py. Don't edit by hand. */
+
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  src: url("/design-system/fonts/PlusJakartaSans-400.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  src: url("/design-system/fonts/PlusJakartaSans-500.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  src: url("/design-system/fonts/PlusJakartaSans-600.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  src: url("/design-system/fonts/PlusJakartaSans-700.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  src: url("/design-system/fonts/PlusJakartaSans-800.woff2") format("woff2");
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  color-scheme: light;
+  --canvas: #f3f6f4;
+  --surface: #ffffff;
+  --surface-raised: #ffffff;
+  --surface-sunken: #e9efeb;
+  --surface-hover: #eef4f0;
+  --ink: #13201a;
+  --ink-muted: #4c5d55;
+  --ink-subtle: #6a7a72;
+  --line: #dbe4df;
+  --line-strong: #73857c;
+  --emerald: #0b6b4b;
+  --emerald-strong: #08553b;
+  --emerald-deep: #063d2b;
+  --emerald-sheen: #4fd6a0;
+  --emerald-soft: #dcf2e7;
+  --on-emerald: #ffffff;
+  --on-emerald-deep: #e9fff4;
+  --gold: #f2b632;
+  --gold-strong: #8a5a00;
+  --gold-soft: #fdf1d3;
+  --on-gold: #2a1d00;
+  --danger: #b3261e;
+  --danger-soft: #fbe4e2;
+  --warning: #8f4f00;
+  --warning-soft: #fff0dc;
+  --info: #1d5fc4;
+  --info-soft: #e2ecfd;
+  --focus: #1d5fc4;
+  --state-alive: #cdeedd;
+  --state-alive-ink: #0a4d36;
+  --state-fainted: #7c1d28;
+  --state-fainted-ink: #ffe3e6;
+  --state-boxed: #dde6f7;
+  --state-boxed-ink: #23396b;
+  --state-caught: #d6f0f0;
+  --state-caught-ink: #0e4d50;
+  --state-missed: #e7e9e8;
+  --state-missed-ink: #3d4642;
+  --state-gift: #f6e3f4;
+  --state-gift-ink: #6b2466;
+  --state-trade: #fdebd6;
+  --state-trade-ink: #7a3d00;
+  --type-normal: #a8a77a;
+  --type-fire: #ee8130;
+  --type-water: #6390f0;
+  --type-electric: #f7d02c;
+  --type-grass: #7ac74c;
+  --type-ice: #96d9d6;
+  --type-fighting: #c22e28;
+  --type-poison: #a33ea1;
+  --type-ground: #e2bf65;
+  --type-flying: #a98ff3;
+  --type-psychic: #f95587;
+  --type-bug: #a6b91a;
+  --type-rock: #b6a136;
+  --type-ghost: #735797;
+  --type-dragon: #6f35fc;
+  --type-dark: #705746;
+  --type-steel: #b7b7ce;
+  --type-fairy: #d685ad;
+  --type-on-dark: #13201a;
+  --type-on-light: #ffffff;
+  --shadow-1: 0 1px 2px rgba(11, 40, 28, 0.06), 0 2px 6px rgba(11, 40, 28, 0.06);
+  --shadow-2: 0 2px 4px rgba(11, 40, 28, 0.06), 0 8px 20px rgba(11, 40, 28, 0.10);
+  --shadow-3: 0 4px 8px rgba(11, 40, 28, 0.08), 0 16px 36px rgba(11, 40, 28, 0.14);
+  --shadow-4: 0 8px 16px rgba(11, 40, 28, 0.10), 0 28px 64px rgba(11, 40, 28, 0.20);
+
+  --font-sans: "Plus Jakarta Sans", ui-rounded, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --text-display: 800 40px/44px var(--font-sans);
+  --text-display-tracking: -0.02em;
+  --text-title-1: 700 28px/34px var(--font-sans);
+  --text-title-1-tracking: -0.015em;
+  --text-title-2: 700 22px/28px var(--font-sans);
+  --text-title-2-tracking: -0.01em;
+  --text-title-3: 700 17px/24px var(--font-sans);
+  --text-body-lg: 400 17px/26px var(--font-sans);
+  --text-body: 400 15px/22px var(--font-sans);
+  --text-body-dense: 400 13px/18px var(--font-sans);
+  --text-label: 600 13px/16px var(--font-sans);
+  --text-caption: 500 12px/16px var(--font-sans);
+  --text-overline: 700 11px/16px var(--font-sans);
+  --text-overline-tracking: 0.08em;
+  --text-stat: 800 32px/36px var(--font-sans);
+  --text-stat-tracking: -0.01em;
+  --text-data: 500 13px/18px var(--font-sans);
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 28px;
+  --radius-pill: 999px;
+  --control-sm: 32px;
+  --control-md: 40px;
+  --control-touch: 44px;
+  --row-dense: 36px;
+  --row-roomy: 52px;
+  --icon-sm: 16px;
+  --icon-md: 20px;
+  --sprite-sm: 40px;
+  --sprite-lg: 72px;
+  --content-max: 1200px;
+  --bp-tablet: 640px;
+  --bp-desktop: 960px;
+  --bp-wide: 1280px;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --canvas: #0b1310;
+  --surface: #121c18;
+  --surface-raised: #18251f;
+  --surface-sunken: #0e1714;
+  --surface-hover: #1c2a24;
+  --ink: #e6efea;
+  --ink-muted: #9fb2a9;
+  --ink-subtle: #7f948a;
+  --line: #24332c;
+  --line-strong: #5f756b;
+  --emerald: #3dcc90;
+  --emerald-strong: #6fdcae;
+  --emerald-deep: #0a2a1f;
+  --emerald-sheen: #7ff0c0;
+  --emerald-soft: #123a2c;
+  --on-emerald: #03231a;
+  --on-emerald-deep: #e9fff4;
+  --gold: #f2b632;
+  --gold-strong: #f7cd6a;
+  --gold-soft: #3a2c0c;
+  --on-gold: #2a1d00;
+  --danger: #ff8a80;
+  --danger-soft: #3d1513;
+  --warning: #ffb35c;
+  --warning-soft: #3a2408;
+  --info: #8cb8ff;
+  --info-soft: #13264a;
+  --focus: #8cb8ff;
+  --state-alive: #4fd6a0;
+  --state-alive-ink: #03231a;
+  --state-fainted: #5a1520;
+  --state-fainted-ink: #ffd0d6;
+  --state-boxed: #22324f;
+  --state-boxed-ink: #c4d6ff;
+  --state-caught: #163a3b;
+  --state-caught-ink: #a5e7e8;
+  --state-missed: #262d2a;
+  --state-missed-ink: #c3ccc8;
+  --state-gift: #3c1d3a;
+  --state-gift-ink: #f3c6ee;
+  --state-trade: #3c2610;
+  --state-trade-ink: #ffcf99;
+  --shadow-1: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-2: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 6px 18px rgba(0, 0, 0, 0.55);
+  --shadow-3: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 12px 32px rgba(0, 0, 0, 0.6);
+  --shadow-4: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 24px 64px rgba(0, 0, 0, 0.7);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --canvas: #0b1310;
+    --surface: #121c18;
+    --surface-raised: #18251f;
+    --surface-sunken: #0e1714;
+    --surface-hover: #1c2a24;
+    --ink: #e6efea;
+    --ink-muted: #9fb2a9;
+    --ink-subtle: #7f948a;
+    --line: #24332c;
+    --line-strong: #5f756b;
+    --emerald: #3dcc90;
+    --emerald-strong: #6fdcae;
+    --emerald-deep: #0a2a1f;
+    --emerald-sheen: #7ff0c0;
+    --emerald-soft: #123a2c;
+    --on-emerald: #03231a;
+    --on-emerald-deep: #e9fff4;
+    --gold: #f2b632;
+    --gold-strong: #f7cd6a;
+    --gold-soft: #3a2c0c;
+    --on-gold: #2a1d00;
+    --danger: #ff8a80;
+    --danger-soft: #3d1513;
+    --warning: #ffb35c;
+    --warning-soft: #3a2408;
+    --info: #8cb8ff;
+    --info-soft: #13264a;
+    --focus: #8cb8ff;
+    --state-alive: #4fd6a0;
+    --state-alive-ink: #03231a;
+    --state-fainted: #5a1520;
+    --state-fainted-ink: #ffd0d6;
+    --state-boxed: #22324f;
+    --state-boxed-ink: #c4d6ff;
+    --state-caught: #163a3b;
+    --state-caught-ink: #a5e7e8;
+    --state-missed: #262d2a;
+    --state-missed-ink: #c3ccc8;
+    --state-gift: #3c1d3a;
+    --state-gift-ink: #f3c6ee;
+    --state-trade: #3c2610;
+    --state-trade-ink: #ffcf99;
+    --shadow-1: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 1px 2px rgba(0, 0, 0, 0.5);
+    --shadow-2: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 6px 18px rgba(0, 0, 0, 0.55);
+    --shadow-3: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 12px 32px rgba(0, 0, 0, 0.6);
+    --shadow-4: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 24px 64px rgba(0, 0, 0, 0.7);
+  }
+}
