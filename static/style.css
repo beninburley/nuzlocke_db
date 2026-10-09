@@ -1207,24 +1207,26 @@ main { max-width: var(--content-max); margin: 0 auto; padding: var(--space-6) va
 .team-foot .form-error { flex: 1; text-align: left; }
 
 /* ---------------------------------------------------------------------------
-   Accounts: account menu, landing, log in / sign up, account page
-   (plain for now; the look gets designed later)
+   Accounts: account menu, landing, log in / sign up, account page (all roomy)
    --------------------------------------------------------------------------- */
 
 .topbar-end { margin-left: auto; }
+/* One primary action per view: the hero has it, so the top bar's copy is a plain button */
+#landing-actions .button.primary { border-color: var(--line-strong); background: var(--surface); color: var(--ink); box-shadow: none; }
+#landing-actions .button.primary:hover { background: var(--surface-hover); }
 .home-link { color: inherit; text-decoration: none; }
 
-.topbar-actions { display: flex; align-items: center; gap: 8px; }
-.admin-link[aria-current="page"] { border-color: var(--emerald); background: var(--emerald-soft); }
+.topbar-actions { display: flex; align-items: center; gap: var(--space-2); }
+.admin-link[aria-current="page"] { border-color: var(--emerald); background: var(--emerald-soft); color: var(--emerald-strong); }
 .account-menu { position: relative; }
 .account-popover {
   position: absolute;
-  top: calc(100% + 6px);
+  top: calc(100% + var(--space-1));
   right: 0;
   z-index: 30;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--space-1);
   min-width: 200px;
   padding: var(--space-2);
   border: 1px solid var(--card-line);
@@ -1232,31 +1234,57 @@ main { max-width: var(--content-max); margin: 0 auto; padding: var(--space-6) va
   background: var(--surface-raised);
   box-shadow: var(--shadow-3);
 }
-.account-who { display: flex; flex-direction: column; margin: 0 0 4px; }
-.account-popover a { color: var(--emerald-strong); }
+.account-who { display: flex; flex-direction: column; margin: 0 0 var(--space-1); padding: var(--space-1) var(--space-2); }
+.account-who .muted { font: var(--text-caption); }
+.account-popover a { padding: var(--space-1) var(--space-2); color: var(--emerald-strong); font: var(--text-label); }
 .account-popover button { justify-content: flex-start; }
 
-.landing { max-width: 960px; margin: 0 auto; padding: 32px 16px 48px; }
-.hero { margin-bottom: 32px; }
-.hero h2 { margin: 0 0 10px; font-size: 32px; }
-.hero p { max-width: 640px; margin: 0 0 16px; font-size: 16px; }
-.hero-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-.features { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
-.features h3 { margin: 0 0 6px; font-size: 15px; }
+/* Landing: an emerald-deep hero band with a sheen edge, then the feature cards */
+.landing { max-width: var(--content-max); margin: 0 auto; padding: var(--space-6) var(--space-6) var(--space-12); }
+.hero {
+  position: relative;
+  overflow: hidden;
+  margin-bottom: var(--space-8);
+  padding: var(--space-12) var(--space-8);
+  border-radius: var(--radius-xl);
+  background: var(--emerald-deep);
+  color: var(--on-emerald-deep);
+}
+.hero::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 2px; background: var(--emerald-sheen); }
+.hero h2 { margin: 0 0 var(--space-3); font: var(--text-display); letter-spacing: var(--text-display-tracking); }
+.hero p { max-width: 640px; margin: 0 0 var(--space-6); font: var(--text-body-lg); }
+.hero .hero-actions { margin: 0; }
+.hero-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.hero .button.primary { border-color: var(--emerald-sheen); }  /* the edge keeps it distinct from the band */
+.hero .button:not(.primary) { border-color: var(--on-emerald-deep); background: transparent; color: var(--on-emerald-deep); }
+.hero .button:not(.primary):hover { background: color-mix(in srgb, var(--on-emerald-deep) 12%, transparent); }
+.hero :focus-visible { outline-color: var(--on-emerald-deep); }  /* the blue ring is too dark on the band */
+.features { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--space-6); }
+.features h3 { margin: 0 0 var(--space-1); font: var(--text-title-3); }
 .features p { margin: 0; color: var(--ink-muted); }
 
-.auth-main { display: flex; justify-content: center; padding: 40px 16px; }
+/* Log in / sign up */
+.auth-main { display: flex; justify-content: center; padding: var(--space-12) var(--space-4); }
 .auth-card { width: min(400px, 100%); }
-.auth-tabs { display: flex; margin-bottom: var(--space-4); }
+.auth-tabs { display: flex; margin-bottom: var(--space-5); }
 .auth-tabs button { flex: 1; }
-.auth-form { display: flex; flex-direction: column; gap: 10px; }
+.auth-form { display: flex; flex-direction: column; gap: var(--space-4); }
 .auth-form input { width: 100%; }
 .auth-form .hint { margin: 0; font: var(--text-caption); }
-.auth-form button[type="submit"] { align-self: flex-start; }
+.auth-form .field + .hint { margin-top: calc(var(--space-1) - var(--space-4)); }  /* help text sits just under its field */
+.auth-form button[type="submit"] { align-self: stretch; }
 
-.account-main { display: flex; flex-direction: column; gap: 16px; max-width: 560px; margin: 0 auto; padding: 24px 16px 48px; }
-.account-main h2 { margin: 0 0 12px; font-size: 16px; }
-.account-details { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin: 0; }
+/* Account page */
+.account-main { display: flex; flex-direction: column; gap: var(--space-6); max-width: 560px; margin: 0 auto; padding: var(--space-6) var(--space-4) var(--space-12); }
+.account-main h2 { margin: 0 0 var(--space-3); font: var(--text-title-3); }
+.account-main .auth-form + .hint { margin: var(--space-3) 0 0; font: var(--text-caption); }
+.account-details { display: grid; grid-template-columns: auto 1fr; gap: var(--space-2) var(--space-4); margin: 0; }
 .account-details dt { color: var(--ink-muted); }
 .account-details dd { margin: 0; font-weight: 600; }
-.account-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.account-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+
+@media (max-width: 639.98px) {
+  .landing { padding: var(--space-4) var(--space-4) var(--space-12); }
+  .hero { padding: var(--space-8) var(--space-5); }
+  .hero h2 { font: var(--text-title-1); letter-spacing: var(--text-title-1-tracking); }
+}
