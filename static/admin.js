@@ -82,7 +82,7 @@ function userRow(user) {
     el("td", {}, user.username, isMe ? el("span", { class: "muted" }, " (you)") : ""),
     el("td", {}, role),
     el("td", {}, formatDate(user.created_at)),
-    el("td", {}, String(user.attempts)));
+    el("td", { class: "num" }, String(user.attempts)));
 }
 
 // --- Trainer Battles ------------------------------------------------------------

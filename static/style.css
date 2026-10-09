@@ -321,7 +321,7 @@ a.panel:hover { box-shadow: var(--shadow-2); transform: translateY(-2px); }
 .attempt-controls { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
 .attempt-controls label { font: var(--text-label); color: var(--ink-muted); }
 #attempt-select { min-width: 0; }
-.attempt-controls .icon, .topbar-actions .icon { width: var(--icon-sm); height: var(--icon-sm); }
+.topbar :is(button, .button) .icon, .back-link .icon { width: var(--icon-sm); height: var(--icon-sm); }
 .theme-toggle .icon { width: var(--icon-md); height: var(--icon-md); }
 #status { margin-left: auto; font: var(--text-caption); color: var(--ink-muted); }
 #status.ok { color: var(--emerald-strong); }
@@ -1116,41 +1116,94 @@ main { max-width: var(--content-max); margin: 0 auto; padding: var(--space-6) va
    Verification Requests
    --------------------------------------------------------------------------- */
 
-.admin-main { max-width: 1400px; margin: 0 auto; padding: 16px 16px 48px; }
-.admin-main h2 { margin: 6px 0 12px; font-size: 18px; }
-.back-link { color: var(--emerald-strong); font-size: 13px; text-decoration: none; }
+/* Admin home and Verification are roomy; Roles, Trainer Battles and the team editor are dense */
+#admin-roles, #admin-battles {
+  --control: var(--control-sm);
+  --card-pad: var(--space-3);
+  font: var(--text-body-dense);
+}
+@media (max-width: 639.98px), (pointer: coarse) {
+  #admin-roles, #admin-battles { --control: var(--control-touch); }
+}
+
+.admin-main { max-width: var(--content-max); margin: 0 auto; padding: var(--space-6) var(--space-6) var(--space-12); }
+.admin-main h2 { margin: var(--space-1) 0 var(--space-4); font: var(--text-title-1); letter-spacing: var(--text-title-1-tracking); }
+.admin-main h2 .muted { font: var(--text-body); }
+.back-link { display: inline-flex; align-items: center; gap: var(--space-1); color: var(--emerald-strong); font: var(--text-label); text-decoration: none; }
 .back-link:hover { text-decoration: underline; }
-.admin-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
-.admin-card h3 { margin: 0 0 6px; font-size: 15px; color: var(--emerald-strong); }
+.admin-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--space-6); }
+.admin-card h3 { margin: 0 0 var(--space-1); font: var(--text-title-3); color: var(--emerald-strong); }
 .admin-card p { margin: 0; color: var(--ink-muted); }
 .admin-filter { width: min(320px, 100%); margin-bottom: var(--space-3); }
 .admin-users td { vertical-align: middle; }
 
-.admin-battles { display: grid; grid-template-columns: minmax(240px, 300px) minmax(0, 1fr); gap: 16px; align-items: start; }
-.admin-battle-list { position: sticky; top: 64px; max-height: calc(100vh - 90px); overflow-y: auto; padding: 8px; }
-.admin-battle-list .admin-filter { width: 100%; }
-.admin-split h3 { margin: 10px 4px 4px; font-size: 13px; }
+.admin-battles { display: grid; grid-template-columns: minmax(240px, 300px) minmax(0, 1fr); gap: var(--space-4); align-items: start; }
+.admin-battle-list {
+  position: sticky;
+  top: var(--sticky-top);
+  max-height: calc(100vh - var(--sticky-top) - var(--space-4));
+  overflow-y: auto;
+  padding: var(--space-2);
+}
+.admin-battle-list .admin-filter { width: 100%; margin-bottom: var(--space-2); }
+.admin-split h3 { margin: var(--space-3) var(--space-1) var(--space-1); font: var(--text-label); }
+.admin-split h3 .muted { font: var(--text-caption); }
 .admin-battle { container-type: inline-size; }  /* the enemy row adapts to its width, as on Trainer Battles */
-.admin-battle-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
-.admin-battle-head h3 { margin: 0; font-size: 18px; }
-.admin-battle .trainer-tabs { margin-bottom: 6px; }
-.admin-edited { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
-@media (max-width: 760px) {
+.admin-battle-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-2); }
+.admin-battle-head h3 { margin: 0; font: var(--text-title-2); letter-spacing: var(--text-title-2-tracking); }
+.admin-battle .trainer-tabs { margin-bottom: var(--space-2); }
+.admin-edited { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); }
+#admin-verification .changed-banner { margin-bottom: var(--space-4); }
+
+@media (max-width: 959.98px) {  /* below --bp-desktop: the list goes above the battle */
   .admin-battles { grid-template-columns: 1fr; }
   .admin-battle-list { position: static; max-height: 320px; }
 }
+@media (max-width: 639.98px) {
+  .admin-main { padding: var(--space-4) var(--space-4) var(--space-12); }
+  /* The roles table scrolls sideways inside its card rather than widening the page */
+  #admin-roles .panel { overflow-x: auto; }
+}
 
-.team-editor { width: min(1100px, calc(100vw - 32px)); }
-.team-slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; padding-top: 12px; }
-.slot-editor { display: flex; flex-direction: column; gap: 8px; min-width: 0; margin: 0; padding: 8px 10px 10px; border: 1px solid var(--line); border-radius: 10px; }
-.slot-editor legend { padding: 0 4px; color: var(--ink-muted); font-size: 12px; font-weight: 600; }
-.slot-head { display: flex; align-items: flex-end; gap: 8px; }
+/* Team editor: one well per enemy slot, laid out like its card */
+.team-editor { width: min(1100px, 100vw - 2 * var(--space-4)); }
+.team-slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: var(--space-3); padding-top: var(--space-3); }
+.slot-editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: 0;
+  padding: var(--space-3);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+}
+.slot-editor legend {
+  float: left;  /* inside the well, not on its edge */
+  width: 100%;
+  padding: 0;
+  color: var(--ink-muted);
+  font: var(--text-overline);
+  letter-spacing: var(--text-overline-tracking);
+  text-transform: uppercase;
+}
+.slot-editor .moves-grid { padding: 0; background: none; }
+.slot-head { display: flex; align-items: flex-end; gap: var(--space-2); }
 .slot-head .field { flex: 1; }
-.slot-sprite { display: grid; place-items: center; width: 56px; height: 56px; flex: none; border-radius: 8px; background: var(--surface-sunken); }
-.slot-sprite .sprite { width: 56px; height: 56px; }
+.slot-sprite {
+  display: grid;
+  place-items: center;
+  width: calc(var(--sprite-sm) + var(--space-4));
+  height: calc(var(--sprite-sm) + var(--space-4));
+  flex: none;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+.slot-sprite .sprite { width: calc(var(--sprite-sm) + var(--space-4)); height: calc(var(--sprite-sm) + var(--space-4)); }
 .team-slots input, .team-slots select { width: 100%; }
 .team-slots input:invalid { border-color: var(--danger); }
-.team-foot { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+.team-foot { display: flex; align-items: center; justify-content: flex-end; gap: var(--space-2); }
 .team-foot .form-error { flex: 1; text-align: left; }
 
 /* ---------------------------------------------------------------------------
