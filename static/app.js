@@ -5,7 +5,7 @@
 // ---------------------------------------------------------------------------
 
 const state = {
-  routes: [],            // [{id, name, options: [{method, pokemon, rate, levels}]}]
+  routes: [],            // [{id, name, unlock (split or null), area (or null), options: [{method, pokemon, rate, levels}]}]
   battles: [],           // [{id, name, location, level_cap, group_id, split, tags}] in game order
   sprites: {},           // species -> sprite url (pokeapi.co)
   evolutions: {},        // species -> its evolutionary line (species names)
@@ -159,7 +159,9 @@ function refreshAttemptLabel() {
   const summary = state.attempts.find((a) => a.id === state.attempt.id);
   Object.assign(summary, { catch_count: state.catches.size }, currentSplit());
   $(`#attempt-select option[value="${state.attempt.id}"]`).textContent = attemptLabel(summary);
-  $("#catch-count").textContent = `${state.catches.size}/${state.routes.length}`;
+  // Beating a boss can open up routes, and losing one can close them again.
+  if (summary.split !== routedSplit) renderEncounters();
+  else refreshEncounterSummary();
 }
 
 async function createAttempt() {
@@ -184,12 +186,81 @@ async function deleteAttempt() {
 // ---------------------------------------------------------------------------
 
 let pickerRoute = null;  // route whose catch picker is open
+let routedSplit;         // the split the encounters were last drawn for
 
+/** One row per route. Routes that share an area's single encounter are boxed together under its name. */
 function renderEncounters() {
-  const rows = state.routes.map((route) =>
-    el("tr", { "data-route": route.id }, el("td", {}, route.name), el("td", {}, catchCell(route))));
+  routedSplit = currentSplit().split;
+  const rows = [];
+  state.routes.forEach((route, i) => {
+    const prev = state.routes[i - 1], next = state.routes[i + 1];
+    if (route.area && prev?.area !== route.area) {
+      rows.push(el("tr", { class: "area-head" }, el("td", { colspan: "2" },
+        el("span", { class: "area-name" }, route.area), " · ",
+        el("span", { class: "area-rule" }, "one encounter for the whole area"))));
+    }
+    const status = routeStatus(route);
+    const classes = [route.area && "in-area", route.area && next?.area !== route.area && "area-last", status.kind];
+    rows.push(el("tr", { "data-route": route.id, class: classes.filter(Boolean).join(" ") },
+      el("td", {}, route.name, status.note ? el("span", { class: "route-note" }, status.note) : ""),
+      el("td", {}, catchCell(route, status))));
+  });
   $("#encounters-body").replaceChildren(...rows);
   refreshAttemptLabel();
+}
+
+// --- logic routing -------------------------------------------------------------------
+
+const logicRouting = () => $("#logic-routing").checked;
+
+/** Whether the attempt has got far enough for a route: no unlock, or its unlock split is beaten. */
+function routeOpen(route) {
+  if (route.unlock === null) return true;
+  const order = state.battles.filter((b) => b.split !== null).map((b) => b.split);
+  const progress = routedSplit === null ? order.length : order.indexOf(routedSplit);  // splits beaten
+  return order.indexOf(route.unlock) < progress;
+}
+
+/** The route in the same area that already has its catch, or null. */
+function areaCatchRoute(route) {
+  if (!route.area) return null;
+  return state.routes.find((r) => r.area === route.area && r.id !== route.id && state.catches.has(r.id)) ?? null;
+}
+
+/**
+ * Where a route stands: caught, used up (its area's encounter is caught on another route), and,
+ * with logic routing on, available to catch now or locked until a split is beaten.
+ */
+function routeStatus(route) {
+  if (state.catches.has(route.id)) return { kind: "caught" };
+  const used = areaCatchRoute(route);
+  if (used) return { kind: "area-used", note: `Caught in ${used.name}`, usedBy: used };
+  if (!logicRouting()) return { kind: "" };
+  if (!routeOpen(route)) return { kind: "locked", note: `Opens after ${route.unlock}` };
+  return { kind: "available", note: "Available now" };
+}
+
+/** How many encounters can be caught now: one per open route without a catch, an area counting once. */
+function availableEncounters() {
+  const places = new Set();
+  for (const route of state.routes) {
+    if (routeStatus(route).kind === "available") places.add(route.area ?? `route ${route.id}`);
+  }
+  return places.size;
+}
+
+/** The line above the table and the count on the Encounters tab. */
+function refreshEncounterSummary() {
+  if (!logicRouting()) {
+    $("#encounters-summary").textContent = `${state.catches.size} of ${state.routes.length} encounters caught`;
+    $("#catch-count").textContent = `${state.catches.size}/${state.routes.length}`;
+    return;
+  }
+  const n = availableEncounters();
+  $("#encounters-summary").textContent = n
+    ? `${n} encounter${n === 1 ? "" : "s"} available to be caught`
+    : "All available encounters caught!";
+  $("#catch-count").textContent = n ? `${n} available` : "All caught";
 }
 
 // --- dupes clause ------------------------------------------------------------------
@@ -223,12 +294,20 @@ function routeDupes(route) {
 
 const dupeText = (pokemon, mon) => `${pokemon} is a dupe of your ${mon.species} (${routeName(mon.route_id)})`;
 
-/** "+ Add catch", or the catch itself (click to change) with a remove button. */
-function catchCell(route) {
+/** "+ Add catch", or the catch itself (click to change) with a remove button. A route whose area's
+ *  encounter is caught elsewhere gets a greyed-out, disabled "+ Add catch". */
+function catchCell(route, status = routeStatus(route)) {
   const current = state.catches.get(route.id);
   if (!current) {
-    const add = el("button", { type: "button", class: "add-catch" }, "+ Add catch");
+    const used = status.kind === "area-used";
+    const add = el("button", {
+      type: "button",
+      class: "add-catch",
+      disabled: used,
+      title: used ? `${route.area} has one encounter, and you caught it in ${status.usedBy.name}` : undefined,
+    }, "+ Add catch");
     add.addEventListener("click", () => openCatchPicker(route));
+    if (used) return add;
     const dupes = routeDupes(route);
     if (!dupes.size) return add;
     return el("div", { class: "catch-cell" }, add,
@@ -1967,6 +2046,11 @@ async function boot() {
     setupKoBoard();
     for (const btn of document.querySelectorAll(".script-open")) btn.addEventListener("click", openScriptDialog);
     $("#solutions-toggle").addEventListener("click", toggleSolutions);
+    $("#logic-routing").checked = storageGet("logicRouting") !== "false";
+    $("#logic-routing").addEventListener("change", (e) => {
+      storageSet("logicRouting", String(e.target.checked));
+      renderEncounters();
+    });
     $("#show-fainted").checked = storageGet("showFainted") !== "false";
     $("#show-fainted").addEventListener("change", (e) => {
       storageSet("showFainted", String(e.target.checked));

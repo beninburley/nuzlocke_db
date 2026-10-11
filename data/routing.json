@@ -1,0 +1,90 @@
+{
+  "about": ["Logic routing for the Encounters tab.", "unlocks: the routes that open up once a split's boss is beaten (after: null means from the start), in game order.", "Every route in game_data.json should be listed once; one that isn't counts as open from the start.", "areas: routes that are sections of one place and share a single encounter."],
+  "unlocks": [
+    {
+      "after": null,
+      "routes": ["Starter", "Littleroot Town", "Route 101", "Oldale Town", "Route 103", "Route 102", "Petalburg City", "Route 104"]
+    },
+    {
+      "after": "Route 104 Aqua Grunt",
+      "routes": ["Dewford Town", "Route 107", "Route 106", "Granite Cave 1F", "Granite Cave B1F", "Granite Cave B2F", "Steven's Room", "Route 109", "Slateport City", "Route 110"]
+    },
+    {
+      "after": "Leader Brawly",
+      "routes": ["Petalburg Woods", "Rustboro City", "Route 115", "Route 116"]
+    },
+    {
+      "after": "Leader Roxanne",
+      "routes": ["Rusturf Tunnel", "Verdanturf Town", "Mauville City", "Route 117"]
+    },
+    {
+      "after": "Route 117 Chelle",
+      "routes": ["Route 111"]
+    },
+    {
+      "after": "Leader Norman",
+      "routes": ["Route 118", "Altering Cave", "Mirage Tower 1F", "Mirage Tower 2F", "Mirage Tower 3F", "Mirage Tower 4F", "Route 113", "Fallarbor Town", "Desert Underpass"]
+    },
+    {
+      "after": "Fallarbor Town Vito",
+      "routes": ["Route 114", "Meteor Falls 1F1", "Meteor Falls 1F2", "Meteor Falls B1F1", "Meteor Falls B1F2", "Route 112", "Fiery Path", "Mt. Chimney"]
+    },
+    {
+      "after": "Mt. Chimney Maxie",
+      "routes": ["Jagged Pass", "Lavaridge Town"]
+    },
+    {
+      "after": "Leader Flannery",
+      "routes": ["Route 134", "New Mauville (Outside)", "New Mauville (Inside)", "Route 105", "Route 108", "Abandoned Ship B1F Rooms", "Route 119"]
+    },
+    {
+      "after": "Route 119 Rival",
+      "routes": ["Fortree City", "Route 120", "Scorched Slab"]
+    },
+    {
+      "after": "Leader Winona",
+      "routes": ["Route 121", "Safari Zone (South)", "Safari Zone (Southwest)", "Safari Zone (Northwest)", "Safari Zone (North)", "Lilycove City", "Route 122", "Route 123"]
+    },
+    {
+      "after": "Lilycove City Rival",
+      "routes": ["Mt. Pyre 1F-2F", "Mt. Pyre 3F-4F", "Mt. Pyre 5F-6F", "Mt. Pyre (Exterior)", "Mt. Pyre (Summit)"]
+    },
+    {
+      "after": "Mt. Pyre Archie",
+      "routes": ["Magma Hideout 1", "Magma Hideout 2-4", "Magma Hideout 5", "Magma Hideout 6-7"]
+    },
+    {
+      "after": "Magma Hideout Maxie",
+      "routes": ["Aqua Hideout B1F"]
+    },
+    {
+      "after": "Aqua Hideout Matt",
+      "routes": ["Route 124", "Mossdeep City", "Route 125", "Shoal Cave (Entrance/Inner)", "Shoal Cave (Other)", "Shoal Cave (Ice)"]
+    },
+    {
+      "after": "Leaders Tate & Liza",
+      "routes": ["Route 127", "Route 126", "124 Undewater", "126 Underwater", "Sootopolis City", "Route 128", "Route 129", "Ever Grande City", "Seafloor Cavern E", "Seafloor Cavern 1-5", "Seafloor Cavern 6-7", "Seafloor Cavern 8", "Cave of Origin"]
+    },
+    {
+      "after": "Seafloor Cavern Archie",
+      "routes": ["Route 130", "Route 131", "Pacifidlog Town", "Route 132", "Route 133", "Sky Pillar 1F/3F", "Sky Pillar 5F"]
+    },
+    {
+      "after": "Leader Juan",
+      "routes": ["Victory Road 1F", "Victory Road B1F", "Victory Road B2F"]
+    }
+  ],
+  "areas": {
+    "Granite Cave": ["Granite Cave 1F", "Granite Cave B1F", "Granite Cave B2F", "Steven's Room"],
+    "Mirage Tower": ["Mirage Tower 1F", "Mirage Tower 2F", "Mirage Tower 3F", "Mirage Tower 4F"],
+    "Meteor Falls": ["Meteor Falls 1F1", "Meteor Falls 1F2", "Meteor Falls B1F1", "Meteor Falls B1F2"],
+    "New Mauville": ["New Mauville (Outside)", "New Mauville (Inside)"],
+    "Safari Zone": ["Safari Zone (South)", "Safari Zone (Southwest)", "Safari Zone (Northwest)", "Safari Zone (North)"],
+    "Mt. Pyre": ["Mt. Pyre 1F-2F", "Mt. Pyre 3F-4F", "Mt. Pyre 5F-6F", "Mt. Pyre (Exterior)", "Mt. Pyre (Summit)"],
+    "Magma Hideout": ["Magma Hideout 1", "Magma Hideout 2-4", "Magma Hideout 5", "Magma Hideout 6-7"],
+    "Shoal Cave": ["Shoal Cave (Entrance/Inner)", "Shoal Cave (Other)", "Shoal Cave (Ice)"],
+    "Seafloor Cavern": ["Seafloor Cavern E", "Seafloor Cavern 1-5", "Seafloor Cavern 6-7", "Seafloor Cavern 8"],
+    "Sky Pillar": ["Sky Pillar 1F/3F", "Sky Pillar 5F"],
+    "Victory Road": ["Victory Road 1F", "Victory Road B1F", "Victory Road B2F"]
+  }
+}

@@ -291,7 +291,8 @@ def design_system_font(name):
 @app.get("/api/game")
 def game():
     conn = get_db()
-    routes = [dict(r, options=[]) for r in conn.execute(
+    routing = db.routing(conn)
+    routes = [dict(r, options=[], **routing[r["name"]]) for r in conn.execute(
         "SELECT id, name FROM routes ORDER BY position")]
     by_id = {r["id"]: r for r in routes}
     # Collapse duplicate encounter slots into one option per (method, pokemon).
@@ -1075,6 +1076,7 @@ def setup():
     conn = db.connect()
     try:
         db.init_db(conn)
+        db.routing(conn)  # a mistake in data/routing.json shows up here, not as a broken Encounters tab
     finally:
         conn.close()
 

@@ -11,6 +11,7 @@ GAME_DATA_PATH = ROOT / "data" / "game_data.json"
 SPRITES_PATH = ROOT / "data" / "sprites.json"
 EVOLUTIONS_PATH = ROOT / "data" / "evolutions.json"
 POKEDEX_PATH = ROOT / "data" / "pokedex.json"  # every move, ability and held item (PokeAPI)
+ROUTING_PATH = ROOT / "data" / "routing.json"  # when each route opens up, and areas sharing one encounter
 
 # Bump when schema.sql changes in a way existing databases need migrating for,
 # and add a step to migrate().
@@ -357,6 +358,35 @@ def pokedex_names():
         return {"moves": [], "abilities": [], "items": []}
     data = json.loads(POKEDEX_PATH.read_text(encoding="utf-8"))
     return {key: data.get(key, []) for key in ("moves", "abilities", "items")}
+
+
+def routing(conn, path=ROUTING_PATH):
+    """{route name: {"unlock": split or None, "area": area or None}} for every route, from
+    data/routing.json. A route the file doesn't list is open from the start and in no area.
+    Raises ValueError for a route or split the game data doesn't have, or a route listed twice."""
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    routes = [r[0] for r in conn.execute("SELECT name FROM routes ORDER BY position")]
+    splits = {r[0] for r in conn.execute("SELECT split FROM battles WHERE split IS NOT NULL")}
+    result = {name: {"unlock": None, "area": None} for name in routes}
+    seen = {"unlock": set(), "area": set()}
+
+    def claim(kind, name, value):
+        if name not in result:
+            raise ValueError(f"routing.json: no route named {name!r}")
+        if name in seen[kind]:
+            raise ValueError(f"routing.json: {name!r} is listed twice under {kind}s")
+        seen[kind].add(name)
+        result[name][kind] = value
+
+    for step in data["unlocks"]:
+        if step["after"] is not None and step["after"] not in splits:
+            raise ValueError(f"routing.json: no split named {step['after']!r}")
+        for name in step["routes"]:
+            claim("unlock", name, step["after"])
+    for area, names in data["areas"].items():
+        for name in names:
+            claim("area", name, area)
+    return result
 
 
 def original_trainer_team(trainer_key, path=GAME_DATA_PATH):
