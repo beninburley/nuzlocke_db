@@ -1045,6 +1045,11 @@ main { max-width: var(--content-max); margin: 0 auto; padding: var(--space-6) va
   background: var(--surface);
   transition: transform 160ms ease-out;
 }
+/* The whole card starts a drag too (on touch, only the dot, so the popup still scrolls) */
+#ko-board .ko-col:has(button.ko-dot) .ko-mon { cursor: grab; }
+@media (pointer: fine) {
+  #ko-board .ko-col:has(button.ko-dot) .ko-mon { touch-action: none; }
+}
 .ko-dot.party { color: var(--emerald); }
 .ko-dot.enemy { color: var(--danger); }
 .ko-dot:hover { background: none; }

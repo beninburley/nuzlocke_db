@@ -228,9 +228,10 @@
       <header class="picker-head">
         <div>
           <h2 id="ko-title"></h2>
-          <p class="muted">Drag from your Pok&eacute;mon's dot to the enemy it knocked out (green arrow), or from an
-            enemy's dot to the Pok&eacute;mon it knocked out (red arrow, which marks your Pok&eacute;mon Fainted).
-            You can also click one dot, then the other. Click an arrow to remove it.</p>
+          <p class="muted">Drag from one of your Pok&eacute;mon to the enemy it knocked out (green arrow), or from an
+            enemy to the Pok&eacute;mon it knocked out (red arrow, which marks your Pok&eacute;mon Fainted).
+            You can also click one, then the other. To give one Pok&eacute;mon several KOs, Ctrl+click it, then
+            Ctrl+click each one it knocked out (or turn on <strong>Select several</strong>). Click an arrow to remove it.</p>
         </div>
         <form method="dialog"><button class="icon-button" aria-label="Close"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></form>
       </header>
@@ -246,6 +247,9 @@
       </div>
       <footer class="picker-foot ko-foot">
         <span id="ko-summary" class="muted" aria-live="polite"></span>
+        <label class="check" title="Clicks work like Ctrl+click: one Pokémon stays selected so it can knock out several">
+          <input id="ko-multi" type="checkbox"> Select several
+        </label>
         <button id="ko-clear" type="button" class="danger">Clear arrows</button>
         <button id="ko-done" type="button" class="primary">Done</button>
       </footer>

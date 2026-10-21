@@ -1402,8 +1402,9 @@ async function openKoTracker(battleId) {
     trainer: enemies.find((t) => t.key === fight.trainer) ?? (enemies.includes(shown) ? shown : enemies[0]),
     party: teamSlots(fight),       // six slots of battle copies (null = empty)
     kos: fight.kos.map((k) => ({ ...k })),
-    armed: null,                   // {side, index}: the first dot clicked, waiting for the second
-    drag: null,                    // {side, index, x, y, moved} while dragging from a dot
+    armed: null,                   // {side, index}: the first Pokémon clicked, waiting for the second
+    armedMulti: false,             // armed with Ctrl+click: stays armed so it can KO several
+    drag: null,                    // {side, index, x, y, moved} while dragging from a Pokémon or its dot
   };
   Object.assign($("#ko-notes"), { value: fight.notes ?? "", disabled: false });
   renderKoTracker();
@@ -1475,10 +1476,13 @@ function renderKoSummary() {
   const s = koSession;
   const summary = $("#ko-summary");
   if (s.armed) {
+    const name = koName(s, s.armed.side, s.armed.index);
+    const target = s.armed.side === "party" ? `the enemy ${name}` : `the Pokémon ${name}`;
     summary.className = "ko-armed-hint";
-    summary.textContent = s.armed.side === "party"
-      ? `Now click the enemy ${koName(s, "party", s.armed.index)} knocked out.`
-      : `Now click the Pokémon ${koName(s, "enemy", s.armed.index)} knocked out.`;
+    summary.textContent = s.armedMulti
+      ? `${$("#ko-multi").checked ? "Click" : "Ctrl+click"} each Pokémon ${name} knocked out. ` +
+        `Click ${name} again or press Escape when done.`
+      : `Now click ${target} knocked out. Ctrl+click (or turn on Select several) to add more than one.`;
     return;
   }
   const ours = s.kos.filter((k) => k.by === "player").length;
@@ -1596,19 +1600,34 @@ function addKo(from, to) {
   saveKos();
 }
 
-/** Click one dot, then a dot on the other side: the same as dragging between them. */
-function clickKoDot(side, index) {
+/**
+ * Click one Pokémon (or its dot), then one on the other side: the same as dragging between them.
+ * With `multi` (Ctrl/Cmd+click, or Select several), the first stays selected, so each further click
+ * on the other side adds another KO for it; clicking it again ends the selection.
+ */
+function clickKoDot(side, index, multi = false) {
   const armed = koSession.armed;
+  const same = armed && armed.side === side && armed.index === index;
+  if (multi && armed && armed.side !== side) {
+    koSession.armedMulti = true;
+    addKo(armed, { side, index });  // redraws, with the selection kept
+    return;
+  }
   koSession.armed = null;
+  koSession.armedMulti = false;
   if (armed && armed.side !== side) addKo(armed, { side, index });
-  else if (!armed || armed.index !== index) koSession.armed = { side, index };
+  else if (!same) Object.assign(koSession, { armed: { side, index }, armedMulti: multi });
   renderKoTracker();
 }
+
+/** Ctrl/Cmd held, or the popup's Select several switch on. */
+const koMulti = (e) => e.ctrlKey || e.metaKey || $("#ko-multi").checked;
 
 function setKoTrainer(trainer) {
   if (trainer === koSession.trainer) return;
   koSession.trainer = trainer;
   koSession.armed = null;
+  koSession.armedMulti = false;
   koSession.kos = koSession.kos.filter((k) => k.enemy <= trainer.pokemon.length);
   trainerChoice.set(koSession.battleId, koSession.detail.trainers.indexOf(trainer));
   saveKos();
@@ -1669,12 +1688,16 @@ function koDotAt(x, y, fromSide) {
 
 function setupKoBoard() {
   const board = $("#ko-board");
+  // A drag (or click) starts on a Pokémon's dot or anywhere on its card, if it has a usable dot.
   board.addEventListener("pointerdown", (e) => {
-    const dot = e.target.closest(".ko-dot");
+    const col = e.target.closest(".ko-col");
+    const dot = col?.querySelector("button.ko-dot");
     if (!dot || e.button !== 0 || !koSession) return;
     e.preventDefault();
-    dot.setPointerCapture(e.pointerId);
-    koSession.drag = { side: dot.dataset.side, index: Number(dot.dataset.index), x: e.clientX, y: e.clientY, moved: false };
+    col.setPointerCapture(e.pointerId);
+    koSession.drag = {
+      side: dot.dataset.side, index: Number(dot.dataset.index), x: e.clientX, y: e.clientY, moved: false, multi: koMulti(e),
+    };
   });
   board.addEventListener("pointermove", (e) => {
     const drag = koSession?.drag;
@@ -1700,9 +1723,10 @@ function setupKoBoard() {
     koSession.drag = null;
     drag.line?.remove();
     if (!dropped) return renderKoTracker();
-    if (!drag.moved) return clickKoDot(drag.side, drag.index);
+    if (!drag.moved) return clickKoDot(drag.side, drag.index, drag.multi);
     const target = koDotAt(e.clientX, e.clientY, drag.side);
     koSession.armed = null;
+    koSession.armedMulti = false;
     if (target) addKo(drag, target);
     else renderKoTracker();
   };
@@ -1713,7 +1737,7 @@ function setupKoBoard() {
     const dot = e.target.closest(".ko-dot");
     if (!dot || e.detail !== 0 || !koSession) return;
     const { side, index } = dot.dataset;
-    clickKoDot(side, Number(index));
+    clickKoDot(side, Number(index), koMulti(e));
     $(`#ko-board .ko-dot[data-side="${side}"][data-index="${index}"]`)?.focus();
   });
   new ResizeObserver(() => drawKoArrows(board, koSession)).observe(board);
@@ -1721,16 +1745,26 @@ function setupKoBoard() {
     if (!koSession?.kos.length || !confirm("Remove every arrow for this fight?")) return;
     koSession.kos = [];
     koSession.armed = null;
+    koSession.armedMulti = false;
     saveKos();
   });
   $("#ko-done").addEventListener("click", () => {
     saveNotes();
     $("#ko-dialog").close();
   });
+  $("#ko-multi").addEventListener("change", () => { if (koSession) renderKoSummary(); });
   $("#ko-notes").addEventListener("input", scheduleNotesSave);
   $("#ko-notes").addEventListener("change", saveNotes);
   // The close event arrives asynchronously: by then the tracker may be open again for another
   // fight (whose opening already saved this one's notes).
+  // Escape first ends a selection; only with nothing selected does it close the popup.
+  $("#ko-dialog").addEventListener("cancel", (e) => {
+    if (!koSession?.armed) return;
+    e.preventDefault();
+    koSession.armed = null;
+    koSession.armedMulti = false;
+    renderKoTracker();
+  });
   $("#ko-dialog").addEventListener("close", (e) => {
     if (e.currentTarget.open) return;
     saveNotes();
