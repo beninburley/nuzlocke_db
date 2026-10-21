@@ -1129,7 +1129,7 @@ function teamSlot(index, member) {
       remove);
     slot.tabIndex = 0;
     slot.title = `${member.species}: click to see or edit this battle's copy; drag to swap slots or back to the box to remove`;
-    const open = () => openCopyEditor(member);
+    const open = () => openCopyEditor(index);
     slot.addEventListener("click", (e) => { if (!e.target.closest(".remove")) open(); });
     slot.addEventListener("keydown", (e) => {
       if (e.target === slot && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); open(); }
@@ -1142,8 +1142,21 @@ function teamSlot(index, member) {
   return slot;
 }
 
-function openCopyEditor(member) {
-  if (!member.id) return setStatus("Still saving this team; try again in a moment", "error");
+/**
+ * Open the editor for the battle copy in a team slot. The copy is looked up when clicked, not when
+ * the slot was drawn: a copy only gets its id once the team's save lands, so a just-added Pokémon
+ * waits for that save rather than failing.
+ */
+async function openCopyEditor(index) {
+  const battleId = state.battleId;
+  let member = currentSlots()[index];
+  for (let tries = 0; member && !member.id && tries < 5; tries++) {
+    setStatus("Saving…");
+    await saveChain;  // later edits chain onto it, so look again until this copy has its id
+    if (state.battleId !== battleId) return;
+    member = currentSlots()[index];
+  }
+  if (!member?.id) return;  // removed meanwhile, or the save failed (resync has shown the error)
   const source = member.catch_id === null ? null : catchById(member.catch_id);
   openDetailsDialog({
     title: `${currentBattle().name}: ${member.species}`,
@@ -1280,6 +1293,9 @@ function saveFight(slots, result) {
       if (state.attempt?.id !== attemptId || fightEdits.get(battleId) !== edit) return;
       if (fight) state.fights.set(battleId, fight);
       else state.fights.delete(battleId);
+      // The saved copies now have ids: redraw so the team slots hold them (not mid-drag, which
+      // a redraw would cut short; the next render after the drop picks them up).
+      if (state.battleId === battleId && !dragging) renderFocus();
     } catch {
       await resync(attemptId);
     }
