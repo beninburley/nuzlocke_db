@@ -11,7 +11,7 @@ for anyone who makes an account:
   sign-ups are *trainers*; the others are *mod*, *content creator* and
   *admin*. Only admins get anything extra so far: the admin page.
 - **Admin** (admins only: the *Admin* button next to the account button,
-  `/admin`): a home page with three sections.
+  `/admin`): a home page with four sections.
   - *Roles*: every account, with its role as a drop-down that saves on
     change. You can't change your own role, so there's always an admin.
   - *Trainer Battles*: pick a battle to see its enemy team, laid out as on
@@ -21,6 +21,11 @@ for anyone who makes an account:
     corrections are kept in a table of their own (`trainer_edits`) and
     applied again after each reload. The battle shows who corrected it and
     when, and can be reverted to the spreadsheet's team.
+  - *Routing*: every route with a drop-down for when it opens up for logic
+    routing (from the start, or after one of the splits, with its level cap).
+    Changes save on change, apply to everyone and are kept in their own table
+    (`routing_edits`); picking the option marked *default* (from
+    `data/routing.json`) removes the change.
   - *Verification Requests*: not built yet ("Work in Process").
 - **Attempts**: pick which run you're on, or start a new one. Each attempt
   in the list shows the split it's on: the one with its first boss it hasn't
@@ -33,7 +38,13 @@ for anyone who makes an account:
   the sheet's dupes table, which includes regional forms) is greyed out, and
   the odds of the rest are scaled up to add to 100%. You can still record a
   dupe after confirming. Routes you haven't caught on yet show *Dupes
-  contained* if their pool has any.
+  contained* if their pool has any. **Logic routing** (on by default, with a
+  switch above the table) tints the routes you can catch on now and mutes the
+  rest with the boss that opens them, going by the attempt's split; the
+  heading counts the encounters available to be caught. **Areas** whose
+  sections share one encounter (Granite Cave 1F to Steven's Room, Mt. Pyre,
+  Safari Zone...) are boxed together, and once one section has a catch the
+  others are greyed out.
 - **Box**: every Pokemon caught this attempt, on the right. The selected one's
   details are on the left: level, status (OK / Burn / Sleep / Fainted),
   nature, ability, held item, four moves and IVs. Ability, item and move boxes
@@ -193,6 +204,16 @@ spreadsheet and synced into the DB on every app start. It covers:
 - the level-cap fights (*Past Boss Fights* header)
 - dupe-clause evolution families
 
+**Logic routing** defaults come from `data/routing.json`, edited by hand:
+`unlocks` lists the routes each split's boss opens up (in game order;
+`"after": null` is the start), and `areas` lists the routes that share one
+encounter. The defaults were worked out from encounter levels: routes at the
+same level open together, a higher level never opens earlier, and a route
+where a split's boss is fought opens before that boss. The app checks the file
+against the game data on start and refuses to start on a route or split name
+it doesn't know; a route the file leaves out counts as open from the start.
+Admins override single routes on the admin page's *Routing* section.
+
 Level-cap fights are matched to their trainers by `LEVEL_CAP_TRAINERS` in
 `scripts/extract_game_data.py`. If you edit the spreadsheet, re-extract:
 
@@ -297,6 +318,7 @@ data/game_data.json    Extracted game data
 data/sprites.json      Species -> PokeAPI sprite URL (the sheet's species plus the whole Pokédex)
 data/pokedex.json      Every move, ability and held item name (PokeAPI)
 data/evolutions.json   Species -> its evolutionary line (PokeAPI)
+data/routing.json      When each route opens up (by split), and areas that share one encounter
 scripts/               Spreadsheet extraction, PokeAPI lookups, history import/backfill, accounts,
                        build_tokens.py (design-system/tokens.json -> static/tokens.css)
 design-system/         nuzhub's design system: tokens, fonts, component specs (the source of truth for styling)
@@ -323,7 +345,9 @@ account's data only. Changes (anything but GET) need an `X-Requested-With` heade
 | PATCH | `/api/admin/users/<id>` | admins only: `{role}` (not your own) |
 | PUT | `/api/admin/trainer-team` | admins only: `{trainer: key, pokemon: [1-6 {species, level, item, ability, nature, moves}]}` corrects a trainer's team |
 | POST | `/api/admin/trainer-team/revert` | admins only: `{trainer: key}` goes back to the spreadsheet's team |
-| GET | `/api/game` | routes (with encounter options), battles, sprites, evolution lines, dupes-clause families, natures, statuses, suggestions |
+| GET | `/api/admin/routing` | admins only: every route with `unlock`, `default_unlock`, `area` and who changed it, plus the splits with their level caps |
+| PUT | `/api/admin/routing/<route_id>` | admins only: `{unlock: split or null}` sets when a route opens up; its default removes the change |
+| GET | `/api/game` | routes (with encounter options, unlock split and area), battles, sprites, evolution lines, dupes-clause families, natures, statuses, suggestions |
 | GET | `/api/battles/<id>` | a battle's trainers and their teams |
 | GET | `/api/battles/<id>/solutions?exclude=<attempt id>` | every other attempt's team, KOs and notes for that battle, yours (`mine`) and other trainers' (anonymous; members by slot) |
 | GET / POST | `/api/attempts` | `{number?}`; the list gives each attempt's `split` (null once every boss is beaten) and `split_lost` |

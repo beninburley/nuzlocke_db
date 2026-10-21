@@ -425,6 +425,50 @@ main { max-width: var(--content-max); margin: 0 auto; padding: var(--space-6) va
 }
 .catch-remove:hover, .team-slot .remove:hover { background: var(--danger-soft); color: var(--danger); }
 .catch-chip .mon-name { white-space: nowrap; overflow-wrap: normal; }
+
+/* Summary ("3 encounters available to be caught") and the logic routing switch */
+.encounters-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-4);
+  margin-bottom: var(--space-2);
+}
+.encounters-summary { margin: 0; font: var(--text-title-3); }
+
+/* Logic routing: open routes without a catch are tinted and say so; locked ones are muted with
+   the split that opens them. A route whose area is already caught elsewhere is greyed out. */
+.route-note { display: block; color: var(--ink-muted); font: var(--text-caption); }
+#encounters-body tr.available td { background: var(--emerald-soft); }
+#encounters-body tr.available .route-note { color: var(--emerald-strong); font-weight: 600; }
+#encounters-body tr:is(.locked, .area-used) td:first-child { color: var(--ink-muted); }
+#encounters-body tr.locked .add-catch { border-color: var(--line-strong); color: var(--ink-muted); }
+.add-catch:disabled { border-color: var(--line); background: transparent; color: var(--ink-subtle); }
+
+/* Areas: their routes share one encounter, so they sit in one box under the area's name */
+#encounters-body tr.area-head td {
+  height: auto;
+  padding: var(--space-3) var(--space-3) var(--space-1);
+  border-top: 0;
+  background: var(--surface-sunken);
+}
+.area-name { font: var(--text-label); }
+.area-rule { color: var(--ink-muted); font: var(--text-caption); }
+#encounters-body tr.in-area:not(.available) td { background: var(--surface-sunken); }
+#encounters-body tr.area-head + tr td { border-top: 0; }
+@media (min-width: 640px) {  /* --bp-tablet; phones draw the box on the rows instead */
+  #encounters-body tr.area-head td {
+    border: 2px solid var(--line-strong);
+    border-bottom: 0;
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+  }
+  #encounters-body tr.in-area td:first-child { border-left: 2px solid var(--line-strong); }
+  #encounters-body tr.in-area td:last-child { border-right: 2px solid var(--line-strong); }
+  #encounters-body tr.area-last td { border-bottom: 2px solid var(--line-strong); }
+  #encounters-body tr.area-last td:first-child { border-bottom-left-radius: var(--radius-md); }
+  #encounters-body tr.area-last td:last-child { border-bottom-right-radius: var(--radius-md); }
+}
 @media (max-width: 639.98px) {
   /* Phones: each route is a small label above its catch, so the catch gets the full width */
   #tab-encounters .grid thead { display: none; }
@@ -433,6 +477,14 @@ main { max-width: var(--content-max); margin: 0 auto; padding: var(--space-6) va
   #encounters-body td { display: block; height: auto; padding: 0; border: 0; }
   #encounters-body td:first-child { margin-bottom: var(--space-1); color: var(--ink-muted); font: var(--text-caption); white-space: normal; }
   #encounters-body tr:hover td { background: none; }
+  #encounters-body tr:is(.available, .in-area, .area-head) { padding-inline: var(--space-3); }
+  #encounters-body tr.available { background: var(--emerald-soft); }
+  #encounters-body tr.in-area:not(.available), #encounters-body tr.area-head { background: var(--surface-sunken); }
+  #encounters-body tr:is(.in-area, .area-head) { border-inline: 2px solid var(--line-strong); }
+  #encounters-body tr.area-head { margin-top: var(--space-2); border-top: 2px solid var(--line-strong); border-radius: var(--radius-md) var(--radius-md) 0 0; }
+  #encounters-body tr.area-head td { padding: 0; }
+  #encounters-body tr.area-last { margin-bottom: var(--space-2); border-bottom: 2px solid var(--line-strong); border-radius: 0 0 var(--radius-md) var(--radius-md); }
+  #encounters-body tr:is(.available, .in-area, .area-head) td { background: none; }
 }
 
 /* ---------------------------------------------------------------------------
@@ -1117,13 +1169,13 @@ main { max-width: var(--content-max); margin: 0 auto; padding: var(--space-6) va
    --------------------------------------------------------------------------- */
 
 /* Admin home and Verification are roomy; Roles, Trainer Battles and the team editor are dense */
-#admin-roles, #admin-battles {
+#admin-roles, #admin-battles, #admin-routing {
   --control: var(--control-sm);
   --card-pad: var(--space-3);
   font: var(--text-body-dense);
 }
 @media (max-width: 639.98px), (pointer: coarse) {
-  #admin-roles, #admin-battles { --control: var(--control-touch); }
+  #admin-roles, #admin-battles, #admin-routing { --control: var(--control-touch); }
 }
 
 .admin-main { max-width: var(--content-max); margin: 0 auto; padding: var(--space-6) var(--space-6) var(--space-12); }
@@ -1136,6 +1188,8 @@ main { max-width: var(--content-max); margin: 0 auto; padding: var(--space-6) va
 .admin-card p { margin: 0; color: var(--ink-muted); }
 .admin-filter { width: min(320px, 100%); margin-bottom: var(--space-3); }
 .admin-users td { vertical-align: middle; }
+.admin-routing select { width: min(340px, 100%); }
+.admin-routing td:first-child { font-weight: 600; }
 
 .admin-battles { display: grid; grid-template-columns: minmax(240px, 300px) minmax(0, 1fr); gap: var(--space-4); align-items: start; }
 .admin-battle-list {
@@ -1162,7 +1216,7 @@ main { max-width: var(--content-max); margin: 0 auto; padding: var(--space-6) va
 @media (max-width: 639.98px) {
   .admin-main { padding: var(--space-4) var(--space-4) var(--space-12); }
   /* The roles table scrolls sideways inside its card rather than widening the page */
-  #admin-roles .panel { overflow-x: auto; }
+  :is(#admin-roles, #admin-routing) .panel { overflow-x: auto; }
 }
 
 /* Team editor: one well per enemy slot, laid out like its card */

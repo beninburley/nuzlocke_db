@@ -291,8 +291,9 @@ def design_system_font(name):
 @app.get("/api/game")
 def game():
     conn = get_db()
-    routes = [dict(r, options=[]) for r in conn.execute(
-        "SELECT id, name FROM routes ORDER BY position")]
+    routing = db.routing(conn)
+    routes = [dict(r, options=[], unlock=routing[r["name"]]["unlock"], area=routing[r["name"]]["area"])
+              for r in conn.execute("SELECT id, name FROM routes ORDER BY position")]
     by_id = {r["id"]: r for r in routes}
     # Collapse duplicate encounter slots into one option per (method, pokemon).
     for row in conn.execute(
@@ -463,6 +464,50 @@ def admin_revert_trainer_team():
         conn.execute("DELETE FROM trainer_edits WHERE trainer_key = ?", (trainer["key"],))
         db.set_trainer_team(conn, trainer["id"], original)
     return jsonify(ok=True)
+
+
+def routing_json(route_id, name, info):
+    return {"id": route_id, "name": name, "area": info["area"], "unlock": info["unlock"],
+            "default_unlock": info["default_unlock"], "edited": info["edited"]}
+
+
+@app.get("/api/admin/routing")
+def admin_routing():
+    """Every route with when it opens up (and its default from data/routing.json), and the splits in order."""
+    conn = get_db()
+    routing = db.routing(conn)
+    routes = [routing_json(r["id"], r["name"], routing[r["name"]])
+              for r in conn.execute("SELECT id, name FROM routes ORDER BY position")]
+    splits = [dict(s) for s in conn.execute(
+        "SELECT split AS name, level_cap FROM battles WHERE split IS NOT NULL ORDER BY position")]
+    return jsonify(routes=routes, splits=splits)
+
+
+@app.put("/api/admin/routing/<int:route_id>")
+def admin_set_route_unlock(route_id):
+    """When a route opens up: {"unlock": a split's name, or null for from the start}.
+
+    Choosing the route's default (data/routing.json) removes the change.
+    """
+    conn = get_db()
+    route = conn.execute("SELECT id, name FROM routes WHERE id = ?", (route_id,)).fetchone()
+    if route is None:
+        raise ApiError("route not found", 404)
+    data = body()
+    unlock = data.get("unlock")
+    splits = {r[0] for r in conn.execute("SELECT split FROM battles WHERE split IS NOT NULL")}
+    if set(data) != {"unlock"} or not (unlock is None or unlock in splits):
+        raise ApiError("unlock must be a split's name, or null for from the start")
+    default = db.routing_defaults(conn)[route["name"]]["unlock"]
+    with conn:
+        if unlock == default:
+            conn.execute("DELETE FROM routing_edits WHERE route_id = ?", (route_id,))
+        else:
+            conn.execute(
+                "INSERT INTO routing_edits (route_id, unlock, edited_by, edited_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP) "
+                "ON CONFLICT (route_id) DO UPDATE SET unlock = excluded.unlock, edited_by = excluded.edited_by, "
+                "edited_at = excluded.edited_at", (route_id, unlock, user_id()))
+    return jsonify(route=routing_json(route["id"], route["name"], db.routing(conn)[route["name"]]))
 
 
 RESULT_ORDER = {"won": 0, None: 1, "lost": 2}
@@ -1075,6 +1120,7 @@ def setup():
     conn = db.connect()
     try:
         db.init_db(conn)
+        db.routing_defaults(conn)  # a mistake in data/routing.json shows up here, not as a broken Encounters tab
     finally:
         conn.close()
 

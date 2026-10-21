@@ -78,6 +78,17 @@ CREATE TABLE IF NOT EXISTS trainer_edits (
     edited_at   TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Admins' changes to when a route opens up (logic routing). The defaults are
+-- in data/routing.json; a row here replaces one route's. `unlock` is the split
+-- whose boss opens the route, or NULL for open from the start. Deleting the
+-- row goes back to the default.
+CREATE TABLE IF NOT EXISTS routing_edits (
+    route_id  INTEGER PRIMARY KEY REFERENCES routes(id) ON DELETE CASCADE,
+    unlock    TEXT,
+    edited_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    edited_at TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Dupes-clause groups (evolution lines + regional forms).
 CREATE TABLE IF NOT EXISTS species_families (
     species   TEXT    PRIMARY KEY,
