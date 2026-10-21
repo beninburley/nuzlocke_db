@@ -1,7 +1,7 @@
 "use strict";
 
-// The admin page (role "admin" only): Roles, Trainer Battles and Verification
-// Requests, picked by the URL's #hash. It uses app.js's helpers (api, el,
+// The admin page (role "admin" only): Roles, Trainer Battles, Routing and
+// Verification Requests, picked by the URL's #hash. It uses app.js's helpers (api, el,
 // sprite, enemySlot, trainerLabels, save...) without booting the tracker, so
 // enemy teams look exactly as they do on the Trainer Battles tab.
 
@@ -15,9 +15,11 @@ const admin = {
   detail: null,        // its trainers and teams
   trainerIndex: 0,
   editing: null,       // trainer whose team is open in the editor
+  routing: [],         // [{id, name, area, unlock, default_unlock, edited}] in game order
+  splits: [],          // [{name, level_cap}] in game order
 };
 
-const ADMIN_VIEWS = ["roles", "battles", "verification"];
+const ADMIN_VIEWS = ["roles", "battles", "routing", "verification"];
 
 async function adminBoot() {
   try {
@@ -26,6 +28,7 @@ async function adminBoot() {
     window.addEventListener("hashchange", () => showAdminView().catch(showError));
     $("#user-filter").addEventListener("input", renderUsers);
     $("#admin-battle-filter").addEventListener("input", renderAdminBattleList);
+    $("#routing-filter").addEventListener("input", renderRouting);
     $("#team-form").addEventListener("submit", (e) => saveTeam(e).catch(() => {}));
     for (const btn of document.querySelectorAll(".team-close")) {
       btn.addEventListener("click", () => $("#team-editor").close());
@@ -46,6 +49,7 @@ async function showAdminView() {
   for (const name of ["home", ...ADMIN_VIEWS]) $(`#admin-${name}`).hidden = name !== view;
   if (view === "roles") await loadUsers();
   if (view === "battles") await loadAdminBattles();
+  if (view === "routing") await loadRouting();
 }
 
 // --- Roles ---------------------------------------------------------------------
@@ -83,6 +87,55 @@ function userRow(user) {
     el("td", {}, role),
     el("td", {}, formatDate(user.created_at)),
     el("td", { class: "num" }, String(user.attempts)));
+}
+
+// --- Routing ---------------------------------------------------------------------
+
+async function loadRouting() {
+  const { routes, splits } = await api("GET", "/admin/routing");
+  Object.assign(admin, { routing: routes, splits });
+  renderRouting();
+}
+
+/** "After Leader Brawly (Lv 21)", or "From the start". */
+function unlockLabel(split) {
+  if (split === null) return "From the start";
+  return `After ${split} (Lv ${admin.splits.find((s) => s.name === split)?.level_cap ?? "?"})`;
+}
+
+const routingChanged = (route) =>
+  route.edited ? `By ${route.edited.by ?? "a deleted account"} on ${formatDate(route.edited.at)}` : "";
+
+function renderRouting() {
+  const query = $("#routing-filter").value.trim().toLowerCase();
+  const changed = admin.routing.filter((r) => r.edited).length;
+  $("#routing-changed").textContent = changed ? `(${changed} changed from the defaults)` : "";
+  $("#routing-body").replaceChildren(...admin.routing
+    .filter((r) => `${r.name} ${r.area ?? ""}`.toLowerCase().includes(query))
+    .map(routingRow));
+}
+
+/** One route: when it opens is a drop-down that saves on change. */
+function routingRow(route) {
+  const choices = [null, ...admin.splits.map((s) => s.name)];
+  const select = el("select", { "aria-label": `When ${route.name} opens up` },
+    ...choices.map((split, i) => el("option", { value: String(i) },
+      unlockLabel(split) + (split === route.default_unlock ? " · default" : ""))));
+  select.value = String(choices.indexOf(route.unlock));
+  const changedCell = el("td", { class: "muted" }, routingChanged(route));
+  select.addEventListener("change", async () => {
+    try {
+      const { route: saved } = await save(() => api("PUT", `/admin/routing/${route.id}`, { unlock: choices[Number(select.value)] }));
+      Object.assign(route, saved);
+      changedCell.textContent = routingChanged(route);
+      const count = admin.routing.filter((r) => r.edited).length;
+      $("#routing-changed").textContent = count ? `(${count} changed from the defaults)` : "";
+    } catch {
+      select.value = String(choices.indexOf(route.unlock));  // save() already showed the error
+    }
+  });
+  return el("tr", {},
+    el("td", {}, route.name), el("td", {}, route.area ?? ""), el("td", {}, select), changedCell);
 }
 
 // --- Trainer Battles ------------------------------------------------------------

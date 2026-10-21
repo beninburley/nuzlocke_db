@@ -1,5 +1,5 @@
 {
-  "about": ["Logic routing for the Encounters tab.", "unlocks: the routes that open up once a split's boss is beaten (after: null means from the start), in game order.", "Every route in game_data.json should be listed once; one that isn't counts as open from the start.", "areas: routes that are sections of one place and share a single encounter."],
+  "about": ["Logic routing for the Encounters tab. These are the defaults; admins can change any route's on the Admin page (Routing), which the database keeps.", "unlocks: the routes that open up once a split's boss is beaten (after: null means from the start), in game order.", "Worked out from encounter levels: routes at the same level open together, higher levels never open earlier, and a route with a split's boss opens before that boss.", "Every route in game_data.json should be listed once; one that isn't counts as open from the start.", "areas: routes that are sections of one place and share a single encounter."],
   "unlocks": [
     {
       "after": null,
@@ -18,16 +18,12 @@
       "routes": ["Rusturf Tunnel", "Verdanturf Town", "Mauville City", "Route 117"]
     },
     {
-      "after": "Route 117 Chelle",
-      "routes": ["Route 111"]
-    },
-    {
       "after": "Leader Norman",
-      "routes": ["Route 118", "Altering Cave", "Mirage Tower 1F", "Mirage Tower 2F", "Mirage Tower 3F", "Mirage Tower 4F", "Route 113", "Fallarbor Town", "Desert Underpass"]
+      "routes": ["Route 111", "Altering Cave", "Mirage Tower 1F", "Mirage Tower 2F", "Mirage Tower 3F", "Mirage Tower 4F", "Route 113"]
     },
     {
       "after": "Fallarbor Town Vito",
-      "routes": ["Route 114", "Meteor Falls 1F1", "Meteor Falls 1F2", "Meteor Falls B1F1", "Meteor Falls B1F2", "Route 112", "Fiery Path", "Mt. Chimney"]
+      "routes": ["Fallarbor Town", "Desert Underpass", "Route 114", "Meteor Falls 1F1", "Meteor Falls 1F2", "Meteor Falls B1F1", "Meteor Falls B1F2", "Route 112", "Fiery Path", "Mt. Chimney"]
     },
     {
       "after": "Mt. Chimney Maxie",
@@ -35,7 +31,7 @@
     },
     {
       "after": "Leader Flannery",
-      "routes": ["Route 134", "New Mauville (Outside)", "New Mauville (Inside)", "Route 105", "Route 108", "Abandoned Ship B1F Rooms", "Route 119"]
+      "routes": ["Route 118", "Route 134", "New Mauville (Outside)", "New Mauville (Inside)", "Route 105", "Route 108", "Abandoned Ship B1F Rooms", "Route 119"]
     },
     {
       "after": "Route 119 Rival",
@@ -43,11 +39,11 @@
     },
     {
       "after": "Leader Winona",
-      "routes": ["Route 121", "Safari Zone (South)", "Safari Zone (Southwest)", "Safari Zone (Northwest)", "Safari Zone (North)", "Lilycove City", "Route 122", "Route 123"]
+      "routes": ["Route 121", "Safari Zone (South)", "Safari Zone (Southwest)", "Safari Zone (Northwest)", "Safari Zone (North)", "Lilycove City"]
     },
     {
       "after": "Lilycove City Rival",
-      "routes": ["Mt. Pyre 1F-2F", "Mt. Pyre 3F-4F", "Mt. Pyre 5F-6F", "Mt. Pyre (Exterior)", "Mt. Pyre (Summit)"]
+      "routes": ["Route 122", "Route 123", "Mt. Pyre 1F-2F", "Mt. Pyre 3F-4F", "Mt. Pyre 5F-6F", "Mt. Pyre (Exterior)", "Mt. Pyre (Summit)"]
     },
     {
       "after": "Mt. Pyre Archie",
@@ -59,19 +55,19 @@
     },
     {
       "after": "Aqua Hideout Matt",
-      "routes": ["Route 124", "Mossdeep City", "Route 125", "Shoal Cave (Entrance/Inner)", "Shoal Cave (Other)", "Shoal Cave (Ice)"]
+      "routes": ["Route 124", "Mossdeep City", "Route 125", "Shoal Cave (Entrance/Inner)", "Shoal Cave (Other)", "Shoal Cave (Ice)", "124 Undewater"]
     },
     {
       "after": "Leaders Tate & Liza",
-      "routes": ["Route 127", "Route 126", "124 Undewater", "126 Underwater", "Sootopolis City", "Route 128", "Route 129", "Ever Grande City", "Seafloor Cavern E", "Seafloor Cavern 1-5", "Seafloor Cavern 6-7", "Seafloor Cavern 8", "Cave of Origin"]
+      "routes": ["Route 127", "Route 126", "126 Underwater", "Sootopolis City", "Route 128", "Route 129", "Seafloor Cavern E", "Seafloor Cavern 1-5", "Seafloor Cavern 6-7", "Seafloor Cavern 8", "Route 130", "Route 131", "Pacifidlog Town", "Route 132", "Route 133"]
     },
     {
       "after": "Seafloor Cavern Archie",
-      "routes": ["Route 130", "Route 131", "Pacifidlog Town", "Route 132", "Route 133", "Sky Pillar 1F/3F", "Sky Pillar 5F"]
+      "routes": ["Cave of Origin", "Sky Pillar 1F/3F", "Sky Pillar 5F"]
     },
     {
       "after": "Leader Juan",
-      "routes": ["Victory Road 1F", "Victory Road B1F", "Victory Road B2F"]
+      "routes": ["Ever Grande City", "Victory Road 1F", "Victory Road B1F", "Victory Road B2F"]
     }
   ],
   "areas": {

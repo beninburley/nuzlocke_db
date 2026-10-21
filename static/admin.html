@@ -45,6 +45,10 @@
           <h3>Trainer Battles</h3>
           <p>Correct an enemy trainer's team when the game data is wrong.</p>
         </a>
+        <a class="panel admin-card" href="#routing">
+          <h3>Routing</h3>
+          <p>When each route opens up, for logic routing on the Encounters tab.</p>
+        </a>
         <a class="panel admin-card" href="#verification">
           <h3>Verification Requests</h3>
           <p>Review requests from trainers.</p>
@@ -76,6 +80,20 @@
         <section id="admin-battle" class="panel admin-battle" aria-live="polite">
           <p class="hint">Pick a battle to see its enemy team.</p>
         </section>
+      </div>
+    </section>
+
+    <section id="admin-routing" class="admin-view" aria-labelledby="admin-routing-title" hidden>
+      <a class="back-link" href="#"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>Admin home</a>
+      <h2 id="admin-routing-title">Routing <span id="routing-changed" class="muted"></span></h2>
+      <p class="hint">When each route opens up for logic routing: from the start, or once a split's boss is beaten.
+        Changes save straight away and apply to everyone. Picking the option marked "default" undoes a change.</p>
+      <input id="routing-filter" class="admin-filter" type="search" placeholder="Filter routes or areas" aria-label="Filter routes or areas">
+      <div class="panel">
+        <table class="grid admin-routing">
+          <thead><tr><th>Route</th><th>Area</th><th>Opens</th><th>Changed</th></tr></thead>
+          <tbody id="routing-body"></tbody>
+        </table>
       </div>
     </section>
 
