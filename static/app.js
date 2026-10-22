@@ -735,9 +735,15 @@ async function applyScript() {
     renderBoxGrid();
     if (!boxEditor?.isDirty()) renderBoxDetail();
     renderFightView();
-    await previewScript(catches.length);  // the sets just applied now show as up to date
+    // Done with this script: start the next one from a clean, closed popup.
+    clearTimeout(scriptTimer);
+    scriptRuns++;  // a preview still on its way is for the old text
+    $("#script-input").value = "";
+    renderScriptPreview([], 0);
+    $("#script-dialog").close();
+    setStatus(`Updated ${catches.length} Pokémon`, "ok");
   } catch {
-    await previewScript();  // save() already showed the error
+    await previewScript();  // save() already showed the error; the text stays for another try
   }
 }
 
