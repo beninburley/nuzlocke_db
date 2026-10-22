@@ -42,8 +42,7 @@
       <button type="button" role="tab" data-tab="encounters"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg>Encounters <span id="catch-count" class="pill"></span></button>
       <button type="button" role="tab" data-tab="box"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg>Box</button>
       <button type="button" role="tab" data-tab="fights"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 17.5 3 6V3h3l11.5 11.5"/><path d="m13 19 6-6"/><path d="m16 16 4 4"/><path d="m19 21 2-2"/><path d="M14.5 6.5 18 3h3v3l-3.5 3.5"/><path d="m5 14 4 4"/><path d="m7 17-3 3"/><path d="m3 19 2 2"/></svg>Trainer Battles</button>
-      <button type="button" role="tab" data-tab="kos"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>KO Analytics</button>
-      <button type="button" role="tab" data-tab="brought"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Battles Brought</button>
+      <button type="button" role="tab" data-tab="stats"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>Stats</button>
     </nav>
 
     <section id="tab-encounters" class="panel">
@@ -171,21 +170,54 @@
       </div>
     </section>
 
-    <section id="tab-kos" class="panel" hidden>
-      <h2 class="chart-head">Most KOs this attempt <span id="ko-stats-total" class="muted"></span></h2>
-      <p id="ko-stats-empty" class="hint" hidden>
-        No KOs recorded yet. Mark a battle <strong>Won</strong> or <strong>Lost</strong> to open the KO tracker,
-        or use the KO button next to a finished battle.
-      </p>
-      <ol id="ko-chart" class="bar-chart kos" aria-label="KOs per Pokémon"></ol>
-    </section>
+    <!-- Stats: your runs across attempts, then this attempt's KO and battle charts -->
+    <section id="tab-stats" class="stats-view" hidden>
+      <section class="panel" aria-labelledby="stats-runs-heading">
+        <h2 id="stats-runs-heading" class="chart-head">Your runs</h2>
+        <p id="stats-status" class="hint" hidden></p>
+        <div id="stats-tiles" class="stat-tiles"></div>
+        <div class="stats-history">
+          <table class="grid">
+            <thead><tr><th>Attempt</th><th>Reached</th><th class="num">Catches</th><th class="num">Battles won</th><th class="num">Deaths</th></tr></thead>
+            <tbody id="stats-history-body"></tbody>
+          </table>
+        </div>
+      </section>
 
-    <section id="tab-brought" class="panel" hidden>
-      <h2 class="chart-head">Battles each Pok&eacute;mon was brought to <span id="brought-total" class="muted"></span></h2>
-      <p id="brought-empty" class="hint" hidden>
-        No teams recorded yet. Add Pok&eacute;mon to a battle's team on the <strong>Trainer Battles</strong> tab.
-      </p>
-      <ol id="brought-chart" class="bar-chart brought" aria-label="Battles brought to, per Pokémon"></ol>
+      <div class="stats-pair">
+        <section class="panel" aria-labelledby="runs-ended-heading">
+          <h2 id="runs-ended-heading" class="chart-head">Where runs end <span id="runs-ended-total" class="muted"></span></h2>
+          <p id="runs-ended-empty" class="hint" hidden>No finished runs yet. A run counts here once you start a new attempt, or lose to a boss.</p>
+          <ol id="runs-ended-chart" class="hbar-chart" aria-label="Runs that ended at each split"></ol>
+          <p id="runs-ended-note" class="hint stats-note" hidden></p>
+        </section>
+        <section class="panel" aria-labelledby="deaths-heading">
+          <h2 id="deaths-heading" class="chart-head">Deaths per split <span class="muted">(per run that got there)</span></h2>
+          <p id="deaths-empty" class="hint" hidden>
+            No deaths recorded yet. They come from the KO tracker: a red arrow from an enemy to one of your Pok&eacute;mon.
+          </p>
+          <ol id="deaths-chart" class="hbar-chart" aria-label="Average deaths in each split, per run that reached it"></ol>
+        </section>
+      </div>
+
+      <h2 class="stats-section-head">This attempt</h2>
+      <div class="stats-pair">
+        <section class="panel" aria-labelledby="ko-stats-heading">
+          <h2 id="ko-stats-heading" class="chart-head">Most KOs <span id="ko-stats-total" class="muted"></span></h2>
+          <p id="ko-stats-empty" class="hint" hidden>
+            No KOs recorded yet. Mark a battle <strong>Won</strong> or <strong>Lost</strong> to open the KO tracker,
+            or use the KO button next to a finished battle.
+          </p>
+          <ol id="ko-chart" class="bar-chart kos" aria-label="KOs per Pokémon"></ol>
+        </section>
+        <section class="panel" aria-labelledby="brought-heading">
+          <h2 id="brought-heading" class="chart-head">Battles each Pok&eacute;mon was brought to <span id="brought-total" class="muted"></span></h2>
+          <p id="brought-empty" class="hint" hidden>
+            No teams recorded yet. Add Pok&eacute;mon to a battle's team on the <strong>Trainer Battles</strong> tab.
+          </p>
+          <ol id="brought-chart" class="bar-chart brought" aria-label="Battles brought to, per Pokémon"></ol>
+        </section>
+      </div>
     </section>
 
   </main>

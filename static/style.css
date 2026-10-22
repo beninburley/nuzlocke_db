@@ -349,13 +349,13 @@ main { max-width: var(--content-max); margin: 0 auto; padding: var(--space-6) va
    fights, the stats tabs and the popups are dense.
    --------------------------------------------------------------------------- */
 
-#tab-encounters, #tab-fights, #tab-kos, #tab-brought, .picker {
+#tab-encounters, #tab-fights, #tab-stats, .picker {
   --control: var(--control-sm);
   --card-pad: var(--space-3);
   font: var(--text-body-dense);
 }
 @media (max-width: 639.98px), (pointer: coarse) {
-  #tab-encounters, #tab-fights, #tab-kos, #tab-brought, .picker { --control: var(--control-touch); }
+  #tab-encounters, #tab-fights, #tab-stats, .picker { --control: var(--control-touch); }
 }
 
 .tabs { margin-bottom: var(--space-6); }
@@ -367,7 +367,7 @@ main { max-width: var(--content-max); margin: 0 auto; padding: var(--space-6) va
     inset: auto 0 0 0;
     z-index: 10;
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 0;
     margin: 0;
     padding: var(--space-1) var(--space-1) calc(var(--space-1) + env(safe-area-inset-bottom));
@@ -1123,7 +1123,7 @@ main { max-width: var(--content-max); margin: 0 auto; padding: var(--space-6) va
   width: calc((100% - 40px) * var(--share));
   min-width: var(--space-1);
   height: var(--space-4);
-  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  border-radius: 0 calc(var(--radius-sm) / 2) calc(var(--radius-sm) / 2) 0;
   background: var(--emerald);
 }
 .bar-chart-bar.zero { min-width: 0; }
@@ -1139,6 +1139,95 @@ main { max-width: var(--content-max); margin: 0 auto; padding: var(--space-6) va
 @media (max-width: 639.98px) {
   .bar-chart-row { grid-template-columns: var(--space-4) minmax(0, 1fr); row-gap: var(--space-1); }
   .bar-chart-track { grid-column: 2; }
+}
+
+/* ---------------------------------------------------------------------------
+   Stats tab (dense): your runs across attempts, then this attempt's charts
+   --------------------------------------------------------------------------- */
+
+.stats-view { display: flex; flex-direction: column; gap: var(--space-4); }
+.stats-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); align-items: start; }
+.stats-section-head { margin: var(--space-4) 0 0; font: var(--text-title-2); letter-spacing: var(--text-title-2-tracking); }
+.stats-note { margin: var(--space-2) 0 0; font: var(--text-caption); }
+
+/* Stat tiles: wells inside the card. The personal best is the one victory figure, in gold. */
+.stat-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--space-3); margin-bottom: var(--space-4); }
+.stat-tile { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3) var(--space-4); border-radius: var(--radius-md); background: var(--surface-sunken); }
+.stat-tile-label {
+  color: var(--ink-muted);
+  font: var(--text-overline);
+  letter-spacing: var(--text-overline-tracking);
+  text-transform: uppercase;
+}
+.stat-tile-value { font: var(--text-stat); letter-spacing: var(--text-stat-tracking); }
+.stat-tile.is-win .stat-tile-value { color: var(--gold-strong); }
+.stat-tile-context { color: var(--ink-muted); font: var(--text-caption); }
+.best-chip {
+  margin-left: var(--space-2);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--gold-soft);
+  color: var(--gold-strong);
+  font: var(--text-caption);
+  font-weight: 600;
+}
+
+/* Run history: scrolls inside the card once there are many attempts */
+.stats-history { max-height: 420px; overflow: auto; }
+
+/* Horizontal bars: a label, then the bar with its value at the tip. Emphasis charts are grey
+   except the highlighted bar, which also says why in words (never colour alone). */
+.hbar-chart { --reserve: 3rem; display: grid; gap: var(--space-1); margin: 0; padding: 0; list-style: none; }
+.hbar-chart.emphasis { --reserve: 10rem; }
+.hbar-row {
+  display: grid;
+  grid-template-columns: minmax(110px, 200px) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--row-dense);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+}
+.hbar-row:hover, .hbar-row:focus-visible { background: var(--surface-hover); }
+.hbar-label { overflow-wrap: anywhere; }
+.hbar-track { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.hbar-bar {
+  flex: none;
+  width: calc((100% - var(--reserve)) * var(--share));
+  min-width: var(--space-1);
+  height: var(--space-4);
+  border-radius: 0 calc(var(--radius-sm) / 2) calc(var(--radius-sm) / 2) 0;
+  background: var(--emerald);
+}
+.hbar-bar.zero { min-width: 0; }
+.hbar-chart.emphasis .hbar-bar { background: var(--line-strong); }
+.hbar-chart.emphasis .is-highlight .hbar-bar { background: var(--emerald-strong); }
+.hbar-value { font: var(--text-data); font-weight: 700; }
+.hbar-note { color: var(--ink); font: var(--text-caption); font-weight: 600; white-space: nowrap; }
+
+/* The chart tooltip: follows the pointer, or sits under a focused row */
+.chart-tip {
+  position: fixed;
+  z-index: 40;
+  max-width: 280px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--card-line);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-3);
+  color: var(--ink);
+  font: var(--text-label);
+  pointer-events: none;
+}
+
+@media (max-width: 959.98px) {  /* below --bp-desktop */
+  .stats-pair { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 639.98px) {
+  .stat-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }  /* two tiles a row on phones */
+  .stats-history td { white-space: nowrap; }  /* the table scrolls sideways instead of wrapping */
+  .hbar-row { grid-template-columns: minmax(0, 1fr); gap: 0; padding-block: var(--space-1); }
+  .hbar-label { font: var(--text-caption); color: var(--ink-muted); }
 }
 
 /* ---------------------------------------------------------------------------

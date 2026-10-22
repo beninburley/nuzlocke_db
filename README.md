@@ -109,11 +109,18 @@ for anyone who makes an account:
   come with their team, never yours.
   Below, a bar chart shows how many of those teams brought each Pokemon.
   The button switches back to your team.
-- **KO Analytics**: a bar chart of which Pokemon scored the most KOs this
-  attempt, with the battles they scored them in.
-- **Battles Brought**: a bar chart of how many battles each box Pokemon was
-  on the team for this attempt, with how many were won, lost or not marked.
-  Pokemon never brought are listed too, with 0.
+- **Stats**: your runs across attempts, then this attempt.
+  - *Your runs*: tiles for attempts, your personal best (the most bosses
+    beaten in one attempt, in gold once you've beaten one) and deaths recorded
+    (red KO arrows); a run history table, newest first, with how far each
+    attempt got, its catches, battles won and deaths; *Where runs end*, a bar
+    per boss for the finished runs that stopped there, the most common one
+    highlighted (the newest attempt counts only once lost, as it may still be
+    going); and *Deaths per split*, deaths in each split per run that got there.
+    Hover or focus a bar for its details.
+  - *This attempt*: which Pokemon scored the most KOs, with the battles they
+    scored them in; and how many battles each box Pokemon was on the team for,
+    with how many were won, lost or not marked (Pokemon never brought show 0).
 
 Everything saves automatically on change.
 
@@ -354,6 +361,7 @@ account's data only. Changes (anything but GET) need an `X-Requested-With` heade
 | GET | `/api/battles/<id>` | a battle's trainers and their teams |
 | GET | `/api/battles/<id>/solutions?exclude=<attempt id>` | every other attempt's team, KOs and notes for that battle, yours (`mine`) and other trainers' (anonymous; members by slot) |
 | GET / POST | `/api/attempts` | `{number?}`; the list gives each attempt's `split` (null once every boss is beaten) and `split_lost` |
+| GET | `/api/stats` | run history across your attempts: how far each got (`bosses_beaten`), catches, battles won, deaths; `personal_best`; `runs_ended` per split; `deaths_by_split` |
 | GET / PATCH / DELETE | `/api/attempts/<id>` | `{number?, notes?}` |
 | PUT | `/api/attempts/<id>/catches/<route_id>` | `{pokemon}` (null clears) |
 | PATCH | `/api/catches/<id>` | any of `{species, level, ability, nature, item, moves: [4], ivs: {hp, atk, def, spa, spd, spe}, status}` |
