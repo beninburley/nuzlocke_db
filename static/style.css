@@ -858,6 +858,7 @@ main { max-width: var(--content-max); margin: 0 auto; padding: var(--space-6) va
 .box-panel.drag-over { border-color: var(--emerald); background: var(--emerald-soft); }
 .box-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-3); margin-bottom: var(--space-3); }
 .box-head h2, .box-head h3 { margin: 0; font: var(--text-title-3); }
+.box-head .box-search { flex: 1 1 160px; max-width: 260px; }
 .check { display: inline-flex; align-items: center; gap: var(--space-2); min-height: var(--control); cursor: pointer; user-select: none; }
 .check input { margin: 0; }
 

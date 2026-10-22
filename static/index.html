@@ -65,9 +65,12 @@
       <section class="panel box-list" aria-labelledby="box-list-heading">
         <div class="box-head">
           <h2 id="box-list-heading">Box <span id="box-tab-count" class="muted"></span></h2>
+          <input id="box-tab-search" class="box-search" type="search" placeholder="Search your box"
+                 aria-label="Search your box: species, route, ability, item, nature or moves" autocomplete="off">
           <button type="button" class="script-open">Update - Script</button>
         </div>
         <p id="box-tab-empty" class="hint" hidden>No catches yet &mdash; add some on the Encounters tab.</p>
+        <p id="box-tab-nomatch" class="hint" hidden></p>
         <div id="box-tab-grid" class="box-grid"></div>
       </section>
     </section>
@@ -126,11 +129,14 @@
           <section id="box-panel" class="box-panel" aria-label="Box">
             <div class="box-head">
               <h3>Box <span id="box-count" class="muted"></span></h3>
+              <input id="box-search" class="box-search" type="search" placeholder="Search your box"
+                     aria-label="Search your box: species, route, ability, item, nature or moves" autocomplete="off">
               <button type="button" class="script-open">Update - Script</button>
               <label class="check"><input id="show-fainted" type="checkbox" checked> Show Fainted Pok&eacute;mon</label>
             </div>
             <p class="hint">Drag a Pok&eacute;mon onto a slot, or click it to add/remove. Drag a team member back here to remove it.</p>
             <p id="empty-box" class="hint warn" hidden>No catches yet &mdash; record some on the Encounters tab first.</p>
+            <p id="box-nomatch" class="hint" hidden></p>
             <p id="all-fainted" class="hint" hidden>Every Pok&eacute;mon in your box has fainted. Tick <strong>Show Fainted Pok&eacute;mon</strong> to see them.</p>
             <div id="box-grid" class="box-grid"></div>
           </section>

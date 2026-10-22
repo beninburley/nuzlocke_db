@@ -50,8 +50,11 @@ for anyone who makes an account:
   nature, ability, held item, four moves and IVs. Ability, item and move boxes
   suggest the names Run & Bun's trainers use. *Evolve…* shows the whole
   evolutionary line (from PokeAPI) and evolves or devolves in one click.
-  Fainted Pokemon are greyed out with a "Fainted" stamp, here and on the
-  Trainer Battles tab.
+  Fainted Pokemon are greyed out with a "Fainted" chip, here and on the
+  Trainer Battles tab. **Search your box** (on the Box tab and beside your team
+  on Trainer Battles) filters as you type: every word must appear in the
+  Pokemon's species, what was caught, its route, ability, held item, nature or
+  moves ("earthquake" finds everyone who knows it). Escape clears it.
 - **Update - Script** (beside *Box* on the Box and Trainer Battles tabs):
   paste Showdown-style sets to update box Pokemon in bulk. Each set updates
   the Pokemon of that species or its evolutionary line, evolving it if the
