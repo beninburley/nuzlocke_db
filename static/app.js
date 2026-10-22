@@ -647,12 +647,31 @@ function renderBox() {
   renderBoxDetail();
 }
 
+/**
+ * Whether a box Pokémon matches a box search: every word of it appears in the Pokémon's species,
+ * what was caught, its route, ability, held item, nature or moves (ignoring case).
+ */
+function matchesSearch(mon, query) {
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  const text = [mon.species, mon.pokemon, mon.routeName, mon.ability, mon.item, mon.nature, ...(mon.moves ?? [])]
+    .filter(Boolean).join(" ").toLowerCase();
+  return words.every((word) => text.includes(word));
+}
+
+/** "(n of m)" while searching, else the caller's count. */
+const searchCount = (query, shown, total, plain) => (query ? `(${shown} of ${total})` : plain);
+
 function renderBoxGrid() {
   const mons = box();
   if (!mons.some((m) => m.id === state.boxId)) state.boxId = mons[0]?.id ?? null;
-  $("#box-tab-count").textContent = `(${mons.length} caught)`;
+  // The selected Pokémon keeps its details open on the left even when the search hides it.
+  const query = $("#box-tab-search").value.trim();
+  const shown = mons.filter((m) => matchesSearch(m, query));
+  $("#box-tab-count").textContent = searchCount(query, shown.length, mons.length, `(${mons.length} caught)`);
   $("#box-tab-empty").hidden = mons.length > 0;
-  $("#box-tab-grid").replaceChildren(...mons.map((mon) => {
+  $("#box-tab-nomatch").hidden = !mons.length || shown.length > 0;
+  $("#box-tab-nomatch").textContent = `No Pokémon match "${query}".`;
+  $("#box-tab-grid").replaceChildren(...shown.map((mon) => {
     const node = el("button", {
       type: "button",
       class: `box-mon${mon.status === "Fainted" ? " fainted" : ""}`,
@@ -994,7 +1013,6 @@ function renderFocus() {
   const battle = currentBattle();
   const fight = state.fights.get(battle.id);
   const slots = teamSlots(fight);
-  const mons = box();
 
   // The split's level cap sits above the name, for regular trainers too.
   const split = battle.group_id !== null ? battleById(battle.group_id) : battle.split !== null ? battle : null;
@@ -1015,14 +1033,37 @@ function renderFocus() {
   $("#team-changed").hidden = !slots.some((m) => m && copyChanged(m));
   $("#team-grid").replaceChildren(...slots.map((member, i) => teamSlot(i, member)));
 
-  // "Show Fainted Pokémon" unticked leaves them out of the box (a fainted team member stays in its slot).
-  const shown = $("#show-fainted").checked ? mons : mons.filter((m) => m.status !== "Fainted");
-  const hidden = mons.length - shown.length;
-  $("#box-count").textContent = `(${mons.length} caught${hidden ? ` · ${hidden} fainted hidden` : ""})`;
-  $("#empty-box").hidden = mons.length > 0;
-  $("#all-fainted").hidden = !mons.length || shown.length > 0;
-  $("#box-grid").replaceChildren(...shown.map((m) => boxMon(m, slots.findIndex((s) => s?.catch_id === m.id))));
+  renderFightBox();
   renderSolutions();  // last: in that view, your team (and its banner) are hidden
+}
+
+/** The box beside Your team, with Show Fainted Pokémon and the box search applied. */
+function renderFightBox() {
+  const mons = box();
+  const slots = currentSlots();
+  // "Show Fainted Pokémon" unticked leaves them out of the box (a fainted team member stays in its slot).
+  const alive = $("#show-fainted").checked ? mons : mons.filter((m) => m.status !== "Fainted");
+  const hidden = mons.length - alive.length;
+  const query = $("#box-search").value.trim();
+  const shown = alive.filter((m) => matchesSearch(m, query));
+  const faintedNote = hidden ? ` · ${hidden} fainted hidden` : "";
+  $("#box-count").textContent = query ? `(${shown.length} of ${mons.length}${faintedNote})` : `(${mons.length} caught${faintedNote})`;
+  $("#empty-box").hidden = mons.length > 0;
+  $("#all-fainted").hidden = !mons.length || alive.length > 0;
+  $("#box-nomatch").hidden = !alive.length || shown.length > 0;
+  $("#box-nomatch").textContent = `No Pokémon match "${query}".`;
+  $("#box-grid").replaceChildren(...shown.map((m) => boxMon(m, slots.findIndex((s) => s?.catch_id === m.id))));
+}
+
+/** Box search fields: filter as you type; Escape clears. */
+function setupBoxSearch(input, render) {
+  input.addEventListener("input", render);
+  input.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape" || !input.value) return;
+    e.preventDefault();
+    input.value = "";
+    render();
+  });
 }
 
 // --- focus: enemy team -----------------------------------------------------------
@@ -2107,6 +2148,8 @@ async function boot() {
       storageSet("logicRouting", String(e.target.checked));
       renderEncounters();
     });
+    setupBoxSearch($("#box-tab-search"), renderBoxGrid);
+    setupBoxSearch($("#box-search"), renderFightBox);
     $("#show-fainted").checked = storageGet("showFainted") !== "false";
     $("#show-fainted").addEventListener("change", (e) => {
       storageSet("showFainted", String(e.target.checked));
