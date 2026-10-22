@@ -568,15 +568,22 @@ def list_attempts():
         "       (SELECT COUNT(*) FROM catches c WHERE c.attempt_id = a.id) AS catch_count "
         "FROM attempts a WHERE a.user_id = ? ORDER BY a.number DESC", (user_id(),)
     ).fetchall()
+    splits = attempt_splits(conn, user_id())
+    return jsonify(attempts=[dict(r, **splits[r["id"]]) for r in rows])
+
+
+def attempt_splits(conn, uid):
+    """{attempt id: current_split(...)} for every attempt of the user."""
     results = {}  # attempt id -> {battle id: result}
     for f in conn.execute("SELECT f.attempt_id, f.battle_id, f.result FROM fights f "
                           "JOIN attempts a ON a.id = f.attempt_id WHERE a.user_id = ? AND f.result IS NOT NULL",
-                          (user_id(),)):
+                          (uid,)):
         results.setdefault(f["attempt_id"], {})[f["battle_id"]] = f["result"]
     bosses = conn.execute(
         "SELECT b.id, COALESCE(b.split, g.split) AS split FROM battles b "
         "LEFT JOIN battles g ON g.id = b.group_id WHERE b.level_cap IS NOT NULL ORDER BY b.position").fetchall()
-    return jsonify(attempts=[dict(r, **current_split(bosses, results.get(r["id"], {}))) for r in rows])
+    return {a["id"]: current_split(bosses, results.get(a["id"], {}))
+            for a in conn.execute("SELECT id FROM attempts WHERE user_id = ?", (uid,))}
 
 
 def current_split(bosses, results):
@@ -587,6 +594,68 @@ def current_split(bosses, results):
         if results.get(boss["id"]) != "won":
             return {"split": boss["split"], "split_lost": results.get(boss["id"]) == "lost"}
     return {"split": None, "split_lost": False}
+
+
+@app.get("/api/stats")
+def stats():
+    """Run history and stats across the user's attempts, for the Stats tab.
+
+    {"splits": [{name, level_cap}] in game order,
+     "attempts": newest first, [{id, number, created_at, split, split_lost, bosses_beaten,
+                 catches, battles_won, deaths}],
+     "personal_best": the attempt that got furthest (the earliest, on a tie) or None,
+     "runs_ended": [{split, runs}] in game order: where finished attempts stopped. The newest
+                   attempt counts only if it was lost, since it may still be going,
+     "deaths_by_split": [{split, deaths, attempts}] in game order: your Pokémon knocked out
+                        by enemies in each split, and how many attempts reached it}
+    "Deaths" are KO arrows drawn from an enemy to your Pokémon.
+    """
+    conn = get_db()
+    uid = user_id()
+    splits = [dict(s) for s in conn.execute(
+        "SELECT split AS name, level_cap FROM battles WHERE split IS NOT NULL ORDER BY position")]
+    order = {s["name"]: i for i, s in enumerate(splits)}
+    progress = attempt_splits(conn, uid)
+    attempts = []
+    for a in conn.execute(
+        "SELECT a.id, a.number, a.created_at, "
+        "  (SELECT COUNT(*) FROM catches c WHERE c.attempt_id = a.id) AS catches, "
+        "  (SELECT COUNT(*) FROM fights f WHERE f.attempt_id = a.id AND f.result = 'won') AS battles_won, "
+        "  (SELECT COUNT(*) FROM fight_kos k JOIN fights f ON f.id = k.fight_id "
+        "     WHERE f.attempt_id = a.id AND k.ko_by = 'enemy') AS deaths "
+        "FROM attempts a WHERE a.user_id = ? ORDER BY a.number DESC", (uid,)
+    ):
+        split = progress[a["id"]]
+        beaten = order.get(split["split"], len(splits)) if split["split"] else len(splits)
+        attempts.append(dict(a, **split, bosses_beaten=beaten))
+
+    best = max(attempts, key=lambda a: (a["bosses_beaten"], -a["number"]), default=None)
+    finished = [a for i, a in enumerate(attempts) if (i > 0 or a["split_lost"]) and a["split"]]
+    ended = {}
+    for a in finished:
+        ended[a["split"]] = ended.get(a["split"], 0) + 1
+
+    deaths = {}  # split -> deaths
+    for row in conn.execute(
+        "SELECT COALESCE(b.split, g.split) AS split, COUNT(*) AS deaths FROM fight_kos k "
+        "JOIN fights f ON f.id = k.fight_id JOIN attempts a ON a.id = f.attempt_id "
+        "JOIN battles b ON b.id = f.battle_id LEFT JOIN battles g ON g.id = b.group_id "
+        "WHERE a.user_id = ? AND k.ko_by = 'enemy' GROUP BY 1", (uid,)
+    ):
+        deaths[row["split"]] = row["deaths"]
+    deaths_by_split = []
+    for i, s in enumerate(splits):
+        reached = sum(1 for a in attempts if a["bosses_beaten"] >= i)  # got to this split
+        if reached:
+            deaths_by_split.append({"split": s["name"], "deaths": deaths.get(s["name"], 0), "attempts": reached})
+
+    return jsonify(
+        splits=splits,
+        attempts=attempts,
+        personal_best=best,
+        runs_ended=[{"split": s["name"], "runs": ended[s["name"]]} for s in splits if s["name"] in ended],
+        deaths_by_split=deaths_by_split,
+    )
 
 
 def attempt_json(row):

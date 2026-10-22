@@ -129,6 +129,7 @@ async function selectAttempt(id) {
   renderEncounters();
   renderBox();
   renderFightView();
+  if (!$("#tab-stats").hidden) loadStats();  // the current attempt is marked in the run history
 }
 
 /** "#132 · Leader Roxanne Split": an attempt and the split it's on. */
@@ -1821,7 +1822,8 @@ function setupKoBoard() {
 }
 
 // ---------------------------------------------------------------------------
-// KO Analytics and Battles Brought tabs: a horizontal bar per box Pokemon
+// Stats tab. "This attempt": KOs and battles brought, a horizontal bar per box
+// Pokemon (below). "Your runs": history across attempts, from /api/stats (further down).
 // ---------------------------------------------------------------------------
 
 /** The tally row for a battle copy's box Pokémon (or, if that's gone, its species), made on first use. */
@@ -1924,6 +1926,149 @@ function renderBattleStats() {
       title: row.value ? `${row.species}: ${battleNames(row.battles).join(", ")}` : undefined,
     };
   }) : []);
+}
+
+// --- your runs (across attempts) ------------------------------------------------
+
+let statsRun = 0;  // to ignore a reply overtaken by a newer load
+
+/** Fetch and draw the run history. Called when the Stats tab opens, and when attempts change on it. */
+async function loadStats() {
+  const run = ++statsRun;
+  const status = $("#stats-status");
+  try {
+    const data = await api("GET", "/stats");
+    if (run !== statsRun) return;
+    status.hidden = true;
+    renderRunStats(data);
+  } catch (err) {
+    if (run !== statsRun) return;
+    status.hidden = false;
+    status.textContent = `Couldn't load your run history: ${err.message}`;
+  }
+}
+
+const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
+/** "On Leader Wattson split", "Lost to Leader Brawly", or "Beat every boss". */
+function reachedText(a) {
+  if (!a.split) return "Beat every boss";
+  return a.split_lost ? `Lost to ${a.split}` : `On ${a.split} split`;
+}
+
+function renderRunStats({ splits, attempts, personal_best: furthest, runs_ended: ended, deaths_by_split: deaths }) {
+  const totalDeaths = attempts.reduce((sum, a) => sum + a.deaths, 0);
+  const best = furthest?.bosses_beaten ? furthest : null;  // a best (and its gold) needs a boss beaten
+
+  // Headline numbers. The personal best is a victory, so it alone wears gold.
+  const tile = (label, value, context, win = false) => el("div", { class: `stat-tile${win ? " is-win" : ""}` },
+    el("span", { class: "stat-tile-label" }, label),
+    el("span", { class: "stat-tile-value" }, value),
+    el("span", { class: "stat-tile-context" }, context));
+  $("#stats-tiles").replaceChildren(
+    tile("Attempts", String(attempts.length),
+      attempts.length ? `#${attempts.at(-1).number} to #${attempts[0].number}` : "None yet"),
+    best
+      ? tile("Personal best", `${best.bosses_beaten} / ${splits.length}`,
+        `bosses beaten in attempt #${best.number} · ${reachedText(best)}`, true)
+      : tile("Personal best", `0 / ${splits.length}`, attempts.length ? "Beat a boss to set your best" : "No attempts yet"),
+    tile("Deaths recorded", String(totalDeaths),
+      totalDeaths ? `${(totalDeaths / attempts.length).toFixed(1)} per attempt` : "From red arrows in the KO tracker"));
+
+  // Run history, newest first. The current attempt and the personal best are marked in words.
+  $("#stats-history-body").replaceChildren(...attempts.map((a) => el("tr",
+    { class: a.id === state.attempt?.id ? "is-selected" : "" },
+    el("td", {}, `#${a.number}`,
+      a.id === state.attempt?.id ? el("span", { class: "muted" }, " (current)") : "",
+      a.id === best?.id ? el("span", { class: "best-chip" }, "Best") : ""),
+    el("td", {}, reachedText(a)),
+    el("td", { class: "num" }, String(a.catches)),
+    el("td", { class: "num" }, String(a.battles_won)),
+    el("td", { class: "num" }, String(a.deaths)))));
+
+  // Where runs end: the boss most runs stop at is emphasised, the rest stay grey.
+  const finished = ended.reduce((sum, row) => sum + row.runs, 0);
+  const worst = Math.max(0, ...ended.map((row) => row.runs));
+  $("#runs-ended-total").textContent = finished ? `(${plural(finished, "finished run")})` : "";
+  $("#runs-ended-empty").hidden = finished > 0;
+  renderHbarChart($("#runs-ended-chart"), ended.map((row) => {
+    const share = Math.round((row.runs / finished) * 100);
+    return {
+      label: row.split,
+      value: row.runs,
+      display: String(row.runs),
+      highlight: row.runs === worst ? "Most runs end here" : "",
+      tip: `${row.split}: ${plural(row.runs, "run")} ended here (${share}% of finished runs)`,
+    };
+  }), { emphasis: true });
+  const newest = attempts[0];
+  const leftOut = newest && newest.split && !newest.split_lost;
+  $("#runs-ended-note").hidden = !finished || !leftOut;
+  $("#runs-ended-note").textContent = leftOut ? `Attempt #${newest.number} isn't counted while it's still going.` : "";
+
+  // Deaths per split: deaths in that split for each run that got there.
+  $("#deaths-empty").hidden = totalDeaths > 0;
+  $("#deaths-chart").hidden = !totalDeaths;
+  renderHbarChart($("#deaths-chart"), totalDeaths ? deaths.map((row) => {
+    const average = row.deaths / row.attempts;
+    return {
+      label: row.split,
+      value: average,
+      display: average.toFixed(1),
+      tip: `${row.split}: ${plural(row.deaths, "death")} across ${plural(row.attempts, "run")} that got there`,
+    };
+  }) : []);
+}
+
+/**
+ * A horizontal bar chart of labelled rows: [{label, value, display, tip, highlight}]. Each value
+ * shows at its bar's tip; hovering or focusing a row shows its `tip`. With `emphasis`, bars are
+ * grey except the highlighted ones, which also carry their `highlight` text.
+ */
+function renderHbarChart(list, rows, { emphasis = false } = {}) {
+  const most = Math.max(0, ...rows.map((row) => row.value)) || 1;
+  list.classList.toggle("emphasis", emphasis);
+  list.replaceChildren(...rows.map((row) => el("li", {
+    class: `hbar-row${row.highlight ? " is-highlight" : ""}`,
+    tabindex: "0",
+    "aria-label": row.tip,
+    "data-tip": row.tip,
+  },
+    el("span", { class: "hbar-label" }, row.label),
+    el("span", { class: "hbar-track" },
+      el("span", { class: `hbar-bar${row.value ? "" : " zero"}`, style: `--share: ${row.value / most}` }),
+      el("strong", { class: "hbar-value" }, row.display),
+      row.highlight ? el("span", { class: "hbar-note" }, row.highlight) : ""))));
+}
+
+/** One tooltip for every chart row with a data-tip: follows the pointer, or sits under a focused row. */
+function setupChartTips() {
+  const tip = el("div", { class: "chart-tip", role: "tooltip", hidden: true });
+  document.body.append(tip);
+  const show = (row, x, y) => {
+    tip.textContent = row.dataset.tip;
+    tip.hidden = false;
+    const { width, height } = tip.getBoundingClientRect();
+    const left = Math.min(Math.max(8, x + 12), innerWidth - width - 8);
+    const top = y + 16 + height > innerHeight ? y - height - 12 : y + 16;
+    Object.assign(tip.style, { left: `${left}px`, top: `${top}px` });
+  };
+  document.addEventListener("pointermove", (e) => {
+    const row = e.target.closest?.("[data-tip]");
+    if (row) show(row, e.clientX, e.clientY);
+    else if (!document.activeElement?.matches?.("[data-tip]")) tip.hidden = true;
+  });
+  document.addEventListener("focusin", (e) => {
+    const row = e.target.closest?.("[data-tip]");
+    if (!row) {
+      tip.hidden = true;
+      return;
+    }
+    const r = row.getBoundingClientRect();
+    show(row, r.left, r.bottom - 8);
+  });
+  document.addEventListener("focusout", () => { tip.hidden = true; });
+  document.addEventListener("scroll", () => { tip.hidden = true; }, true);
 }
 
 // ---------------------------------------------------------------------------
@@ -2086,6 +2231,7 @@ function showTab(name) {
     setDrawer(true);
     $("#battle-list [aria-current]")?.scrollIntoView({ block: "nearest" });
   }
+  if (name === "stats") loadStats();
   storageSet("tab", name);
 }
 
@@ -2114,7 +2260,10 @@ async function boot() {
     for (const btn of document.querySelectorAll(".tabs button")) {
       btn.addEventListener("click", () => showTab(btn.dataset.tab));
     }
-    showTab(["encounters", "box", "fights", "kos", "brought"].includes(storageGet("tab")) ? storageGet("tab") : "encounters");
+    // "kos" and "brought" were the two tabs the Stats tab replaced.
+    const savedTab = { kos: "stats", brought: "stats" }[storageGet("tab")] ?? storageGet("tab");
+    showTab(["encounters", "box", "fights", "stats"].includes(savedTab) ? savedTab : "encounters");
+    setupChartTips();
 
     $("#drawer-open").addEventListener("click", () =>
       setDrawer($("#tab-fights").classList.contains("drawer-closed")));
