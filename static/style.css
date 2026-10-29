@@ -1220,6 +1220,14 @@ main { max-width: var(--content-max); margin: 0 auto; padding: var(--space-6) va
   font-weight: 600;
 }
 
+/* Pokémon history: a species picker, then its tiles, best run and one row per catch */
+.mon-history-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); margin-bottom: var(--space-3); }
+.mon-history-head .chart-head { margin: 0; }
+.mon-history-input { flex: 1 1 200px; max-width: 280px; }
+.mon-history-line { margin: 0 0 var(--space-3); font: var(--text-caption); }
+.mon-history-best { margin: 0 0 var(--space-3); }
+.box-history { margin-top: var(--space-4); }
+
 /* Run history: scrolls inside the card once there are many attempts */
 .stats-history { max-height: 420px; overflow: auto; }
 

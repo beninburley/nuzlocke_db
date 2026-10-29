@@ -801,7 +801,9 @@ function renderBoxDetail() {
       renderBoxDetail();  // start fresh from what was saved
     },
   });
-  $("#box-detail").replaceChildren(boxEditor.node);
+  const history = el("button", { type: "button", class: "box-history" }, "History of this Pokémon across your runs");
+  history.addEventListener("click", () => openMonHistory(mon.species));
+  $("#box-detail").replaceChildren(boxEditor.node, history);
 }
 
 // ---------------------------------------------------------------------------
@@ -2116,7 +2118,11 @@ function reachedText(a) {
   return a.split_lost ? `Lost to ${a.split}` : `On ${a.split} split`;
 }
 
-function renderRunStats({ splits, attempts, personal_best: furthest, runs_ended: ended, deaths_by_split: deaths }) {
+function renderRunStats({ splits, attempts, caught_species: caught, personal_best: furthest, runs_ended: ended,
+  deaths_by_split: deaths }) {
+  $("#dl-caught").replaceChildren(...caught.map((species) => el("option", { value: species })));
+  if ($("#mon-history-input").value.trim()) loadMonHistory();
+
   const totalDeaths = attempts.reduce((sum, a) => sum + a.deaths, 0);
   const best = furthest?.bosses_beaten ? furthest : null;  // a best (and its gold) needs a boss beaten
 
@@ -2178,6 +2184,87 @@ function renderRunStats({ splits, attempts, personal_best: furthest, runs_ended:
       tip: `${row.split}: ${plural(row.deaths, "death")} across ${plural(row.attempts, "run")} that got there`,
     };
   }) : []);
+}
+
+// --- Pokémon history (one species across your attempts) --------------------------------
+
+let historyRun = 0;  // to ignore a reply overtaken by a newer lookup
+
+/** Look up the species in the picker. */
+async function loadMonHistory() {
+  const name = $("#mon-history-input").value.trim();
+  const run = ++historyRun;
+  const status = $("#mon-history-status");
+  if (!name) {
+    $("#mon-history-body").hidden = true;
+    status.hidden = false;
+    status.textContent = "Pick a Pokémon to see how it did across your attempts. Its whole evolutionary line counts, as in the dupes clause.";
+    return;
+  }
+  storageSet("historySpecies", name);
+  try {
+    const data = await api("GET", `/stats/pokemon?species=${encodeURIComponent(name)}`);
+    if (run === historyRun) renderMonHistory(data);
+  } catch (err) {
+    if (run !== historyRun) return;
+    $("#mon-history-body").hidden = true;
+    status.hidden = false;
+    status.textContent = `Couldn't load ${name}'s history: ${err.message}`;
+  }
+}
+
+/** "Route 104 ×2, Petalburg Woods": each name with how often it comes up, most often first. */
+function tally(names) {
+  const counts = new Map();
+  for (const name of names) counts.set(name, (counts.get(name) ?? 0) + 1);
+  return [...counts].sort((a, b) => b[1] - a[1]).map(([name, n]) => (n > 1 ? `${name} ×${n}` : name)).join(", ");
+}
+
+function renderMonHistory({ species, line, attempts_total: total, catches, best }) {
+  const others = line.filter((s) => s !== species);
+  $("#mon-history-status").hidden = catches.length > 0;
+  $("#mon-history-status").textContent = `You haven't caught ${species}${others.length ? " or anything in its line" : ""} in any attempt yet.`;
+  $("#mon-history-body").hidden = !catches.length;
+  if (!catches.length) return;
+
+  $("#mon-history-line").textContent = others.length ? `Counting ${line.join(", ")}` : "";
+  const sum = (key) => catches.reduce((n, c) => n + c[key], 0);
+  const fainted = catches.filter((c) => c.status === "Fainted");
+  const killers = fainted.map((c) => c.death?.enemy).filter(Boolean);
+  const tile = (label, value, context) => el("div", { class: "stat-tile" },
+    el("span", { class: "stat-tile-label" }, label),
+    el("span", { class: "stat-tile-value" }, value),
+    el("span", { class: "stat-tile-context" }, context));
+  $("#mon-history-tiles").replaceChildren(
+    tile("Caught", `${catches.length} / ${total}`, `attempts · ${tally(catches.map((c) => c.route))}`),
+    tile("Battles brought", String(sum("brought")), `${sum("won")} won`),
+    tile("KOs scored", String(sum("kos")), "From green arrows in the KO tracker"),
+    tile("Fainted", String(fainted.length),
+      fainted.length ? (killers.length ? `To ${tally(killers)}` : "No KO arrows recorded") : "Never fainted"));
+  $("#mon-history-best").replaceChildren(...(best ? [
+    el("strong", {}, "Best run: "),
+    `brought to ${best.battle} in attempt #${best.number}`,
+    best.result ? ` (${best.result})` : "",
+    best.split && best.split !== best.battle ? `, on the ${best.split} split.` : ".",
+  ] : ["Not brought to a battle yet."]));
+
+  $("#mon-history-rows").replaceChildren(...catches.map((c) => el("tr",
+    { class: c.number === state.attempt?.number ? "is-selected" : "" },
+    el("td", {}, `#${c.number}`),
+    el("td", {}, c.route, c.pokemon !== species ? el("span", { class: "muted" }, ` (${c.pokemon})`) : ""),
+    el("td", {}, c.species),
+    el("td", { class: "num" }, String(c.brought)),
+    el("td", { class: "num" }, String(c.won)),
+    el("td", { class: "num" }, String(c.kos)),
+    el("td", {}, ...(c.status === "Fainted" ? [stateChip("Fainted"),
+      c.death ? ` ${[c.death.enemy, c.death.battle].filter(Boolean).join(" · ")}` : ""] : [c.number === state.attempt?.number ? "Alive" : "Survived"])))));
+}
+
+/** From the Box detail: this Pokémon's history on the Stats tab. */
+function openMonHistory(species) {
+  $("#mon-history-input").value = species;
+  showTab("stats");  // its loadStats() redraws the history too
+  $("#mon-history").scrollIntoView({ block: "start" });
 }
 
 /**
@@ -2453,6 +2540,8 @@ async function boot() {
     for (const btn of document.querySelectorAll(".script-open")) btn.addEventListener("click", openScriptDialog);
     $("#box-export").addEventListener("click", exportBox);
     $("#graveyard").addEventListener("toggle", renderGraveyard);
+    $("#mon-history-input").value = storageGet("historySpecies") ?? "";
+    $("#mon-history-input").addEventListener("change", loadMonHistory);
     $("#export-skip-fainted").checked = storageGet("exportSkipFainted") !== "false";
     $("#export-skip-fainted").addEventListener("change", (e) => storageSet("exportSkipFainted", String(e.target.checked)));
     $("#enemy-copy").addEventListener("click", () => { if (shownTrainer) copyShowdown(shownTrainer.pokemon); });
