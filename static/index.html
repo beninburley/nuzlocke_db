@@ -41,7 +41,7 @@
     <nav class="tabs" role="tablist">
       <button type="button" role="tab" data-tab="encounters"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg>Encounters <span id="catch-count" class="pill"></span></button>
       <button type="button" role="tab" data-tab="box"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg>Box</button>
-      <button type="button" role="tab" data-tab="fights"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 17.5 3 6V3h3l11.5 11.5"/><path d="m13 19 6-6"/><path d="m16 16 4 4"/><path d="m19 21 2-2"/><path d="M14.5 6.5 18 3h3v3l-3.5 3.5"/><path d="m5 14 4 4"/><path d="m7 17-3 3"/><path d="m3 19 2 2"/></svg>Trainer Battles</button>
+      <button type="button" role="tab" data-tab="fights"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 17.5 3 6V3h3l11.5 11.5"/><path d="m13 19 6-6"/><path d="m16 16 4 4"/><path d="m19 21 2-2"/><path d="M14.5 6.5 18 3h3v3l-3.5 3.5"/><path d="m5 14 4 4"/><path d="m7 17-3 3"/><path d="m3 19 2 2"/></svg>Trainer battles</button>
       <button type="button" role="tab" data-tab="stats"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>Stats</button>
     </nav>
 
@@ -66,7 +66,7 @@
           <h2 id="box-list-heading">Box <span id="box-tab-count" class="muted"></span></h2>
           <input id="box-tab-search" class="box-search" type="search" placeholder="Search your box"
                  aria-label="Search your box: species, route, ability, item, nature or moves" autocomplete="off">
-          <button type="button" class="script-open">Update - Script</button>
+          <button type="button" class="script-open">Update from script</button>
         </div>
         <p id="box-tab-empty" class="hint" hidden>No catches yet &mdash; add some on the Encounters tab.</p>
         <p id="box-tab-nomatch" class="hint" hidden></p>
@@ -92,7 +92,7 @@
         <header class="focus-head">
           <div class="focus-nav">
             <button id="drawer-open" type="button" aria-controls="boss-drawer" aria-expanded="true"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg>Fights</button>
-            <button id="solutions-toggle" type="button" aria-controls="solutions" aria-pressed="false">See Other Trainer's Solutions</button>
+            <button id="solutions-toggle" type="button" aria-controls="solutions" aria-pressed="false">See other trainers' solutions</button>
           </div>
           <div class="focus-title">
             <div id="focus-cap" class="focus-cap" hidden></div>
@@ -103,7 +103,7 @@
             <button type="button" data-result="won" aria-pressed="false">Won</button>
             <button type="button" data-result="lost" aria-pressed="false">Lost</button>
           </div>
-          <button id="ko-open" type="button" hidden>Battle Details &amp; Notes</button>
+          <button id="ko-open" type="button" hidden>Battle details &amp; notes</button>
         </header>
 
         <p id="team-changed" class="changed-banner" role="note" hidden>
@@ -130,18 +130,18 @@
               <h3>Box <span id="box-count" class="muted"></span></h3>
               <input id="box-search" class="box-search" type="search" placeholder="Search your box"
                      aria-label="Search your box: species, route, ability, item, nature or moves" autocomplete="off">
-              <button type="button" class="script-open">Update - Script</button>
-              <label class="check"><input id="show-fainted" type="checkbox" checked> Show Fainted Pok&eacute;mon</label>
+              <button type="button" class="script-open">Update from script</button>
+              <label class="check"><input id="show-fainted" type="checkbox" checked> Show fainted Pok&eacute;mon</label>
             </div>
             <p class="hint">Drag a Pok&eacute;mon onto a slot, or click it to add/remove. Drag a team member back here to remove it.</p>
             <p id="empty-box" class="hint warn" hidden>No catches yet &mdash; record some on the Encounters tab first.</p>
             <p id="box-nomatch" class="hint" hidden></p>
-            <p id="all-fainted" class="hint" hidden>Every Pok&eacute;mon in your box has fainted. Tick <strong>Show Fainted Pok&eacute;mon</strong> to see them.</p>
+            <p id="all-fainted" class="hint" hidden>Every Pok&eacute;mon in your box has fainted. Tick <strong>Show fainted Pok&eacute;mon</strong> to see them.</p>
             <div id="box-grid" class="box-grid"></div>
           </section>
         </div>
 
-        <!-- See Other Trainer's Solutions: shown instead of your team and box -->
+        <!-- See other trainers' solutions: shown instead of your team and box -->
         <div id="solutions" class="solutions" hidden>
           <section class="solutions-list-panel" aria-labelledby="solutions-heading">
             <h3 id="solutions-heading">Previous attempts <span id="solutions-count" class="muted"></span></h3>
@@ -213,7 +213,7 @@
         <section class="panel" aria-labelledby="brought-heading">
           <h2 id="brought-heading" class="chart-head">Battles each Pok&eacute;mon was brought to <span id="brought-total" class="muted"></span></h2>
           <p id="brought-empty" class="hint" hidden>
-            No teams recorded yet. Add Pok&eacute;mon to a battle's team on the <strong>Trainer Battles</strong> tab.
+            No teams recorded yet. Add Pok&eacute;mon to a battle's team on the <strong>Trainer battles</strong> tab.
           </p>
           <ol id="brought-chart" class="bar-chart brought" aria-label="Battles brought to, per Pokémon"></ol>
         </section>
