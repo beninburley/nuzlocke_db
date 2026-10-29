@@ -1,9 +1,9 @@
 "use strict";
 
-// The admin page (role "admin" only): Roles, Trainer Battles, Routing and
-// Verification Requests, picked by the URL's #hash. It uses app.js's helpers (api, el,
+// The admin page (role "admin" only): Roles, Trainer battles, Routing and
+// Verification requests, picked by the URL's #hash. It uses app.js's helpers (api, el,
 // sprite, enemySlot, trainerLabels, save...) without booting the tracker, so
-// enemy teams look exactly as they do on the Trainer Battles tab.
+// enemy teams look exactly as they do on the Trainer battles tab.
 
 const admin = {
   me: null,            // the logged-in admin
@@ -11,7 +11,7 @@ const admin = {
   roles: [],
   natures: [],
   gameLoaded: false,
-  battleId: null,      // battle shown on Trainer Battles
+  battleId: null,      // battle shown on Trainer battles
   detail: null,        // its trainers and teams
   trainerIndex: 0,
   editing: null,       // trainer whose team is open in the editor
@@ -138,7 +138,7 @@ function routingRow(route) {
     el("td", {}, route.name), el("td", {}, route.area ?? ""), el("td", {}, select), changedCell);
 }
 
-// --- Trainer Battles ------------------------------------------------------------
+// --- Trainer battles ------------------------------------------------------------
 
 async function loadAdminBattles() {
   if (!admin.gameLoaded) {
@@ -154,7 +154,7 @@ async function loadAdminBattles() {
   renderAdminBattleList();
 }
 
-/** Every battle, grouped by split like the Trainer Battles drawer. */
+/** Every battle, grouped by split like the Trainer battles drawer. */
 function renderAdminBattleList() {
   const query = $("#admin-battle-filter").value.trim().toLowerCase();
   const matches = (b) => !query || `${b.name} ${b.location ?? ""}`.toLowerCase().includes(query);
@@ -187,7 +187,7 @@ async function selectAdminBattle(id, trainerIndex = 0) {
   renderAdminBattle();
 }
 
-/** The battle's enemy team as a row of six, as on the Trainer Battles tab, with Edit. */
+/** The battle's enemy team as a row of six, as on the Trainer battles tab, with Edit. */
 function renderAdminBattle() {
   const battle = battleById(admin.battleId);
   const { trainers } = admin.detail;

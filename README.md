@@ -14,8 +14,8 @@ for anyone who makes an account:
   `/admin`): a home page with four sections.
   - *Roles*: every account, with its role as a drop-down that saves on
     change. You can't change your own role, so there's always an admin.
-  - *Trainer Battles*: pick a battle to see its enemy team, laid out as on
-    the Trainer Battles tab, and *Edit* it in a popup (species, level, item,
+  - *Trainer battles*: pick a battle to see its enemy team, laid out as on
+    the Trainer battles tab, and *Edit* it in a popup (species, level, item,
     ability, nature and moves of each Pokemon; blank a species to remove
     one). Game data is reloaded from `data/game_data.json` on every start, so
     corrections are kept in a table of their own (`trainer_edits`) and
@@ -26,7 +26,7 @@ for anyone who makes an account:
     Changes save on change, apply to everyone and are kept in their own table
     (`routing_edits`); picking the option marked *default* (from
     `data/routing.json`) removes the change.
-  - *Verification Requests*: not built yet ("Work in Process").
+  - *Verification requests*: not built yet ("Work in Process").
 - **Attempts**: pick which run you're on, or start a new one. Each attempt
   in the list shows the split it's on: the one with its first boss it hasn't
   beaten, marked "(lost)" if that's where the run ended.
@@ -51,11 +51,11 @@ for anyone who makes an account:
   suggest the names Run & Bun's trainers use. *Evolve…* shows the whole
   evolutionary line (from PokeAPI) and evolves or devolves in one click.
   Fainted Pokemon are greyed out with a "Fainted" chip, here and on the
-  Trainer Battles tab. **Search your box** (on the Box tab and beside your team
-  on Trainer Battles) filters as you type: every word must appear in the
+  Trainer battles tab. **Search your box** (on the Box tab and beside your team
+  on Trainer battles) filters as you type: every word must appear in the
   Pokemon's species, what was caught, its route, ability, held item, nature or
   moves ("earthquake" finds everyone who knows it). Escape clears it.
-- **Update - Script** (beside *Box* on the Box and Trainer Battles tabs):
+- **Update from script** (beside *Box* on the Box and Trainer battles tabs):
   paste Showdown-style sets to update box Pokemon in bulk. Each set updates
   the Pokemon of that species or its evolutionary line, evolving it if the
   set names another stage. It never adds Pokemon. The popup previews every
@@ -64,7 +64,7 @@ for anyone who makes an account:
   stats it doesn't list are 31, as in Showdown. EVs, Tera Type and the like
   are ignored. Nicknames, gender, and Showdown's form names (`Linoone-Galar`
   for the sheet's `Linoone-G`) are understood.
-- **Trainer Battles**: the slide-out list has one dropdown per split, e.g.
+- **Trainer battles**: the slide-out list has one dropdown per split, e.g.
   "Route 104 Aqua Grunt Split". Each lists that split's trainers in game order,
   ending with the level-cap boss. You can also type in the filter box. Pick
   any trainer to see their team: each Pokemon's level, held item, ability,
@@ -76,7 +76,7 @@ for anyone who makes an account:
   are won.
   Drag Pokemon from your box (only this attempt's catches) into the six team
   slots. You can also click a box Pokemon to add or remove it. Drag between
-  slots to swap, or back to the box to remove. Untick *Show Fainted Pokémon*
+  slots to swap, or back to the box to remove. Untick *Show fainted Pokémon*
   to leave fainted Pokemon out of the box (remembered per browser). Mark each
   fight won or lost.
   A team stores **copies**: adding a Pokemon copies it as it is right then, so
@@ -84,8 +84,8 @@ for anyone who makes an account:
   editing a copy doesn't touch the box). Click a team member to see or edit
   that fight's copy. If any copy differs from the box, the fight shows *This
   fight used Pokémon that have since been changed*.
-- **Battle Details & Notes** (the KO tracker): marking a battle Won or Lost
-  opens it, and so do *Battle Details & Notes* and the notepad-and-pencil
+- **Battle details & notes** (the KO tracker): marking a battle Won or Lost
+  opens it, and so do *Battle details & notes* and the notepad-and-pencil
   icon next to every battle you've recorded anything for. The enemy team
   sits above yours with a dot under each enemy and over each of your
   Pokemon. Drag from one of your dots to an enemy's for a KO by your Pokemon
@@ -99,7 +99,7 @@ for anyone who makes an account:
   variant you fought. Below the arrows is the battle's **Notes** box: what
   happened, what you wish had, what to try next time. It saves as you type.
   A battle with notes is kept even if you clear its team and result.
-- **See Other Trainer's Solutions** (under *Fights* on Trainer Battles):
+- **See other trainers' solutions** (under *Fights* on Trainer battles):
   swaps your team and box for the teams other attempts brought to the
   selected battle. That's your own earlier attempts and other trainers'
   (anonymous: just "Another trainer's attempt #N"). Wins come first, then
@@ -303,7 +303,7 @@ Rules are checked in the API and again by SQLite triggers and constraints:
 
 - every attempt belongs to one account, and each account changes only its own attempts (anyone
   else's show up as "not found"); attempt numbers are unique per account. The one thing shared
-  is battle teams, KOs and battle notes in *See Other Trainer's Solutions*, without the account they came from
+  is battle teams, KOs and battle notes in *See other trainers' solutions*, without the account they came from
 - usernames are 3-30 letters, digits, dots, dashes or underscores, unique ignoring case;
   passwords are 8-128 characters
 

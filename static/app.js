@@ -21,7 +21,7 @@ const state = {
   // battle_id -> {id, battle_id, result, trainer (enemy team's key or null),
   //   members: [copy + {id, slot, catch_id}], kos: [{member (copy id), enemy (slot), by}]}
   fights: new Map(),
-  battleId: null,        // battle shown on the Trainer Battles tab
+  battleId: null,        // battle shown on the Trainer battles tab
   boxId: null,           // box Pokemon shown on the Box tab
 };
 
@@ -716,7 +716,7 @@ function renderBoxDetail() {
 }
 
 // ---------------------------------------------------------------------------
-// "Update - Script": update box Pokemon from Showdown-style sets. The server
+// "Update from script": update box Pokemon from Showdown-style sets. The server
 // matches each set to a box Pokemon; the popup previews the changes as you
 // type, and Apply saves them.
 // ---------------------------------------------------------------------------
@@ -816,7 +816,7 @@ function scriptSetCard(set) {
 }
 
 // ---------------------------------------------------------------------------
-// Trainer Battles tab: battle list drawer + focus view (enemy team, your team, box)
+// Trainer battles tab: battle list drawer + focus view (enemy team, your team, box)
 // ---------------------------------------------------------------------------
 
 const mobileLayout = window.matchMedia("(max-width: 760px)");
@@ -1043,11 +1043,11 @@ function renderFocus() {
   renderSolutions();  // last: in that view, your team (and its banner) are hidden
 }
 
-/** The box beside Your team, with Show Fainted Pokémon and the box search applied. */
+/** The box beside Your team, with Show fainted Pokémon and the box search applied. */
 function renderFightBox() {
   const mons = box();
   const slots = currentSlots();
-  // "Show Fainted Pokémon" unticked leaves them out of the box (a fainted team member stays in its slot).
+  // "Show fainted Pokémon" unticked leaves them out of the box (a fainted team member stays in its slot).
   const alive = $("#show-fainted").checked ? mons : mons.filter((m) => m.status !== "Fainted");
   const hidden = mons.length - alive.length;
   const query = $("#box-search").value.trim();
@@ -1421,7 +1421,7 @@ async function openKoTracker(battleId) {
   const open = ++koOpens;
   saveNotes();  // anything still unsaved from the battle open before
   koSession = null;
-  $("#ko-title").textContent = `${battleById(battleId).name}: Battle Details & Notes`;
+  $("#ko-title").textContent = `${battleById(battleId).name}: Battle details & notes`;
   $("#ko-trainers").replaceChildren();
   $("#ko-summary").textContent = "";
   $("#ko-board").replaceChildren(el("p", { class: "hint" }, "Loading…"));
@@ -1487,7 +1487,7 @@ function saveNotes() {
 // drawn from a board model: {trainer (the enemy trainer, with .pokemon), party
 // (six slots of {id, species, level, status} or null), kos ([{member (a party
 // id), enemy (slot), by}]), interactive}. The KO tracker's model is koSession,
-// which you draw on; Other Trainer's Solutions draws read-only ones.
+// which you draw on; Other trainers' solutions draws read-only ones.
 
 const koName = (model, side, index) =>
   (side === "enemy" ? model.trainer?.pokemon[index] : model.party[index])?.species ?? "?";
@@ -2077,7 +2077,7 @@ function setupChartTips() {
 }
 
 // ---------------------------------------------------------------------------
-// See Other Trainer's Solutions: instead of your team and box, the teams other
+// See other trainers' solutions: instead of your team and box, the teams other
 // attempts brought to this battle (yours, and other trainers' anonymously),
 // each as a read-only KO board, plus how often each Pokémon was brought.
 // ---------------------------------------------------------------------------
@@ -2105,7 +2105,7 @@ function toggleSolutions() {
 function renderSolutions() {
   const toggle = $("#solutions-toggle");
   toggle.setAttribute("aria-pressed", String(solutions.on));
-  toggle.textContent = solutions.on ? "Back to Your Team" : "See Other Trainer's Solutions";
+  toggle.textContent = solutions.on ? "Back to your team" : "See other trainers' solutions";
   $("#focus-body").hidden = solutions.on;
   $("#solutions").hidden = !solutions.on;
   if (solutions.on) $("#team-changed").hidden = true;  // it's about your team, which is hidden
@@ -2230,7 +2230,7 @@ function showTab(name) {
     btn.setAttribute("aria-selected", active);
     $(`#tab-${btn.dataset.tab}`).hidden = !active;
   }
-  // Opening Trainer Battles slides the battle list out (a CSS animation that replays
+  // Opening Trainer battles slides the battle list out (a CSS animation that replays
   // whenever the tab goes from hidden to shown).
   if (name === "fights") {
     setDrawer(true);
