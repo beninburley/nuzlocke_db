@@ -320,7 +320,7 @@ function catchCell(route, status = routeStatus(route)) {
     current.species !== current.pokemon ? el("span", { class: "mon-route" }, `caught as ${current.pokemon}`) : "",
     statusBadge(current.status));
   change.addEventListener("click", () => openCatchPicker(route));
-  const remove = el("button", { type: "button", class: "catch-remove", "aria-label": `Remove ${current.species} from ${route.name}` }, "×");
+  const remove = el("button", { type: "button", class: "catch-remove", "aria-label": `Remove ${current.species} from ${route.name}` }, icon("x"));
   remove.addEventListener("click", () => removeCatch(route));
   return el("div", { class: "catch-cell" }, change, remove);
 }
@@ -486,8 +486,9 @@ function catchById(id) {
 
 const routeName = (routeId) => state.routes.find((r) => r.id === routeId)?.name ?? "";
 
-/** Lucide icons (as in design-system/assets/StateIcons): skull, flame, moon. */
-const STATE_ICONS = {
+/** Lucide icons (states as in design-system/assets/StateIcons): their SVG elements, drawn by icon(). */
+const ICONS = {
+  x: [["path", { d: "M18 6 6 18" }], ["path", { d: "m6 6 12 12" }]],
   fainted: [["path", { d: "m12.5 17-.5-1-.5 1h1z" }],
     ["path", { d: "M15 22a1 1 0 0 0 1-1v-1a2 2 0 0 0 1.56-3.25 8 8 0 1 0-11.12 0A2 2 0 0 0 8 20v1a1 1 0 0 0 1 1z" }],
     ["circle", { cx: "15", cy: "12", r: "1" }], ["circle", { cx: "9", cy: "12", r: "1" }]],
@@ -495,12 +496,16 @@ const STATE_ICONS = {
   sleep: [["path", { d: "M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" }]],
 };
 
+/** A Lucide icon (see ICONS), hidden from screen readers: the button or text beside it says what it is. */
+function icon(name) {
+  return svgEl("svg", { class: "icon", viewBox: "0 0 24 24", "aria-hidden": "true" },
+    ...(ICONS[name] ?? []).map(([tag, attrs]) => svgEl(tag, attrs)));
+}
+
 /** A state chip: icon plus word ("Fainted"). */
 function stateChip(status) {
   const key = status.toLowerCase();
-  const icon = svgEl("svg", { class: "icon", viewBox: "0 0 24 24", "aria-hidden": "true" },
-    ...(STATE_ICONS[key] ?? []).map(([tag, attrs]) => svgEl(tag, attrs)));
-  return el("span", { class: `state-chip ${key}` }, icon, el("span", { class: "state-chip-label" }, status));
+  return el("span", { class: `state-chip ${key}` }, icon(key), el("span", { class: "state-chip-label" }, status));
 }
 
 function statusBadge(status) {
@@ -1164,7 +1169,7 @@ function teamSlot(index, member) {
   const slot = el("div", { class: `team-slot${member ? " filled" : ""}` });
   if (member) {
     const source = member.catch_id === null ? null : catchById(member.catch_id);
-    const remove = el("button", { type: "button", class: "remove", "aria-label": `Remove ${member.species} from the team` }, "×");
+    const remove = el("button", { type: "button", class: "remove", "aria-label": `Remove ${member.species} from the team` }, icon("x"));
     remove.addEventListener("click", () => setSlot(index, null));
     slot.append(
       monSprite(member.species, member.status),
