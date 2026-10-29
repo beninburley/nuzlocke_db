@@ -64,6 +64,16 @@ for anyone who makes an account:
   stats it doesn't list are 31, as in Showdown. EVs, Tera Type and the like
   are ignored. Nicknames, gender, and Showdown's form names (`Linoone-Galar`
   for the sheet's `Linoone-G`) are understood.
+- **Showdown export**, for the damage calculator: *Export* on the Box tab copies
+  your box (tick *Leave out fainted* to skip them), *Copy team* copies a
+  battle's team, and *Copy as Showdown* copies the enemy team shown (also on
+  Admin > Trainer battles). Each Pokemon becomes a Showdown set (species, held
+  item, ability, level, nature, the IVs that aren't 31, moves); missing
+  details are left out, and form names are written Showdown's way
+  (`Zigzagoon-Galar`). If the browser won't allow copying, a popup shows the
+  text to copy by hand. An exported box pastes straight back into *Update from
+  script*; `scripts\check_showdown_export.py` checks that for every species
+  and trainer Pokemon (it needs Node).
 - **Trainer battles**: the slide-out list has one dropdown per split, e.g.
   "Route 104 Aqua Grunt Split". Each lists that split's trainers in game order,
   ending with the level-cap boss. You can also type in the filter box. Pick
@@ -250,7 +260,7 @@ already has. It also writes every move, ability and held item's name to
 left out. Re-run it when new Pokémon come out:
 
 ```powershell
-.venv\Scripts\python.exe scriptsetch_pokedex.py
+.venv\Scripts\python.exe scripts\fetch_pokedex.py
 ```
 
 **Evolution lines** come from PokeAPI's evolution chains, cached in
@@ -333,7 +343,8 @@ scripts/               Spreadsheet extraction, PokeAPI lookups, history import/b
                        build_tokens.py (design-system/tokens.json -> static/tokens.css)
 design-system/         nuzhub's design system: tokens, fonts, component specs (the source of truth for styling)
 static/                Frontend (plain HTML/CSS/JS, no build step): landing.html, login.html,
-                       account.html and site.js for accounts; index.html and app.js for the tracker;
+                       account.html and site.js for accounts; index.html and app.js for the tracker
+                       (showdown.js: the Showdown export's formatter);
                        admin.html and admin.js for admins (reusing app.js's rendering); tokens.css
                        (generated) and theme.js (light/dark toggle) on every page
 ```

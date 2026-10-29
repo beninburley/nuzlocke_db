@@ -749,6 +749,7 @@ main { max-width: var(--content-max); margin: 0 auto; padding: var(--space-6) va
 .fight-focus h3 { margin: 0 0 var(--space-2); font: var(--text-title-3); }
 .enemy-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); margin-bottom: var(--space-2); }
 .enemy-head h3 { margin: 0; }
+.enemy-head .showdown-copy { margin-left: auto; }
 
 /* Enemy team: six columns, each a well with the Pokémon, its set and its moves */
 .enemy-slots { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--space-2); }
@@ -881,6 +882,11 @@ main { max-width: var(--content-max); margin: 0 auto; padding: var(--space-6) va
 .box-head .box-search { flex: 1 1 160px; max-width: 260px; }
 .check { display: inline-flex; align-items: center; gap: var(--space-2); min-height: var(--control); cursor: pointer; user-select: none; }
 .check input { margin: 0; }
+.team-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-1) var(--space-3); }
+.team-head h3 { margin: 0; }
+
+/* Copy as Showdown's fallback, when the browser won't write to the clipboard */
+.export-text { width: 100%; font: var(--text-data); resize: vertical; }
 
 @media (max-width: 959.98px) {  /* below --bp-desktop */
   .focus-body { grid-template-columns: 1fr; }
@@ -1320,6 +1326,7 @@ main { max-width: var(--content-max); margin: 0 auto; padding: var(--space-6) va
 .admin-battle { container-type: inline-size; }  /* the enemy row adapts to its width, as on Trainer Battles */
 .admin-battle-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-2); }
 .admin-battle-head h3 { margin: 0; font: var(--text-title-2); letter-spacing: var(--text-title-2-tracking); }
+.admin-battle-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-2); }
 .admin-battle .trainer-tabs { margin-bottom: var(--space-2); }
 .admin-edited { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); }
 #admin-verification .changed-banner { margin-bottom: var(--space-4); }

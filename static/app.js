@@ -494,6 +494,51 @@ function sameDetails(a, b) {
     && state.ivStats.every((stat) => a.ivs[stat] === b.ivs[stat]);
 }
 
+/** Copy Pokémon to the clipboard as a Showdown paste; if the browser won't, show the text to copy by hand. */
+async function copyShowdown(mons) {
+  const text = showdownText(mons);
+  const count = `${mons.length} Pokémon`;
+  try {
+    await navigator.clipboard.writeText(text);
+    setStatus(`Copied ${count}`, "ok");
+  } catch {
+    showExportText(text, count);
+  }
+}
+
+let exportDialog = null;
+
+/** The fallback: a popup with the paste selected, ready for Ctrl+C. */
+function showExportText(text, count) {
+  if (!exportDialog) {
+    exportDialog = el("dialog", { class: "picker export-dialog", "aria-labelledby": "export-title" },
+      el("div", { class: "picker-inner" },
+        el("header", { class: "picker-head" },
+          el("div", {},
+            el("h2", { id: "export-title" }, "Copy as Showdown"),
+            el("p", { class: "muted export-note" })),
+          el("form", { method: "dialog" }, el("button", { class: "icon-button", "aria-label": "Close" }, icon("x")))),
+        el("div", { class: "picker-body" },
+          el("textarea", { class: "export-text", rows: 14, readonly: true, spellcheck: "false", "aria-label": "Showdown paste" }))));
+    document.body.append(exportDialog);
+  }
+  exportDialog.querySelector(".export-note").textContent =
+    `Your browser didn't allow copying, so here are the ${count}. Press Ctrl+C (⌘C on a Mac) to copy them.`;
+  const area = exportDialog.querySelector(".export-text");
+  area.value = text;
+  exportDialog.showModal();
+  area.focus();
+  area.select();
+  area.scrollTop = 0;
+}
+
+/** The Box tab's Export: the whole box, leaving out fainted Pokémon if asked. */
+function exportBox() {
+  const mons = box().filter((m) => !$("#export-skip-fainted").checked || m.status !== "Fainted");
+  if (!mons.length) return setStatus(state.catches.size ? "Every Pokémon in your box has fainted" : "Your box is empty");
+  copyShowdown(mons);
+}
+
 function catchById(id) {
   for (const mon of state.catches.values()) if (mon.id === id) return mon;
   return null;
@@ -871,6 +916,7 @@ const battleDetails = new Map();     // battle_id -> {battle, trainers} (loaded 
 const openGroups = new Set();        // level-cap battle ids whose trainer list is expanded
 const trainerChoice = new Map();     // battle_id -> index of the trainer shown
 let renderedEnemy = null;            // "battleId:trainerIndex" currently drawn
+let shownTrainer = null;             // the trainer whose team that is
 
 /** Caught Pokemon for this attempt, in route order. */
 function box() {
@@ -1079,6 +1125,7 @@ function renderFocus() {
   $("#ko-open").hidden = !fight;  // once a team, result or notes is recorded
 
   $("#team-count").textContent = `${slots.filter(Boolean).length}/${TEAM_SIZE}`;
+  $("#team-copy").disabled = !slots.some(Boolean);
   $("#team-changed").hidden = !slots.some((m) => m && copyChanged(m));
   $("#team-grid").replaceChildren(...slots.map((member, i) => teamSlot(i, member)));
 
@@ -1156,6 +1203,7 @@ function renderEnemy() {
 
   if (!detail) {
     renderedEnemy = null;
+    shownTrainer = null;
     $("#trainer-tabs").replaceChildren();
     $("#enemy-note").hidden = true;
     $("#enemy-slots").replaceChildren(...Array.from({ length: TEAM_SIZE }, () => enemySlot(null, "…")));
@@ -1178,6 +1226,7 @@ function renderEnemy() {
   }) : []));
 
   const trainer = trainers[index];
+  shownTrainer = trainer;
   const ally = trainer.tags.includes("Tag Partner");
   $("#enemy-heading").textContent = ally ? "Partner's team" : "Enemy team";
   $("#enemy-note").hidden = !ally;
@@ -2342,6 +2391,11 @@ async function boot() {
       (drag) => drag.fromSlot !== null);
     setupKoBoard();
     for (const btn of document.querySelectorAll(".script-open")) btn.addEventListener("click", openScriptDialog);
+    $("#box-export").addEventListener("click", exportBox);
+    $("#export-skip-fainted").checked = storageGet("exportSkipFainted") !== "false";
+    $("#export-skip-fainted").addEventListener("change", (e) => storageSet("exportSkipFainted", String(e.target.checked)));
+    $("#enemy-copy").addEventListener("click", () => { if (shownTrainer) copyShowdown(shownTrainer.pokemon); });
+    $("#team-copy").addEventListener("click", () => copyShowdown(currentSlots().filter(Boolean)));
     $("#solutions-toggle").addEventListener("click", toggleSolutions);
     $("#logic-routing").checked = storageGet("logicRouting") !== "false";
     $("#logic-routing").addEventListener("change", (e) => {
