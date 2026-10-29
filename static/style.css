@@ -339,6 +339,7 @@ main { max-width: var(--content-max); margin: 0 auto; padding: var(--space-6) va
   .attempt-controls { order: 1; display: grid; grid-template-columns: 1fr 1fr; flex: 1 1 100%; }
   .attempt-controls label { grid-column: 1 / -1; }
   #attempt-select { grid-column: 1 / -1; }
+  .level-cap { order: 1; }
   #status { order: 2; flex: 1 1 100%; margin: 0; }
   #status:empty { display: none; }
   main { padding: var(--space-4) var(--space-4) calc(var(--control-touch) + var(--space-16)); }  /* clear of the tab bar */
@@ -852,6 +853,24 @@ main { max-width: var(--content-max); margin: 0 auto; padding: var(--space-6) va
 .slot-empty { color: var(--ink-muted); font: var(--text-label); }
 .team-slot .remove { position: absolute; top: var(--space-1); right: var(--space-1); }
 .changed-tag { position: absolute; top: var(--space-1); left: var(--space-1); }
+
+/* Over the level cap: a warning chip with its icon and words (never colour alone) */
+.cap-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+  padding: 0 var(--space-2) 0 6px;
+  border-radius: var(--radius-pill);
+  background: var(--warning-soft);
+  color: var(--warning);
+  font: var(--text-caption);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.cap-chip .icon { width: 14px; height: 14px; }
+.editor-title .cap-chip { margin-top: var(--space-2); }
+.level-cap { font: var(--text-label); white-space: nowrap; }
 .changed-banner { margin: 0 0 var(--space-4); }
 
 /* Box beside the team: the whole panel is a drop target */

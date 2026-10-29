@@ -163,6 +163,21 @@ function refreshAttemptLabel() {
   // Beating a boss can open up routes, and losing one can close them again.
   if (summary.split !== routedSplit) renderEncounters();
   else refreshEncounterSummary();
+  refreshLevelCap();
+}
+
+let shownCap;  // the level cap the box's over-cap chips were last drawn against
+
+/** "Level cap 21" by the attempt picker; when the cap changes, redraw the box's chips. */
+function refreshLevelCap() {
+  const cap = currentCap();
+  $("#level-cap").hidden = cap === null;
+  $("#level-cap").textContent = `Level cap ${cap}`;
+  if (cap === shownCap) return;
+  shownCap = cap;
+  renderBoxGrid();
+  if (!boxEditor?.isDirty()) renderBoxDetail();
+  renderFightBox();
 }
 
 async function createAttempt() {
@@ -489,6 +504,8 @@ const routeName = (routeId) => state.routes.find((r) => r.id === routeId)?.name 
 /** Lucide icons (states as in design-system/assets/StateIcons): their SVG elements, drawn by icon(). */
 const ICONS = {
   x: [["path", { d: "M18 6 6 18" }], ["path", { d: "m6 6 12 12" }]],
+  warning: [["path", { d: "m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" }],
+    ["path", { d: "M12 9v4" }], ["path", { d: "M12 17h.01" }]],
   fainted: [["path", { d: "m12.5 17-.5-1-.5 1h1z" }],
     ["path", { d: "M15 22a1 1 0 0 0 1-1v-1a2 2 0 0 0 1.56-3.25 8 8 0 1 0-11.12 0A2 2 0 0 0 8 20v1a1 1 0 0 0 1 1z" }],
     ["circle", { cx: "15", cy: "12", r: "1" }], ["circle", { cx: "9", cy: "12", r: "1" }]],
@@ -508,6 +525,29 @@ function stateChip(status) {
   return el("span", { class: `state-chip ${key}` }, icon(key), el("span", { class: "state-chip-label" }, status));
 }
 
+/** The level cap of the attempt's current split, or null once every boss is beaten. */
+function currentCap() {
+  const { split } = currentSplit();
+  return split ? state.battles.find((b) => b.split === split)?.level_cap ?? null : null;
+}
+
+/** A battle's level cap: the cap of the split it ends or belongs to. */
+function battleCap(battle) {
+  const end = battle?.group_id !== null ? battleById(battle?.group_id) : battle;
+  return end?.level_cap ?? null;
+}
+
+/**
+ * A warning chip for a Pokémon above a level cap, else "". `full` spells out both levels
+ * ("Over cap (Lv 24 / 21)"); slots, which show the level already, say "Over cap". Fainted
+ * Pokémon are out of the run, so they get none.
+ */
+function overCapChip(mon, cap, full = false) {
+  if (cap === null || !mon?.level || mon.level <= cap || mon.status === "Fainted") return "";
+  const words = full ? `Over cap (Lv ${mon.level} / ${cap})` : "Over cap";
+  return el("span", { class: "cap-chip", title: `Lv ${mon.level} is over the level cap of ${cap}` }, icon("warning"), words);
+}
+
 function statusBadge(status) {
   return status && status !== "OK" ? stateChip(status) : "";
 }
@@ -519,7 +559,7 @@ const spriteStatusBadge = (status) => statusBadge(status === "Fainted" ? null : 
  * A form for a Pokemon's details. `onSave(fields)` and `onEvolve(species)`
  * return promises; evolving saves straight away, other edits wait for Save.
  */
-function pokemonEditor(mon, { subtitle, saveLabel = "Save", onSave, onEvolve, onCancel, cancelLabel }) {
+function pokemonEditor(mon, { subtitle, badge = "", saveLabel = "Save", onSave, onEvolve, onCancel, cancelLabel }) {
   let species = mon.species;
   const text = (value, list, placeholder) =>
     el("input", { type: "text", value: value ?? "", list, placeholder, maxlength: "40", autocomplete: "off" });
@@ -575,7 +615,7 @@ function pokemonEditor(mon, { subtitle, saveLabel = "Save", onSave, onEvolve, on
   const saveButton = el("button", { type: "submit", class: "primary" }, saveLabel);
   const form = el("form", { class: "pokemon-editor" },
     el("div", { class: "editor-head" }, headSprite,
-      el("div", { class: "editor-title" }, headName, subtitle ? el("p", { class: "muted" }, subtitle) : ""),
+      el("div", { class: "editor-title" }, headName, subtitle ? el("p", { class: "muted" }, subtitle) : "", badge),
       evolve),
     el("div", { class: "editor-row" },
       field("Level", level, "narrow"), field("Status", status), field("Nature", nature)),
@@ -605,10 +645,11 @@ function pokemonEditor(mon, { subtitle, saveLabel = "Save", onSave, onEvolve, on
 }
 
 /** The details popup: a new catch (Save / Skip) or a battle copy (Save / Cancel). */
-function openDetailsDialog({ title, subtitle, mon, saveLabel, cancelLabel, onSave, onEvolve }) {
+function openDetailsDialog({ title, subtitle, badge, mon, saveLabel, cancelLabel, onSave, onEvolve }) {
   const dialog = $("#details-dialog");
   const editor = pokemonEditor(mon, {
     subtitle,
+    badge,
     saveLabel,
     cancelLabel,
     onCancel: () => dialog.close(),
@@ -677,13 +718,14 @@ function renderBoxGrid() {
   $("#box-tab-empty").hidden = mons.length > 0;
   $("#box-tab-nomatch").hidden = !mons.length || shown.length > 0;
   $("#box-tab-nomatch").textContent = `No Pokémon match "${query}".`;
+  const cap = currentCap();
   $("#box-tab-grid").replaceChildren(...shown.map((mon) => {
     const node = el("button", {
       type: "button",
       class: `box-mon${mon.status === "Fainted" ? " fainted" : ""}`,
       "aria-current": mon.id === state.boxId ? "true" : undefined,
       title: `${mon.species} (${mon.routeName})`,
-    }, ...monLabel(mon), spriteStatusBadge(mon.status));
+    }, ...monLabel(mon), spriteStatusBadge(mon.status), overCapChip(mon, cap));
     node.addEventListener("click", () => selectBoxMon(mon.id));
     return node;
   }));
@@ -706,6 +748,7 @@ function renderBoxDetail() {
   boxEditor = pokemonEditor(mon, {
     subtitle: [mon.species !== mon.pokemon && `Caught as ${mon.pokemon}`, routeName(mon.route_id)]
       .filter(Boolean).join(" · "),
+    badge: overCapChip(mon, currentCap(), true),
     onEvolve: (species) => saveCatchDetails(mon.id, { species }),
     onSave: async (fields) => {
       await saveCatchDetails(mon.id, fields);
@@ -1058,7 +1101,8 @@ function renderFightBox() {
   $("#all-fainted").hidden = !mons.length || alive.length > 0;
   $("#box-nomatch").hidden = !alive.length || shown.length > 0;
   $("#box-nomatch").textContent = `No Pokémon match "${query}".`;
-  $("#box-grid").replaceChildren(...shown.map((m) => boxMon(m, slots.findIndex((s) => s?.catch_id === m.id))));
+  const cap = currentCap();
+  $("#box-grid").replaceChildren(...shown.map((m) => boxMon(m, slots.findIndex((s) => s?.catch_id === m.id), cap)));
 }
 
 /** Box search fields: filter as you type; Escape clears. */
@@ -1179,6 +1223,7 @@ function teamSlot(index, member) {
           .filter(Boolean).join(" · ")),
       spriteStatusBadge(member.status),
       copyChanged(member) ? el("span", { class: "changed-tag", title: "This copy differs from the Pokémon in your box" }, "changed") : "",
+      overCapChip(member, battleCap(currentBattle())),
       remove);
     slot.tabIndex = 0;
     slot.title = `${member.species}: click to see or edit this battle's copy; drag to swap slots or back to the box to remove`;
@@ -1215,13 +1260,14 @@ async function openCopyEditor(index) {
     title: `${currentBattle().name}: ${member.species}`,
     subtitle: "This battle's copy. Changes here don't affect your box" +
       (source ? ` (currently ${source.species}${source.level ? ` Lv ${source.level}` : ""}).` : "."),
+    badge: overCapChip(member, battleCap(currentBattle()), true),
     mon: member,
     saveLabel: "Save copy",
     onSave: (fields) => saveCopy(member.id, fields),
   });
 }
 
-function boxMon(mon, teamIndex) {
+function boxMon(mon, teamIndex, cap = null) {
   const onTeam = teamIndex !== -1;
   const node = el("div", {
     class: `box-mon${onTeam ? " on-team" : ""}${mon.status === "Fainted" ? " fainted" : ""}`,
@@ -1229,7 +1275,7 @@ function boxMon(mon, teamIndex) {
     tabindex: "0",
     "aria-pressed": String(onTeam),
     title: `${mon.species} (${mon.routeName})${onTeam ? ": on the team" : ""}`,
-  }, ...monLabel(mon), spriteStatusBadge(mon.status));
+  }, ...monLabel(mon), spriteStatusBadge(mon.status), overCapChip(mon, cap));
   const toggle = () => {
     if (onTeam) return setSlot(teamIndex, null);
     const empty = currentSlots().indexOf(null);
