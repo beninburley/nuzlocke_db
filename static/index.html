@@ -60,21 +60,31 @@
       </table>
     </section>
 
-    <section id="tab-box" class="box-view" hidden>
-      <section id="box-detail" class="panel box-detail" aria-label="Selected Pokémon"></section>
-      <section class="panel box-list" aria-labelledby="box-list-heading">
-        <div class="box-head">
-          <h2 id="box-list-heading">Box <span id="box-tab-count" class="muted"></span></h2>
-          <input id="box-tab-search" class="box-search" type="search" placeholder="Search your box"
-                 aria-label="Search your box: species, route, ability, item, nature or moves" autocomplete="off">
-          <button type="button" class="script-open">Update from script</button>
-          <button id="box-export" type="button" title="Copy your box as a Showdown paste">Export</button>
-          <label class="check"><input id="export-skip-fainted" type="checkbox" checked> Leave out fainted</label>
-        </div>
-        <p id="box-tab-empty" class="hint" hidden>No catches yet &mdash; add some on the Encounters tab.</p>
-        <p id="box-tab-nomatch" class="hint" hidden></p>
-        <div id="box-tab-grid" class="box-grid"></div>
-      </section>
+    <section id="tab-box" hidden>
+      <div class="box-view">
+        <section id="box-detail" class="panel box-detail" aria-label="Selected Pokémon"></section>
+        <section class="panel box-list" aria-labelledby="box-list-heading">
+          <div class="box-head">
+            <h2 id="box-list-heading">Box <span id="box-tab-count" class="muted"></span></h2>
+            <input id="box-tab-search" class="box-search" type="search" placeholder="Search your box"
+                   aria-label="Search your box: species, route, ability, item, nature or moves" autocomplete="off">
+            <button type="button" class="script-open">Update from script</button>
+            <button id="box-export" type="button" title="Copy your box as a Showdown paste">Export</button>
+            <label class="check"><input id="export-skip-fainted" type="checkbox" checked> Leave out fainted</label>
+          </div>
+          <p id="box-tab-empty" class="hint" hidden>No catches yet &mdash; add some on the Encounters tab.</p>
+          <p id="box-tab-nomatch" class="hint" hidden></p>
+          <div id="box-tab-grid" class="box-grid"></div>
+        </section>
+      </div>
+      <!-- Outside the grid above, so the sticky details panel stops at the box -->
+      <details id="graveyard" class="panel graveyard" hidden>
+        <summary class="graveyard-head">
+          <span class="chevron" aria-hidden="true">&#9656;</span>
+          <h2>Graveyard <span id="graveyard-count" class="muted"></span></h2>
+        </summary>
+        <ul id="graveyard-list" class="graveyard-list"></ul>
+      </details>
     </section>
 
     <section id="tab-fights" class="fights-view" hidden>

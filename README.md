@@ -64,6 +64,11 @@ for anyone who makes an account:
   stats it doesn't list are 31, as in Showdown. EVs, Tera Type and the like
   are ignored. Nicknames, gender, and Showdown's form names (`Linoone-Galar`
   for the sheet's `Linoone-G`) are understood.
+- **Graveyard**, under the box: fainted Pokemon in the order they fell, each
+  with what knocked it out ("Rest easy, Croagunk. Knocked out by Leader
+  Wattson's Magnezone."), taken from the latest red arrow in the KO tracker.
+  With no arrow it just says "Fell in battle". Closed until you open it, and
+  hidden while nothing has fainted.
 - **Showdown export**, for the damage calculator: *Export* on the Box tab copies
   your box (tick *Leave out fainted* to skip them), *Copy team* copies a
   battle's team, and *Copy as Showdown* copies the enemy team shown (also on

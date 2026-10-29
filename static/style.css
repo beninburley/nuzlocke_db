@@ -979,6 +979,28 @@ main { max-width: var(--content-max); margin: 0 auto; padding: var(--space-6) va
   align-items: start;
 }
 .box-detail { position: sticky; top: var(--sticky-top); }
+
+/* Graveyard: fainted Pokémon under the box, closed by default. Sprites in grayscale at 55%,
+   text at full strength (as for fainted slots). */
+.graveyard { margin-top: var(--space-6); }
+.graveyard-head { display: flex; align-items: center; gap: var(--space-2); cursor: pointer; list-style: none; }
+.graveyard-head::-webkit-details-marker { display: none; }
+.graveyard-head h2 { margin: 0; font: var(--text-title-3); }
+.graveyard-head .chevron { color: var(--ink-muted); font: var(--text-caption); transition: transform 160ms ease-out; }
+.graveyard[open] .graveyard-head .chevron { transform: rotate(90deg); }
+.graveyard-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-3);
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.grave { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3); border-radius: var(--radius-md); background: var(--surface-sunken); }
+.grave-sprite { flex: none; }
+.grave-sprite .sprite { filter: grayscale(1); opacity: 0.55; }
+.grave-text { display: flex; flex-direction: column; min-width: 0; }
+.grave-epitaph { margin: var(--space-1) 0 0; font: var(--text-caption); }
 .box-list .box-grid { max-height: none; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: var(--space-3); }
 
 @media (max-width: 959.98px) {  /* below --bp-desktop */
