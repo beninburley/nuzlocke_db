@@ -763,6 +763,7 @@ function renderBoxGrid() {
   $("#box-tab-empty").hidden = mons.length > 0;
   $("#box-tab-nomatch").hidden = !mons.length || shown.length > 0;
   $("#box-tab-nomatch").textContent = `No Pokémon match "${query}".`;
+  renderGraveyard();
   const cap = currentCap();
   $("#box-tab-grid").replaceChildren(...shown.map((mon) => {
     const node = el("button", {
@@ -901,6 +902,64 @@ function scriptSetCard(set) {
         el("span", { class: "muted" }, [`line ${set.line}`, target].filter(Boolean).join(" · ")))),
     body,
     set.ignored.length ? el("p", { class: "script-ignored muted" }, `Ignored: ${set.ignored.join(", ")}`) : "");
+}
+
+// ---------------------------------------------------------------------------
+// Graveyard (bottom of the Box tab): fainted box Pokémon and what knocked them out
+// ---------------------------------------------------------------------------
+
+const graveLoads = new Set();  // battle ids whose enemy teams are being fetched for the graveyard
+
+/** The latest battle (in game order) where an enemy knocked out a copy of this box Pokémon: {battle, fight, ko, order}. */
+function fatalKo(mon) {
+  let found = null;
+  state.battles.forEach((battle, order) => {
+    const fight = state.fights.get(battle.id);
+    for (const ko of fight?.kos ?? []) {
+      if (ko.by === "enemy" && fight.members.find((m) => m.id === ko.member)?.catch_id === mon.id) {
+        found = { battle, fight, ko, order };
+      }
+    }
+  });
+  return found;
+}
+
+const possessive = (name) => (name.endsWith("s") ? `${name}'` : `${name}'s`);
+
+/** "Rest easy, Surskit. Knocked out by Leader Wattson's Manectric." The enemy needs the battle's teams loaded. */
+function epitaph(mon, fall) {
+  const rest = `Rest easy, ${mon.species}.`;
+  if (!fall) return `${rest} Fell in battle.`;
+  const trainers = battleDetails.get(fall.battle.id)?.trainers ?? [];
+  // The KOs' enemy team; with only one to pick from, that isn't recorded.
+  const trainer = trainers.find((t) => t.key === fall.fight.trainer) ?? trainers.find((t) => !t.tags.includes("Tag Partner"));
+  const enemy = trainer?.pokemon[fall.ko.enemy - 1]?.species;
+  if (!enemy) return `${rest} Knocked out in ${fall.battle.name}.`;
+  return trainer.name === fall.battle.name
+    ? `${rest} Knocked out by ${possessive(trainer.name)} ${enemy}.`
+    : `${rest} Knocked out by ${enemy} in ${fall.battle.name}.`;
+}
+
+/** Fainted box Pokémon, in the order they fell (those with no KO arrow last). Hidden when none have. */
+function renderGraveyard() {
+  const fallen = box().filter((m) => m.status === "Fainted").map((mon) => ({ mon, fall: fatalKo(mon) }))
+    .sort((a, b) => (a.fall?.order ?? Infinity) - (b.fall?.order ?? Infinity));
+  const section = $("#graveyard");
+  section.hidden = !fallen.length;
+  $("#graveyard-count").textContent = `(${fallen.length})`;
+  if (!section.open) return;  // closed by default; drawn (and enemy teams fetched) when opened
+  for (const { fall } of fallen) {
+    const id = fall?.battle.id;
+    if (id === undefined || battleDetails.has(id) || graveLoads.has(id)) continue;
+    graveLoads.add(id);
+    loadBattle(id).then(renderGraveyard, () => {}).finally(() => graveLoads.delete(id));
+  }
+  $("#graveyard-list").replaceChildren(...fallen.map(({ mon, fall }) => el("li", { class: "grave" },
+    el("span", { class: "grave-sprite" }, sprite(mon.species)),
+    el("div", { class: "grave-text" },
+      el("span", { class: "mon-name" }, mon.species),
+      el("span", { class: "mon-route" }, [mon.level && `Lv ${mon.level}`, mon.routeName].filter(Boolean).join(" · ")),
+      el("p", { class: "grave-epitaph" }, epitaph(mon, fall))))));
 }
 
 // ---------------------------------------------------------------------------
@@ -1792,6 +1851,7 @@ function saveKos() {
   if (fight?.id === fightId) Object.assign(fight, { trainer: body.trainer, kos: body.kos });
   renderKoTracker();
   renderFightView();
+  renderGraveyard();
   const run = saveChain.then(async () => {
     const result = await save(() => api("PUT", `/fights/${fightId}/kos`, body));
     applyAutoFaint(attemptId, battleId, fightId, result);
@@ -2392,6 +2452,7 @@ async function boot() {
     setupKoBoard();
     for (const btn of document.querySelectorAll(".script-open")) btn.addEventListener("click", openScriptDialog);
     $("#box-export").addEventListener("click", exportBox);
+    $("#graveyard").addEventListener("toggle", renderGraveyard);
     $("#export-skip-fainted").checked = storageGet("exportSkipFainted") !== "false";
     $("#export-skip-fainted").addEventListener("change", (e) => storageSet("exportSkipFainted", String(e.target.checked)));
     $("#enemy-copy").addEventListener("click", () => { if (shownTrainer) copyShowdown(shownTrainer.pokemon); });
