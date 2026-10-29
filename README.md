@@ -133,6 +133,12 @@ for anyone who makes an account:
     highlighted (the newest attempt counts only once lost, as it may still be
     going); and *Deaths per split*, deaths in each split per run that got there.
     Hover or focus a bar for its details.
+  - *Pokémon history*: pick a species (or click *History of this Pokémon
+    across your runs* under a Box detail) to see its record over all your
+    attempts. Its evolutionary line and dupes family count with it. Tiles for
+    how many attempts it was caught in (and where), battles brought and won,
+    KOs scored and times fainted (and to what); its best run (the furthest
+    battle it was brought to); and a row per attempt with its fate.
   - *This attempt*: which Pokemon scored the most KOs, with the battles they
     scored them in; and how many battles each box Pokemon was on the team for,
     with how many were won, lost or not marked (Pokemon never brought show 0).
@@ -377,7 +383,8 @@ account's data only. Changes (anything but GET) need an `X-Requested-With` heade
 | GET | `/api/battles/<id>` | a battle's trainers and their teams |
 | GET | `/api/battles/<id>/solutions?exclude=<attempt id>` | every other attempt's team, KOs and notes for that battle, yours (`mine`) and other trainers' (anonymous; members by slot) |
 | GET / POST | `/api/attempts` | `{number?}`; the list gives each attempt's `split` (null once every boss is beaten) and `split_lost` |
-| GET | `/api/stats` | run history across your attempts: how far each got (`bosses_beaten`), catches, battles won, deaths; `personal_best`; `runs_ended` per split; `deaths_by_split` |
+| GET | `/api/stats` | run history across your attempts: how far each got (`bosses_beaten`), catches, battles won, deaths; `personal_best`; `runs_ended` per split; `deaths_by_split`; `caught_species` |
+| GET | `/api/stats/pokemon?species=` | one species (with its evolutionary line and dupes family) across your attempts: each catch's route, battles brought and won, KOs and death; the `best` (furthest) battle it was brought to |
 | GET / PATCH / DELETE | `/api/attempts/<id>` | `{number?, notes?}` |
 | PUT | `/api/attempts/<id>/catches/<route_id>` | `{pokemon}` (null clears) |
 | PATCH | `/api/catches/<id>` | any of `{species, level, ability, nature, item, moves: [4], ivs: {hp, atk, def, spa, spd, spe}, status}` |

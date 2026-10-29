@@ -607,7 +607,8 @@ def stats():
      "runs_ended": [{split, runs}] in game order: where finished attempts stopped. The newest
                    attempt counts only if it was lost, since it may still be going,
      "deaths_by_split": [{split, deaths, attempts}] in game order: your Pokémon knocked out
-                        by enemies in each split, and how many attempts reached it}
+                        by enemies in each split, and how many attempts reached it,
+     "caught_species": every species in your boxes, for the Pokémon history picker}
     "Deaths" are KO arrows drawn from an enemy to your Pokémon.
     """
     conn = get_db()
@@ -649,12 +650,106 @@ def stats():
         if reached:
             deaths_by_split.append({"split": s["name"], "deaths": deaths.get(s["name"], 0), "attempts": reached})
 
+    caught = [r[0] for r in conn.execute(
+        "SELECT DISTINCT c.species FROM catches c JOIN attempts a ON a.id = c.attempt_id "
+        "WHERE a.user_id = ? ORDER BY c.species", (uid,))]
+
     return jsonify(
         splits=splits,
         attempts=attempts,
+        caught_species=caught,
         personal_best=best,
         runs_ended=[{"split": s["name"], "runs": ended[s["name"]]} for s in splits if s["name"] in ended],
         deaths_by_split=deaths_by_split,
+    )
+
+
+def related_species(conn, species):
+    """`species` and everything the dupes clause counts with it: its evolutionary line and
+    its dupes-clause family (as sameFamily() in app.js)."""
+    lines, families = evolution_lines(conn), species_families(conn)
+    family = families.get(species)
+    names = {species, *lines.get(species, ())}
+    names |= {s for s, f in families.items() if family is not None and f == family}
+    names |= {s for s, members in lines.items() if species in members}
+    return names
+
+
+def enemy_species(conn, battle_id, trainer_key, enemy_slot):
+    """The enemy Pokémon in a KO arrow: slot `enemy_slot` of the fight's enemy team (the
+    battle's first enemy trainer when the fight doesn't name one)."""
+    trainer = conn.execute(
+        "SELECT id FROM trainers WHERE battle_id = ? AND (key = ? OR (? IS NULL AND ',' || tags || ',' "
+        "NOT LIKE '%,Tag Partner,%')) ORDER BY key = ? DESC, position LIMIT 1",
+        (battle_id, trainer_key, trainer_key, trainer_key)).fetchone()
+    if trainer is None:
+        return None
+    team = [r[0] for r in conn.execute(
+        "SELECT species FROM trainer_pokemon WHERE trainer_id = ? ORDER BY slot", (trainer["id"],))]
+    return team[enemy_slot - 1] if 0 < enemy_slot <= len(team) else None
+
+
+@app.get("/api/stats/pokemon")
+def pokemon_stats():
+    """One Pokémon's record across the user's attempts, for the Stats tab. It counts the
+    whole evolutionary line and dupes-clause family, as the dupes clause does.
+
+    ?species=<name> ->
+    {"species": the name as the app knows it, "line": [the species counted],
+     "attempts_total": how many attempts the user has,
+     "catches": newest attempt first, [{number, route, pokemon (as caught), species (now), status,
+                brought, won, kos, death: {battle, enemy (or null)} or null}],
+     "best": the furthest battle (game order) one was brought to, {number, battle, split, result}
+             or null}
+    A death is a KO arrow from an enemy to a copy of the catch (the latest, in game order).
+    """
+    conn = get_db()
+    uid = user_id()
+    name = request.args.get("species", "").strip()
+    if not name or len(name) > 100:
+        raise ApiError("species is required")
+    known = {**species_families(conn), **evolution_lines(conn)}
+    species = next((s for s in known if s.lower() == name.lower()), name)
+    line = related_species(conn, species)
+    marks = ",".join("?" * len(line))
+    catches = [dict(c) for c in conn.execute(
+        "SELECT c.id, a.number, r.name AS route, c.pokemon, c.species, c.status, "
+        "  (SELECT COUNT(*) FROM fight_members m WHERE m.catch_id = c.id) AS brought, "
+        "  (SELECT COUNT(*) FROM fight_members m JOIN fights f ON f.id = m.fight_id "
+        "     WHERE m.catch_id = c.id AND f.result = 'won') AS won, "
+        "  (SELECT COUNT(*) FROM fight_kos k JOIN fight_members m ON m.id = k.member_id "
+        "     WHERE m.catch_id = c.id AND k.ko_by = 'player') AS kos "
+        "FROM catches c JOIN attempts a ON a.id = c.attempt_id JOIN routes r ON r.id = c.route_id "
+        f"WHERE a.user_id = ? AND (c.species IN ({marks}) OR c.pokemon IN ({marks})) "
+        "ORDER BY a.number DESC, r.position", (uid, *line, *line))]
+
+    ids = [c["id"] for c in catches]
+    deaths, best = {}, None
+    if ids:
+        id_marks = ",".join("?" * len(ids))
+        for k in conn.execute(  # in game order, so each catch keeps its latest
+            "SELECT m.catch_id, b.name, f.battle_id, f.trainer_key, k.enemy_slot FROM fight_kos k "
+            "JOIN fight_members m ON m.id = k.member_id JOIN fights f ON f.id = k.fight_id "
+            f"JOIN battles b ON b.id = f.battle_id WHERE m.catch_id IN ({id_marks}) AND k.ko_by = 'enemy' "
+            "ORDER BY b.position", ids):
+            deaths[k["catch_id"]] = {"battle": k["name"],
+                                     "enemy": enemy_species(conn, k["battle_id"], k["trainer_key"], k["enemy_slot"])}
+        row = conn.execute(
+            "SELECT a.number, b.name AS battle, COALESCE(b.split, g.split) AS split, f.result "
+            "FROM fight_members m JOIN fights f ON f.id = m.fight_id JOIN attempts a ON a.id = f.attempt_id "
+            "JOIN battles b ON b.id = f.battle_id LEFT JOIN battles g ON g.id = b.group_id "
+            f"WHERE m.catch_id IN ({id_marks}) "
+            "ORDER BY b.position DESC, f.result = 'won' DESC, a.number DESC LIMIT 1", ids).fetchone()
+        best = dict(row) if row else None
+    for c in catches:
+        c["death"] = deaths.get(c.pop("id"))
+
+    return jsonify(
+        species=species,
+        line=sorted(line),
+        attempts_total=conn.execute("SELECT COUNT(*) FROM attempts WHERE user_id = ?", (uid,)).fetchone()[0],
+        catches=catches,
+        best=best,
     )
 
 

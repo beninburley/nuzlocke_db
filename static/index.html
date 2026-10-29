@@ -217,6 +217,29 @@
         </section>
       </div>
 
+      <section id="mon-history" class="panel" aria-labelledby="mon-history-heading">
+        <div class="mon-history-head">
+          <h2 id="mon-history-heading" class="chart-head">Pok&eacute;mon history</h2>
+          <input id="mon-history-input" class="mon-history-input" type="search" list="dl-caught"
+                 placeholder="Pick a Pok&eacute;mon" aria-label="Pokémon to look up" autocomplete="off">
+          <datalist id="dl-caught"></datalist>
+        </div>
+        <p id="mon-history-status" class="hint">
+          Pick a Pok&eacute;mon to see how it did across your attempts. Its whole evolutionary line counts, as in the dupes clause.
+        </p>
+        <div id="mon-history-body" hidden>
+          <p id="mon-history-line" class="muted mon-history-line"></p>
+          <div id="mon-history-tiles" class="stat-tiles"></div>
+          <p id="mon-history-best" class="mon-history-best"></p>
+          <div class="stats-history">
+            <table class="grid">
+              <thead><tr><th>Attempt</th><th>Caught on</th><th>Became</th><th class="num">Battles</th><th class="num">Won</th><th class="num">KOs</th><th>Fate</th></tr></thead>
+              <tbody id="mon-history-rows"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
       <h2 class="stats-section-head">This attempt</h2>
       <div class="stats-pair">
         <section class="panel" aria-labelledby="ko-stats-heading">
