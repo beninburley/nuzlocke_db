@@ -119,17 +119,22 @@ def read_ivs(value):
 # (Zigzagoon-G, Farfetch'd)
 # ---------------------------------------------------------------------------
 
+# The sheet's misspellings, as Showdown spells them (the export writes these; static/showdown.js).
+SHEET_TYPOS = {"cyndaquill": "cyndaquil", "hakomo-o": "hakamo-o"}
+
+
 def normalize(name):
     name = name.replace("♀", "-f").replace("♂", "-m")
     name = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode()
-    return re.sub(r"[^a-z0-9-]", "", name.lower())
+    key = re.sub(r"[^a-z0-9-]", "", name.lower())
+    return SHEET_TYPOS.get(key, key)
 
 
 def resolve(name, names):
     """The species in `names` that `name` means, or None.
 
     Allows for spelling (Farfetch’d / Farfetch'd), Showdown's long form names
-    (Arcanine-Hisui -> Arcanine-H), a name without its form when `names` has
+    (Arcanine-Hisui -> Arcanine-H, Basculin-Blue-Striped -> Basculin-BS), a name without its form when `names` has
     only one form of it (Zigzagoon -> Zigzagoon-G), and small typos.
     """
     by_key = {normalize(n): n for n in names}
@@ -139,7 +144,9 @@ def resolve(name, names):
     base, _, form = key.partition("-")
     same_base = [(k.partition("-")[2], n) for k, n in by_key.items() if k.partition("-")[0] == base]
     if form:
-        hits = [n for f, n in same_base if f and (form.startswith(f) or f.startswith(form))]
+        # "galar" for "g", or initials: "blue-striped" for "bs"
+        initials = "".join(word[0] for word in form.split("-"))
+        hits = [n for f, n in same_base if f and (form.startswith(f) or f.startswith(form) or f == initials)]
     else:
         hits = [n for _, n in same_base]
     if len(hits) == 1:
@@ -165,7 +172,8 @@ def match(name, box, lines, families, taken=()):
         if mon["id"] in taken:
             continue
         line = {mon["species"], mon["pokemon"], *lines.get(mon["species"], ()), *lines.get(mon["pokemon"], ())}
-        target = resolve(name, line)
+        # Its own species first: the line may hold another spelling of it (Cyndaquill, Cyndaquil).
+        target = mon["species"] if normalize(name) == normalize(mon["species"]) else resolve(name, line)
         if target is None:
             family = families.get(mon["species"], families.get(mon["pokemon"]))
             target = resolve(name, family_members.get(family, ())) if family is not None else None

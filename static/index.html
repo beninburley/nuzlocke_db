@@ -68,6 +68,8 @@
           <input id="box-tab-search" class="box-search" type="search" placeholder="Search your box"
                  aria-label="Search your box: species, route, ability, item, nature or moves" autocomplete="off">
           <button type="button" class="script-open">Update from script</button>
+          <button id="box-export" type="button" title="Copy your box as a Showdown paste">Export</button>
+          <label class="check"><input id="export-skip-fainted" type="checkbox" checked> Leave out fainted</label>
         </div>
         <p id="box-tab-empty" class="hint" hidden>No catches yet &mdash; add some on the Encounters tab.</p>
         <p id="box-tab-nomatch" class="hint" hidden></p>
@@ -116,6 +118,7 @@
           <div class="enemy-head">
             <h3 id="enemy-heading">Enemy team</h3>
             <div id="trainer-tabs" class="trainer-tabs" role="group" aria-label="Trainer"></div>
+            <button id="enemy-copy" type="button" class="showdown-copy">Copy as Showdown</button>
           </div>
           <p id="enemy-note" class="hint" hidden></p>
           <div id="enemy-slots" class="enemy-slots"></div>
@@ -123,7 +126,10 @@
 
         <div id="focus-body" class="focus-body">
           <section class="team-panel" aria-label="Your team">
-            <h3>Your team <span id="team-count" class="muted"></span></h3>
+            <div class="team-head">
+              <h3>Your team <span id="team-count" class="muted"></span></h3>
+              <button id="team-copy" type="button" class="showdown-copy" title="Copy this battle's team as a Showdown paste">Copy team</button>
+            </div>
             <div id="team-grid" class="team-grid"></div>
           </section>
           <section id="box-panel" class="box-panel" aria-label="Box">
@@ -332,6 +338,7 @@
   </section>
 
   <script src="site.js"></script>
+  <script src="showdown.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

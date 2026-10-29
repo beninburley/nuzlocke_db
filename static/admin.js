@@ -195,6 +195,8 @@ function renderAdminBattle() {
   const labels = trainerLabels(trainers);
   const edit = el("button", { type: "button", class: "primary" }, "Edit");
   edit.addEventListener("click", () => openTeamEditor(trainer));
+  const copy = el("button", { type: "button" }, "Copy as Showdown");
+  copy.addEventListener("click", () => copyShowdown(trainer.pokemon));
   const revert = el("button", { type: "button" }, "Revert to the spreadsheet's team");
   revert.addEventListener("click", () => revertTeam(trainer).catch(() => {}));
   $("#admin-battle").replaceChildren(
@@ -203,7 +205,7 @@ function renderAdminBattle() {
         el("h3", {}, battle.name),
         el("span", { class: "muted" },
           [battle.location, battle.level_cap !== null && `Level cap ${battle.level_cap}`].filter(Boolean).join(" · "))),
-      edit),
+      el("div", { class: "admin-battle-actions" }, copy, edit)),
     trainers.length > 1 ? el("div", { class: "trainer-tabs", role: "group", "aria-label": "Trainer" },
       ...trainers.map((t, i) => {
         const tab = el("button", { type: "button", "aria-pressed": String(i === admin.trainerIndex), title: t.name }, labels[i]);
