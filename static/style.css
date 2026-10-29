@@ -413,6 +413,8 @@ main { max-width: var(--content-max); margin: 0 auto; padding: var(--space-6) va
 .catch-chip .state-chip { margin-left: var(--space-1); }
 /* Round remove buttons on a catch or a team slot */
 .catch-remove, .team-slot .remove {
+  display: inline-grid;
+  place-items: center;
   width: var(--control);
   height: var(--control);
   padding: 0;
@@ -420,9 +422,8 @@ main { max-width: var(--content-max); margin: 0 auto; padding: var(--space-6) va
   border-radius: var(--radius-pill);
   background: transparent;
   color: var(--ink-muted);
-  font-size: var(--icon-md);
-  line-height: 1;
 }
+.catch-remove .icon, .team-slot .remove .icon { width: var(--icon-sm); height: var(--icon-sm); }
 .catch-remove:hover, .team-slot .remove:hover { background: var(--danger-soft); color: var(--danger); }
 .catch-chip .mon-name { white-space: nowrap; overflow-wrap: normal; }
 
