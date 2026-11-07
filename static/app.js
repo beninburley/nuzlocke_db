@@ -41,7 +41,7 @@ async function api(method, path, body) {
   });
   if (res.status === 401) {
     // Logged out (or the session ended elsewhere): log back in, then come back here.
-    location.href = "/login?next=/app";
+    location.href = `/login?next=${encodeURIComponent(location.pathname)}`;
     throw new Error("Logged out");
   }
   if (res.status === 204) return null;
@@ -2486,7 +2486,7 @@ async function boot() {
   try {
     const { user } = await api("GET", "/me");
     if (!user) {
-      location.href = "/login?next=/app";
+      location.href = `/login?next=${encodeURIComponent(location.pathname)}`;
       return;
     }
     setupAccountMenu(user);  // site.js

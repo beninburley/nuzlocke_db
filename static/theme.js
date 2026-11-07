@@ -2,7 +2,8 @@
 
 // Light or dark theme. Loaded in <head> so the saved choice applies before the
 // page paints; with no choice saved, the system setting decides (tokens.css).
-// The #theme-toggle button in the top bar flips it and remembers the choice.
+// The site bar's toggles (#theme-toggle, and the phone menu's [data-theme-toggle] row)
+// flip it and remember the choice.
 
 (() => {
   const root = document.documentElement;
@@ -15,18 +16,20 @@
   const current = () => root.dataset.theme ?? (dark.matches ? "dark" : "light");
 
   document.addEventListener("DOMContentLoaded", () => {
-    const button = document.querySelector("#theme-toggle");
-    if (!button) return;
+    const buttons = document.querySelectorAll("#theme-toggle, [data-theme-toggle]");
+    if (!buttons.length) return;
     const label = () => {
       const isDark = current() === "dark";
-      button.setAttribute("aria-pressed", String(isDark));
-      button.title = isDark ? "Switch to light theme" : "Switch to dark theme";
+      for (const button of buttons) button.setAttribute("aria-pressed", String(isDark));
+      document.querySelector("#theme-toggle")?.setAttribute("title", isDark ? "Switch to light theme" : "Switch to dark theme");
     };
-    button.addEventListener("click", () => {
-      root.dataset.theme = current() === "dark" ? "light" : "dark";
-      try { localStorage.setItem("theme", root.dataset.theme); } catch { /* not remembered */ }
-      label();
-    });
+    for (const button of buttons) {
+      button.addEventListener("click", () => {
+        root.dataset.theme = current() === "dark" ? "light" : "dark";
+        try { localStorage.setItem("theme", root.dataset.theme); } catch { /* not remembered */ }
+        label();
+      });
+    }
     dark.addEventListener("change", label);
     label();
   });
