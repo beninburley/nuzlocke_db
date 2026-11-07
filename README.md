@@ -1,17 +1,25 @@
-# Run & Bun Nuzlocke Tracker (MVP)
+# Nuzhub (MVP)
 
-A small web app that replaces the user-entered parts of the Run & Bun master sheet,
-for anyone who makes an account:
+A small web app for Pokémon nuzlocke runs. It replaces the user-entered parts of the
+Run & Bun master sheet, for anyone who makes an account:
 
+- **Site bar** (every page): the Nuzhub wordmark, then *My runs* (your tracker),
+  *Battles* and, for admins, *Admin*; then the theme toggle and *Log in* or your
+  account menu. The current page's link is highlighted. On phones the bar keeps
+  the wordmark (and *Log in*) and puts the rest under a *Menu* button. Each
+  game's pages carry its slug: `/run-and-bun/tracker` and `/run-and-bun/battles`
+  (`/app`, the tracker's old address, redirects). A game picker joins the bar
+  once there's a second game.
+- **Battles** (`/run-and-bun/battles`, public): a placeholder for battle search;
+  `/run-and-bun/battles/<id>` is one for each battle's guide.
 - **Accounts**: the landing page (`/`) explains the site and links to log in or
   create an account (`/login`). Each account sees and edits only its own
-  attempts. The account button (top right) shows who's logged in and links to
+  attempts. The account menu (top right) shows who's logged in and links to
   the account page (`/account`), where you can see your details, change your
   password and log out (here or everywhere). Every account has a role:
   sign-ups are *trainers*; the others are *mod*, *content creator* and
   *admin*. Only admins get anything extra so far: the admin page.
-- **Admin** (admins only: the *Admin* button next to the account button,
-  `/admin`): a home page with four sections.
+- **Admin** (admins only: *Admin* in the site bar, `/admin`): a home page with four sections.
   - *Roles*: every account, with its role as a drop-down that saves on
     change. You can't change your own role, so there's always an admin.
   - *Trainer battles*: pick a battle to see its enemy team, laid out as on
@@ -353,8 +361,9 @@ data/routing.json      When each route opens up (by split), and areas that share
 scripts/               Spreadsheet extraction, PokeAPI lookups, history import/backfill, accounts,
                        build_tokens.py (design-system/tokens.json -> static/tokens.css)
 design-system/         nuzhub's design system: tokens, fonts, component specs (the source of truth for styling)
-static/                Frontend (plain HTML/CSS/JS, no build step): landing.html, login.html,
-                       account.html and site.js for accounts; index.html and app.js for the tracker
+static/                Frontend (plain HTML/CSS/JS, no build step): site.js builds the site bar on
+                       every page; landing.html, login.html and account.html for accounts;
+                       battles.html (placeholder) for /<game>/battles; index.html and app.js for the tracker
                        (showdown.js: the Showdown export's formatter);
                        admin.html and admin.js for admins (reusing app.js's rendering); tokens.css
                        (generated) and theme.js (light/dark toggle) on every page

@@ -8,7 +8,7 @@ import sqlite3
 from datetime import timedelta
 from pathlib import Path
 
-from flask import Flask, g, jsonify, redirect, request, send_from_directory, session
+from flask import Flask, abort, g, jsonify, redirect, request, send_from_directory, session
 
 import accounts
 import box_script
@@ -247,18 +247,46 @@ def landing():
     return app.send_static_file("landing.html")
 
 
+# Games on the site, by the slug their pages carry in the URL (/<game>/tracker). The
+# game data itself is still Run & Bun's alone; /api/game takes the slug once there are more.
+GAMES = {"run-and-bun": "Run & Bun"}
+DEFAULT_GAME = "run-and-bun"
+
+
+def known_game(game):
+    if game not in GAMES:
+        abort(404)
+
+
 @app.get("/login")
 def login_page():
     if current_user() is not None:
-        return redirect("/app")
+        return redirect(f"/{DEFAULT_GAME}/tracker")
     return app.send_static_file("login.html")
 
 
 @app.get("/app")
-def tracker_page():
+def old_tracker_page():
+    """The tracker's old address."""
+    return redirect(f"/{DEFAULT_GAME}/tracker", 301)
+
+
+@app.get("/<game>/tracker")
+def tracker_page(game):
+    known_game(game)
     if current_user() is None:
-        return redirect("/login?next=/app")
+        return redirect(f"/login?next=/{game}/tracker")
     return app.send_static_file("index.html")
+
+
+@app.get("/<game>/battles")
+@app.get("/<game>/battles/<int:battle_id>")
+def battles_page(game, battle_id=None):
+    """Public: battle search, and a battle's guide page. Placeholders for now."""
+    known_game(game)
+    if battle_id is not None and get_db().execute("SELECT 1 FROM battles WHERE id = ?", (battle_id,)).fetchone() is None:
+        abort(404)
+    return app.send_static_file("battles.html")
 
 
 @app.get("/account")
