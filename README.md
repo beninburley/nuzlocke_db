@@ -305,6 +305,26 @@ A `game_data.json` (a game's folder, or an upload on *Admin > Games*) is one JSO
 
 Anything else in the object (such as `source`) is ignored.
 
+**HeartGold's game data** (`data/games/heartgold/`) is built from the
+[pret/pokeheartgold](https://github.com/pret/pokeheartgold) decompilation by
+`scripts/build_heartgold.py`: wild encounters (HeartGold's species where the
+versions differ, by morning, day and night, plus surfing, fishing, Rock Smash,
+swarms and the radio's Hoenn and Sinnoh Sounds), every trainer's party (moves
+the game leaves out are the Pokémon's last four level-up moves), and where each
+trainer is, from the maps and their scripts. Three tables in the script are
+hand-made: the story order (which split each place belongs to, from
+Bulbapedia's walkthrough), gift and static Pokémon, and optional trainers. The
+script also writes `routing.json`: each place opens once the boss before it is
+beaten. To rebuild:
+
+```powershell
+git clone --depth 1 --filter=blob:none --sparse https://github.com/pret/pokeheartgold.git ..\pokeheartgold
+git -C ..\pokeheartgold sparse-checkout set --no-cone /files/poketool/ /files/fielddata/encountdata/ /files/fielddata/eventdata/zone_event/ /files/fielddata/script/scr_seq/ /files/msgdata/msg/ /include/constants/ /src/data/map_headers.h
+.venv\Scripts\python.exe scripts\build_heartgold.py ..\pokeheartgold
+```
+
+Not in it yet: headbutt trees, the Safari Zone's areas and roaming Pokémon.
+
 **Run & Bun's game data** lives in `data/games/run-and-bun/game_data.json`. It is
 extracted from the spreadsheet and synced into the DB on every app start. It covers:
 
