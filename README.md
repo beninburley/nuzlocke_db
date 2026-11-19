@@ -19,7 +19,18 @@ Run & Bun master sheet, for anyone who makes an account:
   password and log out (here or everywhere). Every account has a role:
   sign-ups are *trainers*; the others are *mod*, *content creator* and
   *admin*. Only admins get anything extra so far: the admin page.
-- **Admin** (admins only: *Admin* in the site bar, `/admin`): a home page with four sections.
+- **Admin** (admins only: *Admin* in the site bar, `/admin`): a home page with five sections.
+  *Trainer battles* and *Routing* work on one game at a time, picked at the top
+  once there are two (remembered in the browser).
+  - *Games*: every game with its address, routes, battles and attempts, and
+    whether its data comes from the repository (`data/games/`) or was added
+    here. *Add a game* takes a name, an address (the slug in its URLs, filled
+    in from the name) and its `game_data.json` (see [Game data format](#game-data-format)).
+    The file is checked first and every problem is listed. Adding a game with
+    the address of one added here before replaces its data and name; its
+    attempts stay. A game added here keeps its data in the database, and has
+    no logic routing file, so its routes are open from the start until changed
+    on *Routing*.
   - *Roles*: every account, with its role as a drop-down that saves on
     change. You can't change your own role, so there's always an admin.
   - *Trainer battles*: pick a battle to see its enemy team, laid out as on
@@ -248,6 +259,52 @@ Every game in `data/games/` is synced into the DB on each app start (the
 own. The rest of `data/` (sprites, evolutionary lines, the Pokédex names) is
 shared by every game. The site bar's game picker appears once there are two.
 
+### Game data format
+
+A `game_data.json` (a game's folder, or an upload on *Admin > Games*) is one JSON object:
+
+```json
+{
+  "routes": [
+    {"name": "Route 101", "encounters": [
+      {"method": "Land", "pokemon": "Zigzagoon", "rate": 20.0, "level": "2-3"}
+    ]}
+  ],
+  "battles": [
+    {"key": "trainer:Youngster Calvin @ Route 102", "name": "Youngster Calvin", "location": "Route 102",
+     "level_cap": null, "split": null, "group": "Leader Roxanne",
+     "trainers": [
+       {"key": "Youngster Calvin @ Route 102", "name": "Youngster Calvin", "location": "Route 102", "tags": [],
+        "pokemon": [{"species": "Poochyena", "level": 5, "item": null, "ability": "Rattled",
+                     "nature": "Bashful", "moves": ["Bite", "Quick Attack"]}]}
+     ]},
+    {"key": "boss:Leader Roxanne", "name": "Leader Roxanne", "location": "Rustboro City",
+     "level_cap": 15, "split": "Leader Roxanne", "group": null, "trainers": ["..."]}
+  ],
+  "families": [["Zigzagoon", "Linoone"], ["Poochyena", "Mightyena"]]
+}
+```
+
+- **routes**, in game order (at least one). Names are unique. Each encounter has
+  a `method` (Land, Surf, Fishing...), a `pokemon`, a `rate` (percent, or null)
+  and a `level` (text such as `"2-3"`, or null). A Pokémon can be caught on a
+  route only if one of its encounters names it.
+- **battles**, in game order. `key`s are unique and stay the same between
+  versions of the file, so recorded fights keep their battle. A battle that
+  ends a split has `split` (its name, unique) and a `level_cap`, and its key is
+  `boss:<split>`. Every other battle names the split it belongs to in `group`.
+  Fights against two trainers with separate teams can be several battles
+  with the level cap, all but the last in the group of the last.
+- **trainers**: one per team you can face in the battle (alternative teams,
+  tag partners). `key`s are unique in the whole game. `tags` are labels such
+  as `Boss`, `Double`, `Optional` or `Tag Partner` (fights on your side). Each
+  has 1 to 6 Pokémon with a `species`, a `level` (1 to 100 or null), an `item`,
+  `ability` and `nature` (or null), and up to 4 `moves`.
+- **families**: the dupes clause's groups. Species in one list count as the
+  same Pokémon, besides their evolutionary lines (from PokeAPI).
+
+Anything else in the object (such as `source`) is ignored.
+
 **Run & Bun's game data** lives in `data/games/run-and-bun/game_data.json`. It is
 extracted from the spreadsheet and synced into the DB on every app start. It covers:
 
@@ -401,6 +458,8 @@ about an attempt, battle or route use that one's game.
 | PATCH | `/api/admin/users/<id>` | admins only: `{role}` (not your own) |
 | PUT | `/api/admin/trainer-team` | admins only, per game: `{trainer: key, pokemon: [1-6 {species, level, item, ability, nature, moves}]}` corrects a trainer's team |
 | POST | `/api/admin/trainer-team/revert` | admins only, per game: `{trainer: key}` goes back to the spreadsheet's team |
+| GET | `/api/admin/games` | admins only: every game with `source` (`folder` or `upload`) and its routes, battles and attempts |
+| POST | `/api/admin/games` | admins only: `{slug, name, data: game_data.json}` adds a game (201), or replaces one added here (200); problems come back as `{error, problems: [...]}` |
 | GET | `/api/admin/routing` | admins only, per game: every route with `unlock`, `default_unlock`, `area` and who changed it, plus the splits with their level caps |
 | PUT | `/api/admin/routing/<route_id>` | admins only: `{unlock: split or null}` sets when a route opens up; its default removes the change |
 | GET | `/api/games` | public: every game, `[{slug, name}]` |
