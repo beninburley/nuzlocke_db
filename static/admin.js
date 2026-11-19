@@ -92,7 +92,7 @@ function userRow(user) {
 // --- Routing ---------------------------------------------------------------------
 
 async function loadRouting() {
-  const { routes, splits } = await api("GET", "/admin/routing");
+  const { routes, splits } = await api("GET", forGame("/admin/routing"));
   Object.assign(admin, { routing: routes, splits });
   renderRouting();
 }
@@ -142,7 +142,7 @@ function routingRow(route) {
 
 async function loadAdminBattles() {
   if (!admin.gameLoaded) {
-    const game = await api("GET", "/game");
+    const game = await api("GET", forGame("/game"));
     state.sprites = game.sprites;  // app.js's sprite() reads these
     state.battles = game.battles;
     admin.natures = game.natures;
@@ -276,7 +276,7 @@ async function saveTeam(e) {
   }).filter((mon) => mon.species);
   if (!team.length) return formError(form, "A trainer needs at least one Pokémon.");
   try {
-    await save(() => api("PUT", "/admin/trainer-team", { trainer: admin.editing.key, pokemon: team }));
+    await save(() => api("PUT", forGame("/admin/trainer-team"), { trainer: admin.editing.key, pokemon: team }));
   } catch (err) {
     return formError(form, err.message);
   }
@@ -286,7 +286,7 @@ async function saveTeam(e) {
 
 async function revertTeam(trainer) {
   if (!confirm(`Put ${trainer.name}'s team back to the spreadsheet's? The corrections are lost.`)) return;
-  await save(() => api("POST", "/admin/trainer-team/revert", { trainer: trainer.key }));
+  await save(() => api("POST", forGame("/admin/trainer-team/revert"), { trainer: trainer.key }));
   await selectAdminBattle(admin.battleId, admin.trainerIndex);
 }
 

@@ -325,6 +325,11 @@ body[data-page="tracker"] { --sticky-top: calc(2 * var(--bar-height) + var(--spa
 .page-head .site-bar { position: static; }
 .wordmark { color: var(--ink); font: var(--text-title-3); text-decoration: none; white-space: nowrap; }
 .game-picker { gap: var(--space-1); padding: 0 var(--space-3); border-color: transparent; border-radius: var(--radius-pill); background: var(--surface-sunken); }
+.game-menu { position: relative; }
+.game-popover { right: auto; left: 0; }
+.game-popover a[aria-current] { color: var(--ink); font-weight: 700; }
+.menu-games { display: flex; flex-direction: column; gap: var(--space-1); padding-bottom: var(--space-2); border-bottom: 1px solid var(--line); }
+.menu-games .site-link { border-radius: var(--radius-md); }
 .site-links { display: flex; align-items: center; gap: var(--space-1); }
 .site-link {
   display: inline-flex;
@@ -399,7 +404,7 @@ main { max-width: var(--content-max); margin: 0 auto; padding: var(--space-6) va
   .site-bar, .tracker-bar { --control: var(--control-touch); padding: var(--space-3) var(--space-4); }
   .site-bar, .page-head { position: static; }
   .wordmark { flex: 1 1 auto; }
-  .site-bar .site-links, .site-bar .theme-toggle, .site-bar .account-menu, #game-picker { display: none; }
+  .site-bar .site-links, .site-bar .theme-toggle, .site-bar .account-menu, .site-bar .game-menu { display: none; }
   .menu-button { display: inline-flex; }
   .site-menu { display: flex; }
   .attempt-controls { order: 1; display: grid; grid-template-columns: 1fr 1fr; flex: 1 1 100%; }

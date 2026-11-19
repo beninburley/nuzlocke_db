@@ -103,7 +103,7 @@ function storageSet(key, value) {
 // ---------------------------------------------------------------------------
 
 async function loadAttempts(preferredId) {
-  state.attempts = (await api("GET", "/attempts")).attempts;
+  state.attempts = (await api("GET", forGame("/attempts"))).attempts;
   const select = $("#attempt-select");
   select.replaceChildren(...state.attempts.map((a) => el("option", { value: a.id }, attemptLabel(a))));
   const hasAttempts = state.attempts.length > 0;
@@ -186,7 +186,7 @@ async function createAttempt() {
   if (input === null) return;
   const number = Number.parseInt(input, 10);
   if (!Number.isInteger(number)) return setStatus("Error: attempt number must be a whole number", "error");
-  const { attempt } = await save(() => api("POST", "/attempts", { number }));
+  const { attempt } = await save(() => api("POST", forGame("/attempts"), { number }));
   await loadAttempts(attempt.id);
 }
 
@@ -2099,7 +2099,7 @@ async function loadStats() {
   const run = ++statsRun;
   const status = $("#stats-status");
   try {
-    const data = await api("GET", "/stats");
+    const data = await api("GET", forGame("/stats"));
     if (run !== statsRun) return;
     status.hidden = true;
     renderRunStats(data);
@@ -2203,7 +2203,7 @@ async function loadMonHistory() {
   }
   storageSet("historySpecies", name);
   try {
-    const data = await api("GET", `/stats/pokemon?species=${encodeURIComponent(name)}`);
+    const data = await api("GET", forGame(`/stats/pokemon?species=${encodeURIComponent(name)}`));
     if (run === historyRun) renderMonHistory(data);
   } catch (err) {
     if (run !== historyRun) return;
@@ -2490,7 +2490,7 @@ async function boot() {
       return;
     }
     setupAccountMenu(user);  // site.js
-    const game = await api("GET", "/game");
+    const game = await api("GET", forGame("/game"));
     state.routes = game.routes;
     state.battles = game.battles;
     state.sprites = game.sprites;

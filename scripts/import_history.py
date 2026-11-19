@@ -57,9 +57,9 @@ def text(value):
 class Names:
     """Resolves hand-typed names to species from the game data."""
 
-    def __init__(self, conn):
-        self.family = {r["species"]: r["family_id"]
-                       for r in conn.execute("SELECT species, family_id FROM species_families")}
+    def __init__(self, conn, game_id):
+        self.family = {r["species"]: r["family_id"] for r in conn.execute(
+            "SELECT species, family_id FROM species_families WHERE game_id = ?", (game_id,))}
         self.species = list(self.family)
         self.fixes = {}  # raw -> corrected, for the report
 
@@ -204,7 +204,8 @@ def account_id(conn):
 
 def import_attempt(conn, user_id, number, enc, fights, names, ids, report):
     notes = ["Imported from spreadsheet."]
-    cur = conn.execute("INSERT INTO attempts (user_id, number) VALUES (?, ?)", (user_id, number))
+    cur = conn.execute("INSERT INTO attempts (user_id, game_id, number) VALUES (?, ?, ?)",
+                       (user_id, ids["game"], number))
     attempt_id = cur.lastrowid
 
     box = []  # (catch_id, pokemon)
@@ -257,14 +258,16 @@ def main():
     conn = db.connect()
     db.init_db(conn)
     user_id = account_id(conn)
-    names = Names(conn)
+    game_id = db.game_by_slug(conn, "run-and-bun")["id"]  # the sheet is Run & Bun's
+    names = Names(conn, game_id)
     ids = {
-        "route": {r["name"]: r["id"] for r in conn.execute("SELECT id, name FROM routes")},
-        "boss": db.level_cap_battles(conn),  # Past Boss Fights name -> battle ids
+        "game": game_id,
+        "route": {r["name"]: r["id"] for r in conn.execute("SELECT id, name FROM routes WHERE game_id = ?", (game_id,))},
+        "boss": db.level_cap_battles(conn, game_id),  # Past Boss Fights name -> battle ids
     }
     route_options = defaultdict(list)
     for r in conn.execute("SELECT DISTINCT r.name, e.pokemon FROM route_encounters e "
-                          "JOIN routes r ON r.id = e.route_id ORDER BY e.position"):
+                          "JOIN routes r ON r.id = e.route_id WHERE r.game_id = ? ORDER BY e.position", (game_id,)):
         route_options[r["name"]].append(r["pokemon"])
 
     wb = openpyxl.load_workbook(xlsx, data_only=True)
@@ -272,7 +275,8 @@ def main():
     encounters = read_encounters(wb["Past Encounters"], names, route_options, report)
     fights = read_boss_fights(wb["Past Boss Fights"], ids["boss"])
 
-    existing = {r["number"] for r in conn.execute("SELECT number FROM attempts WHERE user_id = ?", (user_id,))}
+    existing = {r["number"] for r in conn.execute("SELECT number FROM attempts WHERE user_id = ? AND game_id = ?",
+                                                      (user_id, game_id))}
     imported, skipped = [], []
     with conn:
         for number in sorted(set(encounters) | set(fights)):
@@ -280,7 +284,8 @@ def main():
                 if not replace:
                     skipped.append(number)
                     continue
-                conn.execute("DELETE FROM attempts WHERE user_id = ? AND number = ?", (user_id, number))
+                conn.execute("DELETE FROM attempts WHERE user_id = ? AND game_id = ? AND number = ?",
+                             (user_id, game_id, number))
             import_attempt(conn, user_id, number, encounters.get(number), fights.get(number), names, ids, report)
             imported.append(number)
     conn.close()

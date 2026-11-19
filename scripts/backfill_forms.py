@@ -31,14 +31,15 @@ def main():
     conn = db.connect()
     db.init_db(conn)
     user_id = account_id(conn)
-    names = Names(conn)
-    bosses = db.level_cap_battles(conn)  # Past Boss Fights name -> battle ids
+    game_id = db.game_by_slug(conn, "run-and-bun")["id"]  # the sheet is Run & Bun's
+    names = Names(conn, game_id)
+    bosses = db.level_cap_battles(conn, game_id)  # Past Boss Fights name -> battle ids
     sheet = read_boss_fights(openpyxl.load_workbook(xlsx, data_only=True)["Past Boss Fights"], bosses)
 
     copies, box, examples = 0, 0, []
     for number, fights in sorted(sheet.items()):
-        attempt = conn.execute("SELECT id FROM attempts WHERE user_id = ? AND number = ?",
-                               (user_id, number)).fetchone()
+        attempt = conn.execute("SELECT id FROM attempts WHERE user_id = ? AND game_id = ? AND number = ?",
+                               (user_id, game_id, number)).fetchone()
         if attempt is None:
             continue
         caught = {r["id"]: r["pokemon"] for r in conn.execute(

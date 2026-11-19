@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 import box_script  # noqa: E402
 
-GAME_DATA = ROOT / "data" / "game_data.json"
+GAME_DATA = ROOT / "data" / "games" / "run-and-bun" / "game_data.json"
 EVOLUTIONS = ROOT / "data" / "evolutions.json"
 STATS = ["hp", "atk", "def", "spa", "spd", "spe"]
 NODE = """
