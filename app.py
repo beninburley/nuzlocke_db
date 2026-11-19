@@ -4,6 +4,7 @@ Run with:  python app.py   (then open http://127.0.0.1:5000)
 """
 import json
 import os
+import re
 import sqlite3
 from datetime import timedelta
 from pathlib import Path
@@ -41,7 +42,8 @@ class ApiError(Exception):
 
 @app.errorhandler(ApiError)
 def handle_api_error(err):
-    return jsonify(error=err.message), err.status
+    extra = {"problems": err.problems} if getattr(err, "problems", None) else {}
+    return jsonify(error=err.message, **extra), err.status
 
 
 def get_db():
@@ -518,13 +520,68 @@ def admin_revert_trainer_team():
     conn = get_db()
     game = request_game(conn)
     trainer = trainer_by_key(conn, game, body().get("trainer"))
-    original = db.original_trainer_team(game, trainer["key"])
+    original = db.original_trainer_team(conn, game, trainer["key"])
     if original is None:
         raise ApiError("this trainer isn't in the game data any more", 409)
     with conn:
         conn.execute("DELETE FROM trainer_edits WHERE game_id = ? AND trainer_key = ?", (game["id"], trainer["key"]))
         db.set_trainer_team(conn, trainer["id"], original)
     return jsonify(ok=True)
+
+
+# Slugs that can't name a game: the site's own top-level pages.
+RESERVED_SLUGS = {"api", "app", "admin", "account", "login", "design-system"}
+SLUG_PATTERN = re.compile(r"[a-z0-9]+(-[a-z0-9]+)*")
+MAX_GAME_DATA = 8 * 1024 * 1024  # bytes of request body when adding a game
+
+
+@app.get("/api/admin/games")
+def admin_games():
+    """Every game, with how much it holds and where its data comes from ("folder": data/games/,
+    or "upload": added on the admin page)."""
+    conn = get_db()
+    return jsonify(games=[dict(g) for g in conn.execute(
+        "SELECT g.slug, g.name, g.created_at, CASE WHEN g.data IS NULL THEN 'folder' ELSE 'upload' END AS source, "
+        "  (SELECT COUNT(*) FROM routes r WHERE r.game_id = g.id) AS routes, "
+        "  (SELECT COUNT(*) FROM battles b WHERE b.game_id = g.id) AS battles, "
+        "  (SELECT COUNT(*) FROM attempts a WHERE a.game_id = g.id) AS attempts "
+        "FROM games g ORDER BY g.name")])
+
+
+@app.post("/api/admin/games")
+def admin_add_game():
+    """Add a game: {"slug", "name", "data": a game_data.json (see db.validate_game_data)}.
+
+    A slug already taken by a game added here replaces that game's data and name (its
+    attempts stay); one with a folder in data/games/ can't be replaced from here.
+    Problems with the data come back as {"error", "problems": [sentences]}.
+    """
+    if (request.content_length or 0) > MAX_GAME_DATA:
+        raise ApiError(f"the game data is over {MAX_GAME_DATA // (1024 * 1024)} MB", 413)
+    conn = get_db()
+    data = body()
+    unknown = set(data) - {"slug", "name", "data"}
+    if unknown:
+        raise ApiError(f"unknown field(s): {', '.join(sorted(unknown))}")
+    slug, name = data.get("slug"), data.get("name")
+    if not isinstance(slug, str) or not 2 <= len(slug) <= 40 or not SLUG_PATTERN.fullmatch(slug):
+        raise ApiError("The address should be 2 to 40 lowercase letters, digits and single hyphens, like emerald-kaizo.")
+    if slug in RESERVED_SLUGS:
+        raise ApiError(f"/{slug}/ is one of the site's own addresses; pick another.")
+    if not isinstance(name, str) or not 1 <= len(name.strip()) <= 60:
+        raise ApiError("The name should be 1 to 60 characters.")
+    existing = db.game_by_slug(conn, slug)
+    if existing is not None and existing["data"] is None:
+        raise ApiError(f"{existing['name']} comes from data/games/{slug}/ and can't be replaced here.", 409)
+    problems = db.validate_game_data(data.get("data"))
+    if problems:
+        err = ApiError("The game data has problems.")
+        err.problems = problems
+        raise err
+    game = db.add_game(conn, slug, name.strip(), data["data"])
+    counts = {table: conn.execute(f"SELECT COUNT(*) FROM {table} WHERE game_id = ?", (game["id"],)).fetchone()[0]
+              for table in ("routes", "battles")}
+    return jsonify(game={"slug": slug, "name": game["name"], **counts}, replaced=existing is not None),         200 if existing else 201
 
 
 def routing_json(route_id, name, info):

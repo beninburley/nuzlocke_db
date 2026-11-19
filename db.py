@@ -18,7 +18,7 @@ POKEDEX_PATH = ROOT / "data" / "pokedex.json"  # every move, ability and held it
 
 # Bump when schema.sql changes in a way existing databases need migrating for,
 # and add a step to migrate().
-SCHEMA_VERSION = 6
+SCHEMA_VERSION = 7
 
 # The site owner's account. Attempts recorded before accounts existed are
 # given to it (as an admin, without a password until one is set with
@@ -92,6 +92,9 @@ def migrate(conn):
     if version < 6 and "game_id" not in columns(conn, "attempts"):
         backup(conn, "v5")
         migrate_games(conn)
+    if version < 7:
+        backup(conn, "v6")
+        add_column(conn, "games", "data", "TEXT")  # v6 -> v7: games added on the admin page
     problems = conn.execute("PRAGMA foreign_key_check").fetchall()
     if problems:
         raise RuntimeError(f"migration left broken references: {[tuple(p) for p in problems]}")
@@ -300,25 +303,46 @@ def game_file(slug, name):
 
 
 def load_games(conn):
-    """Sync every game in data/games/ into the DB, then the data the games share."""
+    """Sync every game into the DB: those with a folder in data/games/, then those added on
+    the admin page (their game data is kept in games.data). Then the data the games share."""
     for slug in game_slugs():
         meta = json.loads(game_file(slug, "game.json").read_text(encoding="utf-8"))
-        with conn:
+        with conn:  # a folder takes over from an upload with the same slug
             conn.execute("INSERT INTO games (slug, name) VALUES (?, ?) "
-                         "ON CONFLICT (slug) DO UPDATE SET name = excluded.name", (slug, meta["name"]))
+                         "ON CONFLICT (slug) DO UPDATE SET name = excluded.name, data = NULL", (slug, meta["name"]))
         game_id = conn.execute("SELECT id FROM games WHERE slug = ?", (slug,)).fetchone()[0]
-        load_game_data(conn, game_id, game_file(slug, "game_data.json"))
+        load_game_data(conn, game_id, game_data(conn, game_by_slug(conn, slug)))
+    for game in conn.execute("SELECT * FROM games WHERE data IS NOT NULL").fetchall():
+        load_game_data(conn, game["id"], json.loads(game["data"]))
     load_shared_data(conn)
 
 
-def load_game_data(conn, game_id, path):
-    """Sync one game's data into the DB.
+def game_data(conn, game):
+    """A game's game_data.json, parsed: from its folder, or as added on the admin page."""
+    if game["data"] is not None:
+        return json.loads(game["data"])
+    return json.loads(game_file(game["slug"], "game_data.json").read_text(encoding="utf-8"))
+
+
+def add_game(conn, slug, name, data):
+    """Add a game from the admin page (or replace one added there): `data` is a game_data.json
+    that validate_game_data() passed. Returns its games row."""
+    with conn:
+        conn.execute("INSERT INTO games (slug, name, data) VALUES (?, ?, ?) "
+                     "ON CONFLICT (slug) DO UPDATE SET name = excluded.name, data = excluded.data",
+                     (slug, name, json.dumps(data, ensure_ascii=False)))
+    game = game_by_slug(conn, slug)
+    load_game_data(conn, game["id"], data)
+    return game
+
+
+def load_game_data(conn, game_id, data):
+    """Sync one game's data (a parsed game_data.json) into the DB.
 
     Routes and battles are upserted by name/key so ids stay stable and
     existing catches/fights keep pointing at the right rows. Encounter tables,
     trainers and families are replaced wholesale.
     """
-    data = json.loads(Path(path).read_text(encoding="utf-8"))
     with conn:
         for position, route in enumerate(data["routes"]):
             conn.execute(
@@ -477,10 +501,9 @@ def routing(conn, game):
     return result
 
 
-def original_trainer_team(game, trainer_key):
+def original_trainer_team(conn, game, trainer_key):
     """A trainer's team as `game`'s data (the spreadsheet) has it, or None."""
-    data = json.loads(game_file(game["slug"], "game_data.json").read_text(encoding="utf-8"))
-    for battle in data["battles"]:
+    for battle in game_data(conn, game)["battles"]:
         for trainer in battle["trainers"]:
             if trainer["key"] == trainer_key:
                 return trainer["pokemon"]
@@ -490,3 +513,145 @@ def original_trainer_team(game, trainer_key):
 def game_by_slug(conn, slug):
     """A games row, or None."""
     return conn.execute("SELECT * FROM games WHERE slug = ?", (slug,)).fetchone()
+
+
+# ---------------------------------------------------------------------------
+# Checking a game_data.json added on the admin page
+# ---------------------------------------------------------------------------
+
+MAX_PROBLEMS = 20  # reported at once
+
+
+def validate_game_data(data):
+    """What's wrong with a game_data.json, as a list of sentences (empty when it's fine).
+
+    {"routes": [{name, encounters: [{method, pokemon, rate, level}]}],
+     "battles": [{key, name, location, level_cap, split, group,
+                  trainers: [{key, name, location, tags, pokemon: [{species, level, item, ability, nature, moves}]}]}],
+     "families": [[species, ...]]}
+    Route names, battle keys, trainer keys and split names are unique. A battle with a
+    `split` ends that split and has a level cap; a battle's `group` names the split it
+    belongs to, whose battle has the key "boss:<group>". Anything else (like "source") is ignored.
+    """
+    problems = []
+
+    def problem(text):
+        if len(problems) < MAX_PROBLEMS:
+            problems.append(text)
+
+    def text(value, where, optional=False):
+        if value is None and optional:
+            return True
+        if not isinstance(value, str) or not value.strip():
+            problem(f"{where} should be text{' or null' if optional else ''}.")
+            return False
+        return True
+
+    def number(value, where, low, high, optional=True):
+        if value is None and optional:
+            return
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or not low <= value <= high:
+            problem(f"{where} should be a number from {low} to {high}{' or null' if optional else ''}.")
+
+    def items(value, where):
+        if not isinstance(value, list):
+            problem(f"{where} should be a list.")
+            return []
+        return value
+
+    if not isinstance(data, dict):
+        return ["The file should be a JSON object with routes, battles and families."]
+    for key in ("routes", "battles", "families"):
+        if key not in data:
+            problem(f'The file has no \"{key}\".')
+    data = {"routes": [], "battles": [], "families": [], **data}  # check the rest anyway
+
+    routes = items(data["routes"], "routes")
+    if not routes and not problems:
+        problem("A game needs at least one route.")
+    names = set()
+    for i, route in enumerate(routes):
+        where = f"Route {i + 1}"
+        if not isinstance(route, dict):
+            problem(f"{where} should be an object with a name and encounters.")
+            continue
+        if text(route.get("name"), f"{where}'s name"):
+            where = f"Route \"{route['name']}\""
+            if route["name"] in names:
+                problem(f"{where} is listed twice.")
+            names.add(route["name"])
+        for j, e in enumerate(items(route.get("encounters"), f"{where}'s encounters")):
+            at = f"{where}, encounter {j + 1}"
+            if not isinstance(e, dict):
+                problem(f"{at} should be an object with method, pokemon, rate and level.")
+                continue
+            text(e.get("method"), f"{at}: method")
+            text(e.get("pokemon"), f"{at}: pokemon")
+            number(e.get("rate"), f"{at}: rate", 0, 100)
+            text(e.get("level"), f"{at}: level", optional=True)
+
+    battles = items(data["battles"], "battles")
+    keys, splits, trainer_keys = set(), set(), set()
+    for battle in battles:
+        if isinstance(battle, dict) and isinstance(battle.get("key"), str):
+            keys.add(battle["key"])
+    seen = set()
+    for i, battle in enumerate(battles):
+        where = f"Battle {i + 1}"
+        if not isinstance(battle, dict):
+            problem(f"{where} should be an object.")
+            continue
+        if text(battle.get("key"), f"{where}'s key"):
+            if battle["key"] in seen:
+                problem(f"Battle key \"{battle['key']}\" is used twice.")
+            seen.add(battle["key"])
+        if text(battle.get("name"), f"{where}'s name"):
+            where = f"Battle \"{battle['name']}\""
+        text(battle.get("location"), f"{where}'s location", optional=True)
+        number(battle.get("level_cap"), f"{where}'s level_cap", 1, 100)
+        split, group = battle.get("split"), battle.get("group")
+        if text(split, f"{where}'s split", optional=True) and split is not None:
+            if split in splits:
+                problem(f"The split \"{split}\" is ended by two battles.")
+            splits.add(split)
+            if battle.get("level_cap") is None:
+                problem(f"{where} ends the \"{split}\" split, so it needs a level_cap.")
+        if text(group, f"{where}'s group", optional=True) and group is not None:
+            if split is not None:
+                problem(f"{where} has both a split and a group; a battle either ends a split or belongs to one.")
+            elif f"boss:{group}" not in keys:
+                problem(f"{where}'s group \"{group}\" has no battle with the key \"boss:{group}\".")
+        for j, trainer in enumerate(items(battle.get("trainers"), f"{where}'s trainers")):
+            at = f"{where}, trainer {j + 1}"
+            if not isinstance(trainer, dict):
+                problem(f"{at} should be an object.")
+                continue
+            if text(trainer.get("key"), f"{at}: key"):
+                if trainer["key"] in trainer_keys:
+                    problem(f"Trainer key \"{trainer['key']}\" is used twice.")
+                trainer_keys.add(trainer["key"])
+            text(trainer.get("name"), f"{at}: name")
+            text(trainer.get("location"), f"{at}: location", optional=True)
+            tags = items(trainer.get("tags"), f"{at}: tags")
+            if any(not isinstance(tag, str) for tag in tags):
+                problem(f"{at}: tags should be text.")
+            team = items(trainer.get("pokemon"), f"{at}: pokemon")
+            if not 1 <= len(team) <= 6:
+                problem(f"{at} has {len(team)} Pokémon; a team has 1 to 6.")
+            for k, mon in enumerate(team):
+                mon_at = f"{at}, Pokémon {k + 1}"
+                if not isinstance(mon, dict):
+                    problem(f"{mon_at} should be an object.")
+                    continue
+                text(mon.get("species"), f"{mon_at}: species")
+                number(mon.get("level"), f"{mon_at}: level", 1, 100)
+                for field in ("item", "ability", "nature"):
+                    text(mon.get(field), f"{mon_at}: {field}", optional=True)
+                moves = items(mon.get("moves"), f"{mon_at}: moves")
+                if len(moves) > 4 or any(not isinstance(m, str) or not m.strip() for m in moves):
+                    problem(f"{mon_at}: moves should be up to 4 names.")
+
+    for i, family in enumerate(items(data["families"], "families")):
+        if not isinstance(family, list) or not family or any(not isinstance(s, str) or not s.strip() for s in family):
+            problem(f"Family {i + 1} should be a list of species names.")
+    return problems

@@ -1,7 +1,8 @@
 "use strict";
 
-// The admin page (role "admin" only): Roles, Trainer battles, Routing and
-// Verification requests, picked by the URL's #hash. It uses app.js's helpers (api, el,
+// The admin page (role "admin" only): Games, Roles, Trainer battles, Routing and
+// Verification requests, picked by the URL's #hash. Trainer battles and Routing work on
+// one game at a time (GAME, from site.js), picked on those pages once there are two. It uses app.js's helpers (api, el,
 // sprite, enemySlot, trainerLabels, save...) without booting the tracker, so
 // enemy teams look exactly as they do on the Trainer battles tab.
 
@@ -17,9 +18,10 @@ const admin = {
   editing: null,       // trainer whose team is open in the editor
   routing: [],         // [{id, name, area, unlock, default_unlock, edited}] in game order
   splits: [],          // [{name, level_cap}] in game order
+  games: [],           // [{slug, name, source, routes, battles, attempts}]
 };
 
-const ADMIN_VIEWS = ["roles", "battles", "routing", "verification"];
+const ADMIN_VIEWS = ["games", "roles", "battles", "routing", "verification"];
 
 async function adminBoot() {
   try {
@@ -30,6 +32,12 @@ async function adminBoot() {
     $("#admin-battle-filter").addEventListener("input", renderAdminBattleList);
     $("#routing-filter").addEventListener("input", renderRouting);
     $("#team-form").addEventListener("submit", (e) => saveTeam(e).catch(() => {}));
+    $("#game-form").addEventListener("submit", (e) => addGame(e).catch(showError));
+    setupSlugField();
+    for (const select of document.querySelectorAll(".admin-game-select")) {
+      select.addEventListener("change", () => switchAdminGame(select.value).catch(showError));
+    }
+    await loadAdminGames();
     for (const btn of document.querySelectorAll(".team-close")) {
       btn.addEventListener("click", () => $("#team-editor").close());
     }
@@ -47,9 +55,117 @@ async function showAdminView() {
   const hash = location.hash.slice(1);
   const view = ADMIN_VIEWS.includes(hash) ? hash : "home";
   for (const name of ["home", ...ADMIN_VIEWS]) $(`#admin-${name}`).hidden = name !== view;
+  if (view === "games") renderGames();
   if (view === "roles") await loadUsers();
   if (view === "battles") await loadAdminBattles();
   if (view === "routing") await loadRouting();
+}
+
+// --- Games ---------------------------------------------------------------------
+
+async function loadAdminGames() {
+  admin.games = (await api("GET", "/admin/games")).games;
+  // The game Trainer battles and Routing show: the last one picked, if it's still here.
+  const saved = storageGet("adminGame");
+  if (admin.games.some((g) => g.slug === saved)) GAME.slug = saved;
+  else if (!admin.games.some((g) => g.slug === GAME.slug)) GAME.slug = admin.games[0]?.slug ?? GAME.slug;
+  for (const select of document.querySelectorAll(".admin-game-select")) {
+    select.replaceChildren(...admin.games.map((g) => el("option", { value: g.slug }, g.name)));
+    select.value = GAME.slug;
+    select.closest(".admin-game-pick").hidden = admin.games.length < 2;
+  }
+}
+
+/** Trainer battles and Routing switch to another game's data. */
+async function switchAdminGame(slug) {
+  GAME.slug = slug;
+  storageSet("adminGame", slug);
+  for (const select of document.querySelectorAll(".admin-game-select")) select.value = slug;
+  Object.assign(admin, { gameLoaded: false, battleId: null, detail: null });
+  battleDetails.clear();
+  $("#admin-battle").replaceChildren(el("p", { class: "hint" }, "Pick a battle to see its enemy team."));
+  await showAdminView();
+}
+
+function renderGames() {
+  $("#games-count").textContent = `(${admin.games.length})`;
+  $("#games-body").replaceChildren(...admin.games.map((g) => el("tr", {},
+    el("td", {}, el("a", { href: `/${g.slug}/tracker` }, g.name)),
+    el("td", { class: "muted" }, `/${g.slug}/`),
+    el("td", { class: "num" }, String(g.routes)),
+    el("td", { class: "num" }, String(g.battles)),
+    el("td", { class: "num" }, String(g.attempts)),
+    el("td", {}, g.source === "folder" ? "Repository" : "Added here"))));
+}
+
+const slugify = (name) => name.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+  .replace(/&/g, " and ").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40).replace(/-+$/, "");
+
+/** The address follows the name until it's edited by hand. */
+function setupSlugField() {
+  const form = $("#game-form");
+  const { name, slug } = form.elements;
+  let typed = false;
+  const hint = () => {
+    $("#game-slug-hint").textContent =
+      `Its pages will be at /${slug.value || "emerald-kaizo"}/tracker. Lowercase letters, digits and hyphens.`;
+  };
+  name.addEventListener("input", () => {
+    if (!typed) slug.value = slugify(name.value);
+    hint();
+  });
+  slug.addEventListener("input", () => {
+    typed = slug.value !== "";
+    hint();
+  });
+}
+
+async function addGame(e) {
+  e.preventDefault();
+  const form = $("#game-form");
+  const { name, slug, file } = form.elements;
+  const problems = $("#game-problems");
+  formError(form, "");  // site.js
+  problems.hidden = true;
+  $("#game-done").hidden = true;
+  if (!name.value.trim() || !slug.value || !file.files.length) {
+    return formError(form, "Give the game a name and an address, and choose its game data file.");
+  }
+  const existing = admin.games.find((g) => g.slug === slug.value);
+  if (existing?.source === "folder") {
+    return formError(form, `${existing.name} uses the address /${existing.slug}/ and comes from the repository. Pick another address.`);
+  }
+  if (existing && !confirm(`Replace ${existing.name}'s game data? Its ${existing.attempts} attempt(s) stay.`)) return;
+  let data;
+  try {
+    data = JSON.parse(await file.files[0].text());
+  } catch (err) {
+    return formError(form, `That file isn't valid JSON: ${err.message}`);
+  }
+  const button = form.querySelector("button[type=submit]");
+  button.disabled = true;
+  setStatus("Adding the game…");
+  try {
+    const result = await apiCall("POST", "/admin/games", { name: name.value.trim(), slug: slug.value, data });
+    if (!result.ok) {
+      setStatus("");
+      formError(form, result.data?.error ?? `Something went wrong (${result.status}).`);
+      const list = result.data?.problems ?? [];
+      problems.replaceChildren(...list.map((text) => el("li", {}, text)));
+      problems.hidden = !list.length;
+      return;
+    }
+    const { game, replaced } = result.data;
+    setStatus(replaced ? "Replaced" : "Added", "ok");
+    $("#game-done").textContent = `${replaced ? "Replaced" : "Added"} ${game.name}: ${game.routes} routes and ${game.battles} battles, at /${game.slug}/tracker.`;
+    $("#game-done").hidden = false;
+    form.reset();
+    $("#game-slug-hint").textContent = "Its pages will be at /emerald-kaizo/tracker. Lowercase letters, digits and hyphens.";
+    await loadAdminGames();
+    renderGames();
+  } finally {
+    button.disabled = false;
+  }
 }
 
 // --- Roles ---------------------------------------------------------------------

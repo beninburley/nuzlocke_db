@@ -8,6 +8,8 @@ CREATE TABLE IF NOT EXISTS games (
     id         INTEGER PRIMARY KEY,
     slug       TEXT    NOT NULL UNIQUE,  -- in its pages' URLs (/<slug>/tracker) and its data folder
     name       TEXT    NOT NULL,
+    data       TEXT,                     -- the game_data.json of a game added on the admin page;
+                                         -- NULL for a game with a folder in data/games/
     created_at TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
