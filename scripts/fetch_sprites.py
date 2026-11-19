@@ -1,4 +1,4 @@
-"""Map every species in data/game_data.json to its sprite on pokeapi.co.
+"""Map every species in the games' data (data/games/*/game_data.json) to its sprite on pokeapi.co.
 
 Writes data/sprites.json ({species: sprite url or null}); the app loads it at
 startup, so PokeAPI is only contacted when this script is (re)run. Species
@@ -23,7 +23,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-GAME_DATA = ROOT / "data" / "game_data.json"
+GAMES = ROOT / "data" / "games"  # every game's game_data.json
 OUT = ROOT / "data" / "sprites.json"
 API = "https://pokeapi.co/api/v2"
 SPRITE_BASE = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon"
@@ -65,10 +65,12 @@ def slugify(name):
 
 
 def species_names():
-    data = json.loads(GAME_DATA.read_text(encoding="utf-8"))
-    names = {e["pokemon"] for r in data["routes"] for e in r["encounters"]}
-    names |= {s for family in data["families"] for s in family}
-    names |= {p["species"] for b in data["battles"] for t in b["trainers"] for p in t["pokemon"]}
+    names = set()
+    for path in sorted(GAMES.glob("*/game_data.json")):
+        data = json.loads(path.read_text(encoding="utf-8"))
+        names |= {e["pokemon"] for r in data["routes"] for e in r["encounters"]}
+        names |= {s for family in data["families"] for s in family}
+        names |= {p["species"] for b in data["battles"] for t in b["trainers"] for p in t["pokemon"]}
     return sorted(names)
 
 

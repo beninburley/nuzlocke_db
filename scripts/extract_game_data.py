@@ -1,4 +1,4 @@
-"""Extract game-specific data from the Run & Bun master sheet into data/game_data.json.
+"""Extract game-specific data from the Run & Bun master sheet into data/games/run-and-bun/game_data.json.
 
 Game data = things that are the same for every attempt: the route list and each
 route's encounter table (Encounters tab), every enemy trainer and their team
@@ -19,7 +19,7 @@ import openpyxl
 
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_XLSX = ROOT / "Copy of Run & Bun Master Sheet.xlsx"
-OUT = ROOT / "data" / "game_data.json"
+OUT = ROOT / "data" / "games" / "run-and-bun" / "game_data.json"
 
 # --- Encounters tab layout -------------------------------------------------
 HEADER_ROW = 2

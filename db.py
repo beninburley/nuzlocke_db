@@ -7,15 +7,18 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 DB_PATH = Path(os.environ.get("NUZLOCKE_DB", ROOT / "instance" / "nuzlocke.db"))
 SCHEMA_PATH = ROOT / "schema.sql"
-GAME_DATA_PATH = ROOT / "data" / "game_data.json"
+# One folder per game, named by its slug: game.json ({"name"}), game_data.json (routes,
+# battles, families) and, optionally, routing.json (when each route opens up, and areas
+# sharing one encounter). The rest of data/ is shared by every game.
+GAMES_DIR = ROOT / "data" / "games"
+DEFAULT_GAME = "run-and-bun"  # the first game, and the one pages without a game in the URL use
 SPRITES_PATH = ROOT / "data" / "sprites.json"
 EVOLUTIONS_PATH = ROOT / "data" / "evolutions.json"
 POKEDEX_PATH = ROOT / "data" / "pokedex.json"  # every move, ability and held item (PokeAPI)
-ROUTING_PATH = ROOT / "data" / "routing.json"  # when each route opens up, and areas sharing one encounter
 
 # Bump when schema.sql changes in a way existing databases need migrating for,
 # and add a step to migrate().
-SCHEMA_VERSION = 5
+SCHEMA_VERSION = 6
 
 # The site owner's account. Attempts recorded before accounts existed are
 # given to it (as an admin, without a password until one is set with
@@ -47,7 +50,7 @@ def init_db(conn):
     """Migrate old databases, create missing tables and (re)load game data."""
     version = migrate(conn)
     conn.executescript(schema_sql())
-    load_game_data(conn)
+    load_games(conn)
     if version < 3:
         split_level_cap_fights(conn)
     conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
@@ -86,6 +89,9 @@ def migrate(conn):
     if version < 5:
         backup(conn, "v4")
         add_column(conn, "fights", "notes", "TEXT NOT NULL DEFAULT ''")  # v4 -> v5: notes per battle
+    if version < 6 and "game_id" not in columns(conn, "attempts"):
+        backup(conn, "v5")
+        migrate_games(conn)
     problems = conn.execute("PRAGMA foreign_key_check").fetchall()
     if problems:
         raise RuntimeError(f"migration left broken references: {[tuple(p) for p in problems]}")
@@ -110,6 +116,10 @@ def backup(conn, label):
     target.close()
 
 
+# Databases from before v6 hold Run & Bun alone; rebuilt rows join it as game 1.
+FIRST_GAME = f"INSERT OR IGNORE INTO games (id, slug, name) VALUES (1, '{DEFAULT_GAME}', 'Run & Bun');"
+
+
 def rebuild_tables(conn, move_aside, copy_back, check):
     """SQLite's table-rebuild procedure, in one transaction.
 
@@ -125,7 +135,7 @@ def rebuild_tables(conn, move_aside, copy_back, check):
     conn.execute("PRAGMA foreign_keys = OFF")
     conn.execute("PRAGMA legacy_alter_table = ON")
     try:
-        conn.executescript("BEGIN;" + move_aside + schema_sql() + copy_back + "COMMIT;")
+        conn.executescript("BEGIN;" + move_aside + schema_sql() + FIRST_GAME + copy_back + "COMMIT;")
     except sqlite3.Error:
         if conn.in_transaction:
             conn.execute("ROLLBACK")
@@ -148,8 +158,8 @@ def migrate_bosses_to_battles(conn):
         move_aside="DROP TRIGGER IF EXISTS fight_members_same_attempt;"
                    "ALTER TABLE fights RENAME TO fights_v0;"
                    "ALTER TABLE bosses RENAME TO bosses_v0;",
-        copy_back="INSERT INTO battles (id, key, name, level_cap, position)"
-                  "  SELECT id, 'boss:' || name, name, level_cap, position FROM bosses_v0;"
+        copy_back="INSERT INTO battles (id, game_id, key, name, level_cap, position)"
+                  "  SELECT id, 1, 'boss:' || name, name, level_cap, position FROM bosses_v0;"
                   "INSERT INTO fights (id, attempt_id, battle_id, result)"
                   "  SELECT id, attempt_id, boss_id, result FROM fights_v0;"
                   "DROP TABLE fights_v0;"
@@ -198,11 +208,42 @@ def migrate_accounts(conn):
         move_aside="ALTER TABLE attempts RENAME TO attempts_v3;",
         copy_back=f"INSERT OR IGNORE INTO users (username, role)"
                   f"  SELECT '{owner}', 'admin' WHERE EXISTS (SELECT 1 FROM attempts_v3);"
-                  f"INSERT INTO attempts (id, user_id, number, notes, created_at)"
-                  f"  SELECT id, (SELECT id FROM users WHERE username = '{owner}'), number, notes, created_at"
+                  f"INSERT INTO attempts (id, user_id, game_id, number, notes, created_at)"
+                  f"  SELECT id, (SELECT id FROM users WHERE username = '{owner}'), 1, number, notes, created_at"
                   f"  FROM attempts_v3;"
                   "DROP TABLE attempts_v3;",
         check=("attempts", "catches", "fights"),
+    )
+
+
+def migrate_games(conn):
+    """v5 -> v6: games. Everything so far is Run & Bun's, now game 1: routes, battles,
+    trainers' corrections and attempts get its id, and route names, battle and trainer
+    keys, families and attempt numbers become unique per game. Rows keep their ids.
+
+    Trainers and families are dropped rather than copied: game data reloads them.
+    Tables a migration from before v5 already rebuilt have the new shape; they're left.
+    """
+    rebuilt = [table for table in ("routes", "battles", "trainer_edits", "attempts")
+               if "game_id" not in columns(conn, table)]
+    copy = {
+        "routes": "INSERT INTO routes (id, game_id, name, position) SELECT id, 1, name, position FROM routes_v5;",
+        "battles": "INSERT INTO battles (id, game_id, key, name, location, level_cap, group_id, position, split)"
+                   "  SELECT id, 1, key, name, location, level_cap, group_id, position, split FROM battles_v5;",
+        "trainer_edits": "INSERT INTO trainer_edits (game_id, trainer_key, pokemon, edited_by, edited_at)"
+                         "  SELECT 1, trainer_key, pokemon, edited_by, edited_at FROM trainer_edits_v5;",
+        "attempts": "INSERT INTO attempts (id, user_id, game_id, number, notes, created_at)"
+                    "  SELECT id, user_id, 1, number, notes, created_at FROM attempts_v5;",
+    }
+    rebuild_tables(
+        conn,
+        move_aside="DROP TABLE IF EXISTS trainer_pokemon;"
+                   "DROP TABLE IF EXISTS trainers;"
+                   "DROP TABLE IF EXISTS species_families;"
+                   + "".join(f"ALTER TABLE {table} RENAME TO {table}_v5;" for table in rebuilt),
+        copy_back="".join(copy[table] + f"DROP TABLE {table}_v5;" for table in rebuilt),
+        check=("routes", "battles", "trainer_edits", "attempts", "route_encounters", "routing_edits",
+               "catches", "fights"),
     )
 
 
@@ -231,8 +272,9 @@ def split_level_cap_fights(conn):
                         (cur.lastrowid, fight["id"]))
 
 
-def level_cap_battles(conn):
-    """{split name: [battle ids]}: each split's level-cap battles, in game order.
+def level_cap_battles(conn, game_id=None):
+    """{split name: [battle ids]}: each split's level-cap battles, in game order, for one
+    game (or, with none given, every game; only migrations from before games do that).
 
     Usually just one. A boss fight against two separate trainers has one per
     trainer; the last is the one that ends the split.
@@ -241,14 +283,36 @@ def level_cap_battles(conn):
     for row in conn.execute(
         "SELECT s.split, b.id FROM battles s "
         "JOIN battles b ON b.id = s.id OR (b.group_id = s.id AND b.level_cap IS NOT NULL) "
-        "WHERE s.split IS NOT NULL ORDER BY s.position, b.position"
+        "WHERE s.split IS NOT NULL AND (? IS NULL OR s.game_id = ?) ORDER BY s.position, b.position",
+        (game_id, game_id),
     ):
         out.setdefault(row["split"], []).append(row["id"])
     return out
 
 
-def load_game_data(conn, path=GAME_DATA_PATH):
-    """Sync game data into the DB.
+def game_slugs():
+    """The slugs of the games with a folder under data/games/, in name order."""
+    return sorted(d.name for d in GAMES_DIR.iterdir() if (d / "game_data.json").exists())
+
+
+def game_file(slug, name):
+    return GAMES_DIR / slug / name
+
+
+def load_games(conn):
+    """Sync every game in data/games/ into the DB, then the data the games share."""
+    for slug in game_slugs():
+        meta = json.loads(game_file(slug, "game.json").read_text(encoding="utf-8"))
+        with conn:
+            conn.execute("INSERT INTO games (slug, name) VALUES (?, ?) "
+                         "ON CONFLICT (slug) DO UPDATE SET name = excluded.name", (slug, meta["name"]))
+        game_id = conn.execute("SELECT id FROM games WHERE slug = ?", (slug,)).fetchone()[0]
+        load_game_data(conn, game_id, game_file(slug, "game_data.json"))
+    load_shared_data(conn)
+
+
+def load_game_data(conn, game_id, path):
+    """Sync one game's data into the DB.
 
     Routes and battles are upserted by name/key so ids stay stable and
     existing catches/fights keep pointing at the right rows. Encounter tables,
@@ -258,13 +322,13 @@ def load_game_data(conn, path=GAME_DATA_PATH):
     with conn:
         for position, route in enumerate(data["routes"]):
             conn.execute(
-                "INSERT INTO routes (name, position) VALUES (?, ?) "
-                "ON CONFLICT (name) DO UPDATE SET position = excluded.position",
-                (route["name"], position),
+                "INSERT INTO routes (game_id, name, position) VALUES (?, ?, ?) "
+                "ON CONFLICT (game_id, name) DO UPDATE SET position = excluded.position",
+                (game_id, route["name"], position),
             )
-        route_ids = {r["name"]: r["id"] for r in conn.execute("SELECT id, name FROM routes")}
+        route_ids = {r["name"]: r["id"] for r in conn.execute("SELECT id, name FROM routes WHERE game_id = ?", (game_id,))}
 
-        conn.execute("DELETE FROM route_encounters")
+        conn.execute("DELETE FROM route_encounters WHERE route_id IN (SELECT id FROM routes WHERE game_id = ?)", (game_id,))
         conn.executemany(
             "INSERT INTO route_encounters (route_id, method, pokemon, rate, level, position) "
             "VALUES (?, ?, ?, ?, ?, ?)",
@@ -275,15 +339,19 @@ def load_game_data(conn, path=GAME_DATA_PATH):
             ],
         )
 
-        load_battles(conn, data["battles"])
+        load_battles(conn, game_id, data["battles"])
 
-        conn.execute("DELETE FROM species_families")
+        conn.execute("DELETE FROM species_families WHERE game_id = ?", (game_id,))
         conn.executemany(
-            "INSERT OR IGNORE INTO species_families (species, family_id) VALUES (?, ?)",
-            [(species, fid) for fid, family in enumerate(data["families"]) for species in family],
+            "INSERT OR IGNORE INTO species_families (game_id, species, family_id) VALUES (?, ?, ?)",
+            [(game_id, species, fid) for fid, family in enumerate(data["families"]) for species in family],
         )
 
-        # Every species the app knows: the sheet's, plus the whole Pokédex
+
+def load_shared_data(conn):
+    """Sprites and evolutionary lines (PokeAPI): the same for every game."""
+    with conn:
+        # Every species the app knows: the games', plus the whole Pokédex
         # (scripts/fetch_pokedex.py). A few have no sprite on PokeAPI yet: ''.
         conn.execute("DELETE FROM species_sprites")
         if SPRITES_PATH.exists():
@@ -302,30 +370,31 @@ def load_game_data(conn, path=GAME_DATA_PATH):
             )
 
 
-def load_battles(conn, battles):
+def load_battles(conn, game_id, battles):
     for position, battle in enumerate(battles):
         conn.execute(
-            "INSERT INTO battles (key, name, location, level_cap, position, split) VALUES (?, ?, ?, ?, ?, ?) "
-            "ON CONFLICT (key) DO UPDATE SET name = excluded.name, location = excluded.location, "
+            "INSERT INTO battles (game_id, key, name, location, level_cap, position, split) VALUES (?, ?, ?, ?, ?, ?, ?) "
+            "ON CONFLICT (game_id, key) DO UPDATE SET name = excluded.name, location = excluded.location, "
             "level_cap = excluded.level_cap, position = excluded.position, split = excluded.split",
-            (battle["key"], battle["name"], battle["location"], battle["level_cap"], position, battle["split"]),
+            (game_id, battle["key"], battle["name"], battle["location"], battle["level_cap"], position, battle["split"]),
         )
-    battle_ids = {r["key"]: r["id"] for r in conn.execute("SELECT id, key FROM battles")}
+    battle_ids = {r["key"]: r["id"] for r in conn.execute("SELECT id, key FROM battles WHERE game_id = ?", (game_id,))}
     conn.executemany(
-        "UPDATE battles SET group_id = ? WHERE key = ?",
-        [(battle_ids[f"boss:{b['group']}"] if b["group"] else None, b["key"]) for b in battles],
+        "UPDATE battles SET group_id = ? WHERE game_id = ? AND key = ?",
+        [(battle_ids[f"boss:{b['group']}"] if b["group"] else None, game_id, b["key"]) for b in battles],
     )
     # Battles that left the game data go too, unless an attempt recorded a fight there.
     current = [b["key"] for b in battles]
     conn.execute(
-        f"DELETE FROM battles WHERE key NOT IN ({','.join('?' * len(current))}) "
+        f"DELETE FROM battles WHERE game_id = ? AND key NOT IN ({','.join('?' * len(current))}) "
         "AND id NOT IN (SELECT battle_id FROM fights)",
-        current,
+        (game_id, *current),
     )
 
-    conn.execute("DELETE FROM trainers")  # cascades to trainer_pokemon
+    # Cascades to trainer_pokemon
+    conn.execute("DELETE FROM trainers WHERE battle_id IN (SELECT id FROM battles WHERE game_id = ?)", (game_id,))
     edits = {r["trainer_key"]: json.loads(r["pokemon"])
-             for r in conn.execute("SELECT trainer_key, pokemon FROM trainer_edits")}
+             for r in conn.execute("SELECT trainer_key, pokemon FROM trainer_edits WHERE game_id = ?", (game_id,))}
     position = 0
     for battle in battles:
         for trainer in battle["trainers"]:
@@ -360,27 +429,29 @@ def pokedex_names():
     return {key: data.get(key, []) for key in ("moves", "abilities", "items")}
 
 
-def routing_defaults(conn, path=ROUTING_PATH):
-    """{route name: {"unlock": split or None, "area": area or None}} for every route, from
-    data/routing.json. A route the file doesn't list is open from the start and in no area.
-    Raises ValueError for a route or split the game data doesn't have, or a route listed twice."""
-    data = json.loads(Path(path).read_text(encoding="utf-8"))
-    routes = [r[0] for r in conn.execute("SELECT name FROM routes ORDER BY position")]
-    splits = {r[0] for r in conn.execute("SELECT split FROM battles WHERE split IS NOT NULL")}
+def routing_defaults(conn, game):
+    """{route name: {"unlock": split or None, "area": area or None}} for every route of `game`
+    (a games row), from its routing.json. A route the file doesn't list (or every route, with
+    no file) is open from the start and in no area. Raises ValueError for a route or split the
+    game data doesn't have, or a route listed twice."""
+    path = game_file(game["slug"], "routing.json")
+    data = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {"unlocks": [], "areas": {}}
+    routes = [r[0] for r in conn.execute("SELECT name FROM routes WHERE game_id = ? ORDER BY position", (game["id"],))]
+    splits = {r[0] for r in conn.execute("SELECT split FROM battles WHERE game_id = ? AND split IS NOT NULL", (game["id"],))}
     result = {name: {"unlock": None, "area": None} for name in routes}
     seen = {"unlock": set(), "area": set()}
 
     def claim(kind, name, value):
         if name not in result:
-            raise ValueError(f"routing.json: no route named {name!r}")
+            raise ValueError(f"{game['slug']}/routing.json: no route named {name!r}")
         if name in seen[kind]:
-            raise ValueError(f"routing.json: {name!r} is listed twice under {kind}s")
+            raise ValueError(f"{game['slug']}/routing.json: {name!r} is listed twice under {kind}s")
         seen[kind].add(name)
         result[name][kind] = value
 
     for step in data["unlocks"]:
         if step["after"] is not None and step["after"] not in splits:
-            raise ValueError(f"routing.json: no split named {step['after']!r}")
+            raise ValueError(f"{game['slug']}/routing.json: no split named {step['after']!r}")
         for name in step["routes"]:
             claim("unlock", name, step["after"])
     for area, names in data["areas"].items():
@@ -389,28 +460,33 @@ def routing_defaults(conn, path=ROUTING_PATH):
     return result
 
 
-def routing(conn, path=ROUTING_PATH):
-    """{route name: {"unlock", "area", "default_unlock", "edited": {"by", "at"} or None}}: the file's
+def routing(conn, game):
+    """{route name: {"unlock", "area", "default_unlock", "edited": {"by", "at"} or None}}: the game's
     defaults with the admins' changes (routing_edits) applied. A change naming a split that's no longer
     in the game data is ignored."""
-    result = routing_defaults(conn, path)
+    result = routing_defaults(conn, game)
     for info in result.values():
         info.update(default_unlock=info["unlock"], edited=None)
-    splits = {r[0] for r in conn.execute("SELECT split FROM battles WHERE split IS NOT NULL")}
+    splits = {r[0] for r in conn.execute("SELECT split FROM battles WHERE game_id = ? AND split IS NOT NULL", (game["id"],))}
     for edit in conn.execute(
         "SELECT r.name, e.unlock, e.edited_at, u.username FROM routing_edits e "
-        "JOIN routes r ON r.id = e.route_id LEFT JOIN users u ON u.id = e.edited_by"
+        "JOIN routes r ON r.id = e.route_id LEFT JOIN users u ON u.id = e.edited_by WHERE r.game_id = ?", (game["id"],)
     ):
         if edit["name"] in result and (edit["unlock"] is None or edit["unlock"] in splits):
             result[edit["name"]].update(unlock=edit["unlock"], edited={"by": edit["username"], "at": edit["edited_at"]})
     return result
 
 
-def original_trainer_team(trainer_key, path=GAME_DATA_PATH):
-    """A trainer's team as the game data (the spreadsheet) has it, or None."""
-    data = json.loads(Path(path).read_text(encoding="utf-8"))
+def original_trainer_team(game, trainer_key):
+    """A trainer's team as `game`'s data (the spreadsheet) has it, or None."""
+    data = json.loads(game_file(game["slug"], "game_data.json").read_text(encoding="utf-8"))
     for battle in data["battles"]:
         for trainer in battle["trainers"]:
             if trainer["key"] == trainer_key:
                 return trainer["pokemon"]
     return None
+
+
+def game_by_slug(conn, slug):
+    """A games row, or None."""
+    return conn.execute("SELECT * FROM games WHERE slug = ?", (slug,)).fetchone()

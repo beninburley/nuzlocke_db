@@ -25,7 +25,7 @@ Run & Bun master sheet, for anyone who makes an account:
   - *Trainer battles*: pick a battle to see its enemy team, laid out as on
     the Trainer battles tab, and *Edit* it in a popup (species, level, item,
     ability, nature and moves of each Pokemon; blank a species to remove
-    one). Game data is reloaded from `data/game_data.json` on every start, so
+    one). Game data is reloaded from the game's `game_data.json` on every start, so
     corrections are kept in a table of their own (`trainer_edits`) and
     applied again after each reload. The battle shows who corrected it and
     when, and can be reverted to the spreadsheet's team.
@@ -33,7 +33,7 @@ Run & Bun master sheet, for anyone who makes an account:
     routing (from the start, or after one of the splits, with its level cap).
     Changes save on change, apply to everyone and are kept in their own table
     (`routing_edits`); picking the option marked *default* (from
-    `data/routing.json`) removes the change.
+    the game's `routing.json`) removes the change.
   - *Verification requests*: not built yet ("Work in Process").
 - **Attempts**: pick which run you're on, or start a new one. Each attempt
   in the list shows the split it's on: the one with its first boss it hasn't
@@ -234,8 +234,22 @@ the **Web** tab, or the site gets disabled.
 
 ## Data
 
-**Game data** lives in `data/game_data.json`. It is extracted from the
-spreadsheet and synced into the DB on every app start. It covers:
+**Games.** Each game has a folder, `data/games/<slug>/`, whose name is the slug
+in its pages' URLs (`/run-and-bun/tracker`):
+
+- `game.json`: `{"name": "Run & Bun"}`
+- `game_data.json`: routes and their encounters, battles and their trainers'
+  teams, and dupes-clause families (Run & Bun's is described below)
+- `routing.json` (optional): when each route opens up; without it, every route
+  is open from the start
+
+Every game in `data/games/` is synced into the DB on each app start (the
+`games` table), and each one's routes, battles, families and attempts are its
+own. The rest of `data/` (sprites, evolutionary lines, the Pokédex names) is
+shared by every game. The site bar's game picker appears once there are two.
+
+**Run & Bun's game data** lives in `data/games/run-and-bun/game_data.json`. It is
+extracted from the spreadsheet and synced into the DB on every app start. It covers:
 
 - routes and encounter tables (*Encounters* tab)
 - every trainer and their team (*Trainer Lookup* tab, the data behind the
@@ -243,7 +257,7 @@ spreadsheet and synced into the DB on every app start. It covers:
 - the level-cap fights (*Past Boss Fights* header)
 - dupe-clause evolution families
 
-**Logic routing** defaults come from `data/routing.json`, edited by hand:
+**Logic routing** defaults come from `data/games/run-and-bun/routing.json`, edited by hand:
 `unlocks` lists the routes each split's boss opens up (in game order;
 `"after": null` is the start), and `areas` lists the routes that share one
 encounter. The defaults were worked out from encounter levels: routes at the
@@ -353,11 +367,10 @@ accounts.py            Password hashing, username/password rules, rate limits, c
 box_script.py          Reading Showdown-style sets and matching them to box Pokemon
 db.py                  SQLite connection, schema setup, migrations, game-data sync
 schema.sql             Tables and integrity triggers
-data/game_data.json    Extracted game data
+data/games/<slug>/     One game: game.json (its name), game_data.json, routing.json
 data/sprites.json      Species -> PokeAPI sprite URL (the sheet's species plus the whole Pokédex)
 data/pokedex.json      Every move, ability and held item name (PokeAPI)
 data/evolutions.json   Species -> its evolutionary line (PokeAPI)
-data/routing.json      When each route opens up (by split), and areas that share one encounter
 scripts/               Spreadsheet extraction, PokeAPI lookups, history import/backfill, accounts,
                        build_tokens.py (design-system/tokens.json -> static/tokens.css)
 design-system/         nuzhub's design system: tokens, fonts, component specs (the source of truth for styling)
@@ -371,8 +384,10 @@ static/                Frontend (plain HTML/CSS/JS, no build step): site.js buil
 
 ### API
 
-Every endpoint except the first five needs a login and works on the logged-in
-account's data only. Changes (anything but GET) need an `X-Requested-With` header.
+Every endpoint except the first five and `/api/games` needs a login and works on the logged-in
+account's data only. Changes (anything but GET) need an `X-Requested-With` header. Endpoints
+about a game (marked *per game*) take `?game=<slug>`, defaulting to `run-and-bun`; the ones
+about an attempt, battle or route use that one's game.
 
 | Method | Path | Body |
 |---|---|---|
@@ -384,16 +399,17 @@ account's data only. Changes (anything but GET) need an `X-Requested-With` heade
 | POST | `/api/me/logout-everywhere` | ends every session of the account |
 | GET | `/api/admin/users` | admins only: every account and its role, plus the roles |
 | PATCH | `/api/admin/users/<id>` | admins only: `{role}` (not your own) |
-| PUT | `/api/admin/trainer-team` | admins only: `{trainer: key, pokemon: [1-6 {species, level, item, ability, nature, moves}]}` corrects a trainer's team |
-| POST | `/api/admin/trainer-team/revert` | admins only: `{trainer: key}` goes back to the spreadsheet's team |
-| GET | `/api/admin/routing` | admins only: every route with `unlock`, `default_unlock`, `area` and who changed it, plus the splits with their level caps |
+| PUT | `/api/admin/trainer-team` | admins only, per game: `{trainer: key, pokemon: [1-6 {species, level, item, ability, nature, moves}]}` corrects a trainer's team |
+| POST | `/api/admin/trainer-team/revert` | admins only, per game: `{trainer: key}` goes back to the spreadsheet's team |
+| GET | `/api/admin/routing` | admins only, per game: every route with `unlock`, `default_unlock`, `area` and who changed it, plus the splits with their level caps |
 | PUT | `/api/admin/routing/<route_id>` | admins only: `{unlock: split or null}` sets when a route opens up; its default removes the change |
-| GET | `/api/game` | routes (with encounter options, unlock split and area), battles, sprites, evolution lines, dupes-clause families, natures, statuses, suggestions |
+| GET | `/api/games` | public: every game, `[{slug, name}]` |
+| GET | `/api/game` | per game: the game, its routes (with encounter options, unlock split and area), battles, sprites, evolution lines, dupes-clause families, natures, statuses, suggestions |
 | GET | `/api/battles/<id>` | a battle's trainers and their teams |
 | GET | `/api/battles/<id>/solutions?exclude=<attempt id>` | every other attempt's team, KOs and notes for that battle, yours (`mine`) and other trainers' (anonymous; members by slot) |
-| GET / POST | `/api/attempts` | `{number?}`; the list gives each attempt's `split` (null once every boss is beaten) and `split_lost` |
-| GET | `/api/stats` | run history across your attempts: how far each got (`bosses_beaten`), catches, battles won, deaths; `personal_best`; `runs_ended` per split; `deaths_by_split`; `caught_species` |
-| GET | `/api/stats/pokemon?species=` | one species (with its evolutionary line and dupes family) across your attempts: each catch's route, battles brought and won, KOs and death; the `best` (furthest) battle it was brought to |
+| GET / POST | `/api/attempts` | per game: `{number?}`; the list gives each attempt's `split` (null once every boss is beaten) and `split_lost` |
+| GET | `/api/stats` | per game: run history across your attempts: how far each got (`bosses_beaten`), catches, battles won, deaths; `personal_best`; `runs_ended` per split; `deaths_by_split`; `caught_species` |
+| GET | `/api/stats/pokemon?species=` | per game: one species (with its evolutionary line and dupes family) across your attempts: each catch's route, battles brought and won, KOs and death; the `best` (furthest) battle it was brought to |
 | GET / PATCH / DELETE | `/api/attempts/<id>` | `{number?, notes?}` |
 | PUT | `/api/attempts/<id>/catches/<route_id>` | `{pokemon}` (null clears) |
 | PATCH | `/api/catches/<id>` | any of `{species, level, ability, nature, item, moves: [4], ivs: {hp, atk, def, spa, spd, spe}, status}` |

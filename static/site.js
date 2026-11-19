@@ -30,10 +30,14 @@ function formatDate(sqliteTime) {
 
 // --- site bar (every page) ----------------------------------------------------------
 
-// Games on the site, by the slug in their URLs. The game picker shows once there are two.
-const GAMES = [{ slug: "run-and-bun", name: "Run & Bun" }];
-const GAME = GAMES.find((game) => location.pathname.startsWith(`/${game.slug}/`)) ?? GAMES[0];
-const gamePath = (page) => `/${GAME.slug}/${page}`;
+// The game this page is about: the one its URL names (/<slug>/tracker), else the first
+// game. The site's games come from /api/games; the picker shows once there are two.
+const DEFAULT_GAME = "run-and-bun";
+const GAME_PAGE = /^\/([a-z0-9-]+)\/(tracker|battles)(\/|$)/;
+const GAME = { slug: GAME_PAGE.exec(location.pathname)?.[1] ?? DEFAULT_GAME, name: "" };
+const gamePath = (page, slug = GAME.slug) => `/${slug}/${page}`;
+/** An API path for this page's game: "/attempts" -> "/attempts?game=run-and-bun". */
+const forGame = (path) => `${path}${path.includes("?") ? "&" : "?"}game=${encodeURIComponent(GAME.slug)}`;
 
 const SVG = (paths) => `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">${paths}</svg>`;
 const BAR_ICONS = {
@@ -61,7 +65,11 @@ function buildSiteBar() {
     + link("admin", "/admin", "Admin", "data-admin hidden");
   bar.innerHTML = `
     <a class="wordmark" href="/">Nuzhub</a>
-    <button id="game-picker" class="game-picker" type="button" title="Switch game" hidden>${GAME.name} ${BAR_ICONS.chevron}</button>
+    <div class="game-menu" hidden>
+      <button id="game-picker" class="game-picker" type="button" aria-haspopup="true" aria-expanded="false"
+              aria-controls="game-popover" title="Switch game"><span class="game-name"></span>${BAR_ICONS.chevron}</button>
+      <div id="game-popover" class="account-popover game-popover" hidden></div>
+    </div>
     <nav class="site-links" aria-label="Site">${links()}</nav>
     <div class="site-end">
       ${bar.dataset.status === undefined ? "" : '<span id="status" role="status" aria-live="polite"></span>'}
@@ -82,6 +90,7 @@ function buildSiteBar() {
       </button>
     </div>
     <div id="site-menu" class="site-menu" hidden>
+      <nav class="menu-games" aria-label="Games" hidden></nav>
       <nav class="menu-links" aria-label="Site">${links()}</nav>
       <div class="menu-section">
         <p class="menu-who" data-signed-in hidden><strong class="account-name"></strong><span class="muted account-role"></span></p>
@@ -90,10 +99,33 @@ function buildSiteBar() {
         <button class="menu-row" type="button" data-logout data-signed-in hidden>Log out</button>
       </div>
     </div>`;
-  bar.querySelector("#game-picker").hidden = GAMES.length < 2;
+  setupPopover(bar.querySelector("#game-picker"), bar.querySelector("#game-popover"));
   setupPopover(bar.querySelector("#account-button"), bar.querySelector("#account-popover"));
   setupPopover(bar.querySelector("#menu-button"), bar.querySelector("#site-menu"));
   for (const button of bar.querySelectorAll("[data-logout]")) button.addEventListener("click", logOut);
+  loadGames(bar);
+}
+
+/**
+ * The game picker: each game's page of the same kind (its tracker or battles; the tracker
+ * from pages that aren't a game's), with this page's game marked. Only with two or more games.
+ */
+async function loadGames(bar) {
+  const { ok, data } = await apiCall("GET", "/games").catch(() => ({}));
+  if (!ok) return;
+  GAME.name = data.games.find((game) => game.slug === GAME.slug)?.name ?? "";
+  if (data.games.length < 2) return;
+  const page = bar.dataset.current === "battles" ? "battles" : "tracker";
+  const gameLink = (game, className) => {
+    const link = Object.assign(document.createElement("a"), { className, href: gamePath(page, game.slug), textContent: game.name });
+    if (game.slug === GAME.slug) link.setAttribute("aria-current", "true");
+    return link;
+  };
+  bar.querySelector(".game-name").textContent = GAME.name || "Games";
+  bar.querySelector("#game-popover").replaceChildren(...data.games.map((game) => gameLink(game, "")));
+  bar.querySelector(".menu-games").replaceChildren(...data.games.map((game) => gameLink(game, "site-link")));
+  bar.querySelector(".game-menu").hidden = false;
+  bar.querySelector(".menu-games").hidden = false;
 }
 
 /** A button that opens and closes a menu; outside clicks and Escape close it. */
@@ -176,8 +208,8 @@ async function landingPage() {
 function loginPage() {
   const params = new URLSearchParams(location.search);
   // Only ever send people on to this site's own pages.
-  const pages = [...GAMES.flatMap((game) => [`/${game.slug}/tracker`, `/${game.slug}/battles`]), "/account", "/admin"];
-  const next = pages.includes(params.get("next")) ? params.get("next") : gamePath("tracker");
+  const asked = params.get("next") ?? "";
+  const next = ["/account", "/admin"].includes(asked) || GAME_PAGE.test(asked) ? asked : gamePath("tracker");
   const forms = { login: document.querySelector("#login-form"), signup: document.querySelector("#signup-form") };
 
   const showMode = (mode) => {

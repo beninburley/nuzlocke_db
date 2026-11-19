@@ -79,7 +79,7 @@ def get_attempt(conn, attempt_id):
 
 # API endpoints anyone may call. Every other /api/ endpoint needs a login, and
 # only ever sees the logged-in user's own data.
-PUBLIC_API = {"signup", "login", "logout", "me"}
+PUBLIC_API = {"signup", "login", "logout", "me", "games"}
 
 
 def current_user():
@@ -247,33 +247,30 @@ def landing():
     return app.send_static_file("landing.html")
 
 
-# Games on the site, by the slug their pages carry in the URL (/<game>/tracker). The
-# game data itself is still Run & Bun's alone; /api/game takes the slug once there are more.
-GAMES = {"run-and-bun": "Run & Bun"}
-DEFAULT_GAME = "run-and-bun"
-
-
-def known_game(game):
-    if game not in GAMES:
+def page_game(slug):
+    """The game a page's URL names (/<slug>/...), or a 404 page."""
+    game = db.game_by_slug(get_db(), slug)
+    if game is None:
         abort(404)
+    return game
 
 
 @app.get("/login")
 def login_page():
     if current_user() is not None:
-        return redirect(f"/{DEFAULT_GAME}/tracker")
+        return redirect(f"/{db.DEFAULT_GAME}/tracker")
     return app.send_static_file("login.html")
 
 
 @app.get("/app")
 def old_tracker_page():
     """The tracker's old address."""
-    return redirect(f"/{DEFAULT_GAME}/tracker", 301)
+    return redirect(f"/{db.DEFAULT_GAME}/tracker", 301)
 
 
 @app.get("/<game>/tracker")
 def tracker_page(game):
-    known_game(game)
+    page_game(game)
     if current_user() is None:
         return redirect(f"/login?next=/{game}/tracker")
     return app.send_static_file("index.html")
@@ -283,8 +280,9 @@ def tracker_page(game):
 @app.get("/<game>/battles/<int:battle_id>")
 def battles_page(game, battle_id=None):
     """Public: battle search, and a battle's guide page. Placeholders for now."""
-    known_game(game)
-    if battle_id is not None and get_db().execute("SELECT 1 FROM battles WHERE id = ?", (battle_id,)).fetchone() is None:
+    game_id = page_game(game)["id"]
+    if battle_id is not None and get_db().execute(
+            "SELECT 1 FROM battles WHERE id = ? AND game_id = ?", (battle_id, game_id)).fetchone() is None:
         abort(404)
     return app.send_static_file("battles.html")
 
@@ -316,19 +314,40 @@ def design_system_font(name):
 # Game data (read-only)
 # ---------------------------------------------------------------------------
 
+@app.get("/api/games")
+def games():
+    """Every game on the site, [{slug, name}], in name order. Public: the site bar's game picker."""
+    return jsonify(games=[dict(g) for g in get_db().execute("SELECT slug, name FROM games ORDER BY name")])
+
+
+def request_game(conn):
+    """The game an API request is about: ?game=<slug>, else the first game."""
+    game = db.game_by_slug(conn, request.args.get("game", db.DEFAULT_GAME))
+    if game is None:
+        raise ApiError("game not found", 404)
+    return game
+
+
+def game_row(conn, game_id):
+    return conn.execute("SELECT * FROM games WHERE id = ?", (game_id,)).fetchone()
+
+
 @app.get("/api/game")
-def game():
+def game_data():
+    """One game's data (?game=<slug>): routes and their encounters, battles, families, and
+    the shared sprites, evolutionary lines and autocomplete names."""
     conn = get_db()
-    routing = db.routing(conn)
+    game = request_game(conn)
+    routing = db.routing(conn, game)
     routes = [dict(r, options=[], unlock=routing[r["name"]]["unlock"], area=routing[r["name"]]["area"])
-              for r in conn.execute("SELECT id, name FROM routes ORDER BY position")]
+              for r in conn.execute("SELECT id, name FROM routes WHERE game_id = ? ORDER BY position", (game["id"],))]
     by_id = {r["id"]: r for r in routes}
     # Collapse duplicate encounter slots into one option per (method, pokemon).
     for row in conn.execute(
         "SELECT route_id, method, pokemon, SUM(rate) AS rate, "
         "       GROUP_CONCAT(DISTINCT level) AS levels "
-        "FROM route_encounters GROUP BY route_id, method, pokemon "
-        "ORDER BY route_id, MIN(position)"
+        "FROM route_encounters WHERE route_id IN (SELECT id FROM routes WHERE game_id = ?) "
+        "GROUP BY route_id, method, pokemon ORDER BY route_id, MIN(position)", (game["id"],)
     ):
         by_id[row["route_id"]]["options"].append({
             "method": row["method"],
@@ -337,27 +356,33 @@ def game():
             "levels": row["levels"],
         })
     battles = [dict(b, tags=[]) for b in conn.execute(
-        "SELECT id, name, location, level_cap, group_id, split FROM battles ORDER BY position")]
+        "SELECT id, name, location, level_cap, group_id, split FROM battles WHERE game_id = ? ORDER BY position",
+        (game["id"],))]
     by_battle = {b["id"]: b for b in battles}
-    for trainer in conn.execute("SELECT battle_id, tags FROM trainers ORDER BY position"):
+    for trainer in conn.execute(
+            "SELECT t.battle_id, t.tags FROM trainers t JOIN battles b ON b.id = t.battle_id "
+            "WHERE b.game_id = ? ORDER BY t.position", (game["id"],)):
         tags = by_battle[trainer["battle_id"]]["tags"]
         tags.extend(t for t in trainer["tags"].split(",") if t and t not in tags)
     sprites = {r["species"]: r["url"] for r in conn.execute("SELECT species, url FROM species_sprites")}
     evolutions = evolution_lines(conn)
-    families = species_families(conn)
+    families = species_families(conn, game["id"])
     # Autocomplete for Pokemon details: every move, ability and held item
-    # (PokeAPI), plus the names Run & Bun's own trainers use (some spelled
+    # (PokeAPI), plus the names this game's own trainers use (some spelled
     # the sheet's way).
-    distinct = lambda sql: [r[0] for r in conn.execute(sql)]  # noqa: E731
+    team = ("trainer_pokemon WHERE trainer_id IN (SELECT t.id FROM trainers t "
+            "JOIN battles b ON b.id = t.battle_id WHERE b.game_id = ?) AND")
+    distinct = lambda sql, n=1: [r[0] for r in conn.execute(sql, (game["id"],) * n)]  # noqa: E731
     dex = db.pokedex_names()
     suggestions = {
-        "abilities": distinct("SELECT DISTINCT ability FROM trainer_pokemon WHERE ability IS NOT NULL"),
-        "items": distinct("SELECT DISTINCT item FROM trainer_pokemon WHERE item IS NOT NULL"),
+        "abilities": distinct(f"SELECT DISTINCT ability FROM {team} ability IS NOT NULL"),
+        "items": distinct(f"SELECT DISTINCT item FROM {team} item IS NOT NULL"),
         "moves": distinct(" UNION ".join(
-            f"SELECT move{i} FROM trainer_pokemon WHERE move{i} IS NOT NULL" for i in range(1, 5))),
+            f"SELECT move{i} FROM {team} move{i} IS NOT NULL" for i in range(1, 5)), 4),
     }
     suggestions = {key: sorted(set(names) | set(dex[key]), key=str.lower) for key, names in suggestions.items()}
-    return jsonify(routes=routes, battles=battles, sprites=sprites, evolutions=evolutions, families=families,
+    return jsonify(game=dict(game), routes=routes, battles=battles, sprites=sprites, evolutions=evolutions,
+                   families=families,
                    suggestions=suggestions, natures=db.NATURES, statuses=db.STATUSES, iv_stats=db.IV_STATS)
 
 
@@ -366,9 +391,10 @@ def evolution_lines(conn):
     return {r["species"]: json.loads(r["members"]) for r in conn.execute("SELECT species, members FROM evolution_lines")}
 
 
-def species_families(conn):
-    """species -> dupes-clause family id (evolution lines plus regional forms, from the sheet)."""
-    return {r["species"]: r["family_id"] for r in conn.execute("SELECT species, family_id FROM species_families")}
+def species_families(conn, game_id):
+    """species -> dupes-clause family id (evolution lines plus regional forms, from the game's data)."""
+    return {r["species"]: r["family_id"] for r in conn.execute(
+        "SELECT species, family_id FROM species_families WHERE game_id = ?", (game_id,))}
 
 
 @app.get("/api/battles/<int:battle_id>")
@@ -376,7 +402,7 @@ def battle_detail(battle_id):
     """A battle's trainers and their full teams (item, ability, nature, moves)."""
     conn = get_db()
     battle = conn.execute(
-        "SELECT id, name, location, level_cap, group_id, split FROM battles WHERE id = ?",
+        "SELECT id, game_id, name, location, level_cap, group_id, split FROM battles WHERE id = ?",
         (battle_id,)).fetchone()
     if battle is None:
         raise ApiError("battle not found", 404)
@@ -402,7 +428,7 @@ def battle_detail(battle_id):
         for t in trainers:
             edit = conn.execute(
                 "SELECT e.edited_at, u.username FROM trainer_edits e LEFT JOIN users u ON u.id = e.edited_by "
-                "WHERE e.trainer_key = ?", (t["key"],)).fetchone()
+                "WHERE e.game_id = ? AND e.trainer_key = ?", (battle["game_id"], t["key"])).fetchone()
             t["edited"] = {"at": edit["edited_at"], "by": edit["username"]} if edit else None
     return jsonify(battle=dict(battle), trainers=trainers)
 
@@ -436,8 +462,10 @@ def admin_set_role(target_id):
                    | {"id": target_id})
 
 
-def trainer_by_key(conn, key):
-    trainer = isinstance(key, str) and conn.execute("SELECT * FROM trainers WHERE key = ?", (key,)).fetchone()
+def trainer_by_key(conn, game, key):
+    trainer = isinstance(key, str) and conn.execute(
+        "SELECT t.* FROM trainers t JOIN battles b ON b.id = t.battle_id WHERE b.game_id = ? AND t.key = ?",
+        (game["id"], key)).fetchone()
     if not trainer:
         raise ApiError("trainer not found", 404)
     return trainer
@@ -460,36 +488,41 @@ def parse_enemy(conn, mon, slot):
 
 @app.put("/api/admin/trainer-team")
 def admin_set_trainer_team():
-    """Correct a trainer's team: {"trainer": key, "pokemon": [1-6 {species, level, item, ability, nature, moves}]}.
+    """Correct a trainer's team (in ?game=<slug>): {"trainer": key, "pokemon": [1-6 {species, level, item,
+    ability, nature, moves}]}.
 
     Saved as an edit that's applied again whenever game data reloads.
     """
     conn = get_db()
+    game = request_game(conn)
     data = body()
-    trainer = trainer_by_key(conn, data.get("trainer"))
+    trainer = trainer_by_key(conn, game, data.get("trainer"))
     team = data.get("pokemon")
     if not isinstance(team, list) or not 1 <= len(team) <= TEAM_SIZE:
         raise ApiError(f"a team has 1 to {TEAM_SIZE} Pokémon")
     team = [parse_enemy(conn, mon, slot) for slot, mon in enumerate(team, start=1)]
     with conn:
         conn.execute(
-            "INSERT INTO trainer_edits (trainer_key, pokemon, edited_by, edited_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP) "
-            "ON CONFLICT (trainer_key) DO UPDATE SET pokemon = excluded.pokemon, edited_by = excluded.edited_by, "
-            "edited_at = excluded.edited_at", (trainer["key"], json.dumps(team), user_id()))
+            "INSERT INTO trainer_edits (game_id, trainer_key, pokemon, edited_by, edited_at) "
+            "VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP) "
+            "ON CONFLICT (game_id, trainer_key) DO UPDATE SET pokemon = excluded.pokemon, "
+            "edited_by = excluded.edited_by, edited_at = excluded.edited_at",
+            (game["id"], trainer["key"], json.dumps(team), user_id()))
         db.set_trainer_team(conn, trainer["id"], team)
     return jsonify(ok=True)
 
 
 @app.post("/api/admin/trainer-team/revert")
 def admin_revert_trainer_team():
-    """Undo the corrections to a trainer's team: back to the spreadsheet's. {"trainer": key}"""
+    """Undo the corrections to a trainer's team (in ?game=<slug>): back to the spreadsheet's. {"trainer": key}"""
     conn = get_db()
-    trainer = trainer_by_key(conn, body().get("trainer"))
-    original = db.original_trainer_team(trainer["key"])
+    game = request_game(conn)
+    trainer = trainer_by_key(conn, game, body().get("trainer"))
+    original = db.original_trainer_team(game, trainer["key"])
     if original is None:
         raise ApiError("this trainer isn't in the game data any more", 409)
     with conn:
-        conn.execute("DELETE FROM trainer_edits WHERE trainer_key = ?", (trainer["key"],))
+        conn.execute("DELETE FROM trainer_edits WHERE game_id = ? AND trainer_key = ?", (game["id"], trainer["key"]))
         db.set_trainer_team(conn, trainer["id"], original)
     return jsonify(ok=True)
 
@@ -501,13 +534,16 @@ def routing_json(route_id, name, info):
 
 @app.get("/api/admin/routing")
 def admin_routing():
-    """Every route with when it opens up (and its default from data/routing.json), and the splits in order."""
+    """Every route of ?game=<slug> with when it opens up (and its default from the game's routing.json),
+    and the splits in order."""
     conn = get_db()
-    routing = db.routing(conn)
+    game = request_game(conn)
+    routing = db.routing(conn, game)
     routes = [routing_json(r["id"], r["name"], routing[r["name"]])
-              for r in conn.execute("SELECT id, name FROM routes ORDER BY position")]
+              for r in conn.execute("SELECT id, name FROM routes WHERE game_id = ? ORDER BY position", (game["id"],))]
     splits = [dict(s) for s in conn.execute(
-        "SELECT split AS name, level_cap FROM battles WHERE split IS NOT NULL ORDER BY position")]
+        "SELECT split AS name, level_cap FROM battles WHERE game_id = ? AND split IS NOT NULL ORDER BY position",
+        (game["id"],))]
     return jsonify(routes=routes, splits=splits)
 
 
@@ -515,18 +551,20 @@ def admin_routing():
 def admin_set_route_unlock(route_id):
     """When a route opens up: {"unlock": a split's name, or null for from the start}.
 
-    Choosing the route's default (data/routing.json) removes the change.
+    Choosing the route's default (the game's routing.json) removes the change.
     """
     conn = get_db()
-    route = conn.execute("SELECT id, name FROM routes WHERE id = ?", (route_id,)).fetchone()
+    route = conn.execute("SELECT id, game_id, name FROM routes WHERE id = ?", (route_id,)).fetchone()
     if route is None:
         raise ApiError("route not found", 404)
+    game = game_row(conn, route["game_id"])
     data = body()
     unlock = data.get("unlock")
-    splits = {r[0] for r in conn.execute("SELECT split FROM battles WHERE split IS NOT NULL")}
+    splits = {r[0] for r in conn.execute(
+        "SELECT split FROM battles WHERE game_id = ? AND split IS NOT NULL", (game["id"],))}
     if set(data) != {"unlock"} or not (unlock is None or unlock in splits):
         raise ApiError("unlock must be a split's name, or null for from the start")
-    default = db.routing_defaults(conn)[route["name"]]["unlock"]
+    default = db.routing_defaults(conn, game)[route["name"]]["unlock"]
     with conn:
         if unlock == default:
             conn.execute("DELETE FROM routing_edits WHERE route_id = ?", (route_id,))
@@ -535,7 +573,7 @@ def admin_set_route_unlock(route_id):
                 "INSERT INTO routing_edits (route_id, unlock, edited_by, edited_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP) "
                 "ON CONFLICT (route_id) DO UPDATE SET unlock = excluded.unlock, edited_by = excluded.edited_by, "
                 "edited_at = excluded.edited_at", (route_id, unlock, user_id()))
-    return jsonify(route=routing_json(route["id"], route["name"], db.routing(conn)[route["name"]]))
+    return jsonify(route=routing_json(route["id"], route["name"], db.routing(conn, game)[route["name"]]))
 
 
 RESULT_ORDER = {"won": 0, None: 1, "lost": 2}
@@ -589,29 +627,31 @@ def battle_solutions(battle_id):
 
 @app.get("/api/attempts")
 def list_attempts():
-    """The user's attempts, newest first, each with the split it's on (see current_split)."""
+    """The user's attempts at ?game=<slug>, newest first, each with the split it's on (see current_split)."""
     conn = get_db()
+    game = request_game(conn)
     rows = conn.execute(
         "SELECT a.id, a.number, a.notes, a.created_at, "
         "       (SELECT COUNT(*) FROM catches c WHERE c.attempt_id = a.id) AS catch_count "
-        "FROM attempts a WHERE a.user_id = ? ORDER BY a.number DESC", (user_id(),)
+        "FROM attempts a WHERE a.user_id = ? AND a.game_id = ? ORDER BY a.number DESC", (user_id(), game["id"])
     ).fetchall()
-    splits = attempt_splits(conn, user_id())
+    splits = attempt_splits(conn, user_id(), game["id"])
     return jsonify(attempts=[dict(r, **splits[r["id"]]) for r in rows])
 
 
-def attempt_splits(conn, uid):
-    """{attempt id: current_split(...)} for every attempt of the user."""
+def attempt_splits(conn, uid, game_id):
+    """{attempt id: current_split(...)} for every attempt of the user at the game."""
     results = {}  # attempt id -> {battle id: result}
     for f in conn.execute("SELECT f.attempt_id, f.battle_id, f.result FROM fights f "
-                          "JOIN attempts a ON a.id = f.attempt_id WHERE a.user_id = ? AND f.result IS NOT NULL",
-                          (uid,)):
+                          "JOIN attempts a ON a.id = f.attempt_id "
+                          "WHERE a.user_id = ? AND a.game_id = ? AND f.result IS NOT NULL", (uid, game_id)):
         results.setdefault(f["attempt_id"], {})[f["battle_id"]] = f["result"]
     bosses = conn.execute(
         "SELECT b.id, COALESCE(b.split, g.split) AS split FROM battles b "
-        "LEFT JOIN battles g ON g.id = b.group_id WHERE b.level_cap IS NOT NULL ORDER BY b.position").fetchall()
+        "LEFT JOIN battles g ON g.id = b.group_id WHERE b.game_id = ? AND b.level_cap IS NOT NULL "
+        "ORDER BY b.position", (game_id,)).fetchall()
     return {a["id"]: current_split(bosses, results.get(a["id"], {}))
-            for a in conn.execute("SELECT id FROM attempts WHERE user_id = ?", (uid,))}
+            for a in conn.execute("SELECT id FROM attempts WHERE user_id = ? AND game_id = ?", (uid, game_id))}
 
 
 def current_split(bosses, results):
@@ -626,7 +666,7 @@ def current_split(bosses, results):
 
 @app.get("/api/stats")
 def stats():
-    """Run history and stats across the user's attempts, for the Stats tab.
+    """Run history and stats across the user's attempts at ?game=<slug>, for the Stats tab.
 
     {"splits": [{name, level_cap}] in game order,
      "attempts": newest first, [{id, number, created_at, split, split_lost, bosses_beaten,
@@ -641,10 +681,12 @@ def stats():
     """
     conn = get_db()
     uid = user_id()
+    game_id = request_game(conn)["id"]
     splits = [dict(s) for s in conn.execute(
-        "SELECT split AS name, level_cap FROM battles WHERE split IS NOT NULL ORDER BY position")]
+        "SELECT split AS name, level_cap FROM battles WHERE game_id = ? AND split IS NOT NULL ORDER BY position",
+        (game_id,))]
     order = {s["name"]: i for i, s in enumerate(splits)}
-    progress = attempt_splits(conn, uid)
+    progress = attempt_splits(conn, uid, game_id)
     attempts = []
     for a in conn.execute(
         "SELECT a.id, a.number, a.created_at, "
@@ -652,7 +694,7 @@ def stats():
         "  (SELECT COUNT(*) FROM fights f WHERE f.attempt_id = a.id AND f.result = 'won') AS battles_won, "
         "  (SELECT COUNT(*) FROM fight_kos k JOIN fights f ON f.id = k.fight_id "
         "     WHERE f.attempt_id = a.id AND k.ko_by = 'enemy') AS deaths "
-        "FROM attempts a WHERE a.user_id = ? ORDER BY a.number DESC", (uid,)
+        "FROM attempts a WHERE a.user_id = ? AND a.game_id = ? ORDER BY a.number DESC", (uid, game_id)
     ):
         split = progress[a["id"]]
         beaten = order.get(split["split"], len(splits)) if split["split"] else len(splits)
@@ -669,7 +711,7 @@ def stats():
         "SELECT COALESCE(b.split, g.split) AS split, COUNT(*) AS deaths FROM fight_kos k "
         "JOIN fights f ON f.id = k.fight_id JOIN attempts a ON a.id = f.attempt_id "
         "JOIN battles b ON b.id = f.battle_id LEFT JOIN battles g ON g.id = b.group_id "
-        "WHERE a.user_id = ? AND k.ko_by = 'enemy' GROUP BY 1", (uid,)
+        "WHERE a.user_id = ? AND a.game_id = ? AND k.ko_by = 'enemy' GROUP BY 1", (uid, game_id)
     ):
         deaths[row["split"]] = row["deaths"]
     deaths_by_split = []
@@ -680,7 +722,7 @@ def stats():
 
     caught = [r[0] for r in conn.execute(
         "SELECT DISTINCT c.species FROM catches c JOIN attempts a ON a.id = c.attempt_id "
-        "WHERE a.user_id = ? ORDER BY c.species", (uid,))]
+        "WHERE a.user_id = ? AND a.game_id = ? ORDER BY c.species", (uid, game_id))]
 
     return jsonify(
         splits=splits,
@@ -692,10 +734,10 @@ def stats():
     )
 
 
-def related_species(conn, species):
+def related_species(conn, game_id, species):
     """`species` and everything the dupes clause counts with it: its evolutionary line and
-    its dupes-clause family (as sameFamily() in app.js)."""
-    lines, families = evolution_lines(conn), species_families(conn)
+    its dupes-clause family in the game (as sameFamily() in app.js)."""
+    lines, families = evolution_lines(conn), species_families(conn, game_id)
     family = families.get(species)
     names = {species, *lines.get(species, ())}
     names |= {s for s, f in families.items() if family is not None and f == family}
@@ -719,7 +761,7 @@ def enemy_species(conn, battle_id, trainer_key, enemy_slot):
 
 @app.get("/api/stats/pokemon")
 def pokemon_stats():
-    """One Pokémon's record across the user's attempts, for the Stats tab. It counts the
+    """One Pokémon's record across the user's attempts at ?game=<slug>, for the Stats tab. It counts the
     whole evolutionary line and dupes-clause family, as the dupes clause does.
 
     ?species=<name> ->
@@ -733,12 +775,13 @@ def pokemon_stats():
     """
     conn = get_db()
     uid = user_id()
+    game_id = request_game(conn)["id"]
     name = request.args.get("species", "").strip()
     if not name or len(name) > 100:
         raise ApiError("species is required")
-    known = {**species_families(conn), **evolution_lines(conn)}
+    known = {**species_families(conn, game_id), **evolution_lines(conn)}
     species = next((s for s in known if s.lower() == name.lower()), name)
-    line = related_species(conn, species)
+    line = related_species(conn, game_id, species)
     marks = ",".join("?" * len(line))
     catches = [dict(c) for c in conn.execute(
         "SELECT c.id, a.number, r.name AS route, c.pokemon, c.species, c.status, "
@@ -748,8 +791,8 @@ def pokemon_stats():
         "  (SELECT COUNT(*) FROM fight_kos k JOIN fight_members m ON m.id = k.member_id "
         "     WHERE m.catch_id = c.id AND k.ko_by = 'player') AS kos "
         "FROM catches c JOIN attempts a ON a.id = c.attempt_id JOIN routes r ON r.id = c.route_id "
-        f"WHERE a.user_id = ? AND (c.species IN ({marks}) OR c.pokemon IN ({marks})) "
-        "ORDER BY a.number DESC, r.position", (uid, *line, *line))]
+        f"WHERE a.user_id = ? AND a.game_id = ? AND (c.species IN ({marks}) OR c.pokemon IN ({marks})) "
+        "ORDER BY a.number DESC, r.position", (uid, game_id, *line, *line))]
 
     ids = [c["id"] for c in catches]
     deaths, best = {}, None
@@ -775,7 +818,8 @@ def pokemon_stats():
     return jsonify(
         species=species,
         line=sorted(line),
-        attempts_total=conn.execute("SELECT COUNT(*) FROM attempts WHERE user_id = ?", (uid,)).fetchone()[0],
+        attempts_total=conn.execute("SELECT COUNT(*) FROM attempts WHERE user_id = ? AND game_id = ?",
+                                    (uid, game_id)).fetchone()[0],
         catches=catches,
         best=best,
     )
@@ -794,15 +838,17 @@ def parse_number(value):
 @app.post("/api/attempts")
 def create_attempt():
     conn = get_db()
+    game_id = request_game(conn)["id"]  # ?game=<slug>
     data = request.get_json(silent=True) or {}
     number = data.get("number")
     if number is None:
-        number = conn.execute("SELECT COALESCE(MAX(number), 0) + 1 FROM attempts WHERE user_id = ?",
-                              (user_id(),)).fetchone()[0]
+        number = conn.execute("SELECT COALESCE(MAX(number), 0) + 1 FROM attempts WHERE user_id = ? AND game_id = ?",
+                              (user_id(), game_id)).fetchone()[0]
     number = parse_number(number)
     try:
         with conn:
-            cur = conn.execute("INSERT INTO attempts (user_id, number) VALUES (?, ?)", (user_id(), number))
+            cur = conn.execute("INSERT INTO attempts (user_id, game_id, number) VALUES (?, ?, ?)",
+                               (user_id(), game_id, number))
     except sqlite3.IntegrityError:
         raise ApiError(f"attempt {number} already exists", 409)
     return jsonify(attempt=attempt_json(get_attempt(conn, cur.lastrowid))), 201
@@ -961,8 +1007,9 @@ def get_attempt_detail(attempt_id):
 @app.put("/api/attempts/<int:attempt_id>/catches/<int:route_id>")
 def set_catch(attempt_id, route_id):
     conn = get_db()
-    get_attempt(conn, attempt_id)
-    if conn.execute("SELECT 1 FROM routes WHERE id = ?", (route_id,)).fetchone() is None:
+    attempt = get_attempt(conn, attempt_id)
+    if conn.execute("SELECT 1 FROM routes WHERE id = ? AND game_id = ?",
+                    (route_id, attempt["game_id"])).fetchone() is None:
         raise ApiError("route not found", 404)
     pokemon = body().get("pokemon")
 
@@ -1017,7 +1064,7 @@ def run_box_script(attempt_id):
     at once) and the updated box Pokemon come back as "catches".
     """
     conn = get_db()
-    get_attempt(conn, attempt_id)
+    attempt = get_attempt(conn, attempt_id)
     data = body()
     script, apply = data.get("script"), data.get("apply", False)
     if not isinstance(script, str) or len(script) > box_script.MAX_SCRIPT:
@@ -1028,7 +1075,7 @@ def run_box_script(attempt_id):
     box = conn.execute(
         "SELECT c.*, r.name AS route FROM catches c JOIN routes r ON r.id = c.route_id "
         "WHERE c.attempt_id = ? ORDER BY r.position", (attempt_id,)).fetchall()
-    lines, families = evolution_lines(conn), species_families(conn)
+    lines, families = evolution_lines(conn), species_families(conn, attempt["game_id"])
     results, updates, taken = [], {}, {}
     for s in box_script.parse(script):
         result = {"line": s.line, "name": s.name, "ignored": s.ignored, "problem": s.problem, "changes": []}
@@ -1093,8 +1140,9 @@ def set_fight(attempt_id, battle_id):
     of box Pokemon n as it is now.
     """
     conn = get_db()
-    get_attempt(conn, attempt_id)
-    if conn.execute("SELECT 1 FROM battles WHERE id = ?", (battle_id,)).fetchone() is None:
+    attempt = get_attempt(conn, attempt_id)
+    if conn.execute("SELECT 1 FROM battles WHERE id = ? AND game_id = ?",
+                    (battle_id, attempt["game_id"])).fetchone() is None:
         raise ApiError("battle not found", 404)
     data = body()
 
@@ -1312,7 +1360,8 @@ def setup():
     conn = db.connect()
     try:
         db.init_db(conn)
-        db.routing_defaults(conn)  # a mistake in data/routing.json shows up here, not as a broken Encounters tab
+        for game in conn.execute("SELECT * FROM games"):  # a mistake in a routing.json shows up here,
+            db.routing_defaults(conn, game)                  # not as a broken Encounters tab
     finally:
         conn.close()
 

@@ -1,11 +1,22 @@
 -- ---------------------------------------------------------------------------
--- Game data: loaded from data/game_data.json, identical for every attempt.
+-- Game data: each game's is loaded from data/games/<slug>/ on every start
+-- (db.load_games), and is the same for every attempt at that game.
 -- ---------------------------------------------------------------------------
+
+-- The games on the site. Routes, battles, families and attempts each belong to one.
+CREATE TABLE IF NOT EXISTS games (
+    id         INTEGER PRIMARY KEY,
+    slug       TEXT    NOT NULL UNIQUE,  -- in its pages' URLs (/<slug>/tracker) and its data folder
+    name       TEXT    NOT NULL,
+    created_at TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
 
 CREATE TABLE IF NOT EXISTS routes (
     id       INTEGER PRIMARY KEY,
-    name     TEXT    NOT NULL UNIQUE,
-    position INTEGER NOT NULL
+    game_id  INTEGER NOT NULL REFERENCES games(id),
+    name     TEXT    NOT NULL,
+    position INTEGER NOT NULL,
+    UNIQUE (game_id, name)
 );
 
 -- One row per encounter slot on the Encounters tab. The Pokemon that may be
@@ -31,25 +42,27 @@ CREATE INDEX IF NOT EXISTS idx_route_encounters_route ON route_encounters(route_
 -- are listed under the last.
 CREATE TABLE IF NOT EXISTS battles (
     id        INTEGER PRIMARY KEY,
-    key       TEXT    NOT NULL UNIQUE,   -- stable identity when game data is re-synced
+    game_id   INTEGER NOT NULL REFERENCES games(id),
+    key       TEXT    NOT NULL,          -- stable identity (within the game) when game data is re-synced
     name      TEXT    NOT NULL,
     location  TEXT,
     level_cap INTEGER,                   -- set only on level-cap battles
     group_id  INTEGER REFERENCES battles(id) ON DELETE SET NULL,  -- NULL on the battle ending a split
     position  INTEGER NOT NULL,
-    split     TEXT                       -- name of the split this battle ends, else NULL
+    split     TEXT,                      -- name of the split this battle ends, else NULL
+    UNIQUE (game_id, key)
 );
 
 CREATE TABLE IF NOT EXISTS trainers (
     id        INTEGER PRIMARY KEY,
     battle_id INTEGER NOT NULL REFERENCES battles(id) ON DELETE CASCADE,
-    key       TEXT    NOT NULL UNIQUE,   -- sheet name + location
+    key       TEXT    NOT NULL,          -- sheet name + location: unique within the game
     name      TEXT    NOT NULL,
     location  TEXT,
     tags      TEXT    NOT NULL DEFAULT '',  -- comma-separated: Optional, Double, Tag Partner, ...
-    position  INTEGER NOT NULL
+    position  INTEGER NOT NULL,
+    UNIQUE (battle_id, key)
 );
-CREATE INDEX IF NOT EXISTS idx_trainers_battle ON trainers(battle_id);
 
 CREATE TABLE IF NOT EXISTS trainer_pokemon (
     trainer_id INTEGER NOT NULL REFERENCES trainers(id) ON DELETE CASCADE,
@@ -67,19 +80,21 @@ CREATE TABLE IF NOT EXISTS trainer_pokemon (
 );
 
 -- Admins' corrections to a trainer's team. Game data is reloaded from
--- data/game_data.json on every start, which replaces trainer_pokemon; these
--- edits are applied again after each reload, so they last. Keyed by the
--- trainer's stable key; `pokemon` is a JSON list of {species, level, item,
+-- the game's game_data.json on every start, which replaces trainer_pokemon; these
+-- edits are applied again after each reload, so they last. Keyed by the game and
+-- the trainer's stable key; `pokemon` is a JSON list of {species, level, item,
 -- ability, nature, moves}. Deleting the row reverts to the spreadsheet's team.
 CREATE TABLE IF NOT EXISTS trainer_edits (
-    trainer_key TEXT    PRIMARY KEY,
+    game_id     INTEGER NOT NULL REFERENCES games(id),
+    trainer_key TEXT    NOT NULL,
     pokemon     TEXT    NOT NULL,
     edited_by   INTEGER REFERENCES users(id) ON DELETE SET NULL,
-    edited_at   TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP
+    edited_at   TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (game_id, trainer_key)
 );
 
 -- Admins' changes to when a route opens up (logic routing). The defaults are
--- in data/routing.json; a row here replaces one route's. `unlock` is the split
+-- in the game's routing.json; a row here replaces one route's. `unlock` is the split
 -- whose boss opens the route, or NULL for open from the start. Deleting the
 -- row goes back to the default.
 CREATE TABLE IF NOT EXISTS routing_edits (
@@ -89,10 +104,12 @@ CREATE TABLE IF NOT EXISTS routing_edits (
     edited_at TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- Dupes-clause groups (evolution lines + regional forms).
+-- Dupes-clause groups (evolution lines + regional forms), per game.
 CREATE TABLE IF NOT EXISTS species_families (
-    species   TEXT    PRIMARY KEY,
-    family_id INTEGER NOT NULL
+    game_id   INTEGER NOT NULL REFERENCES games(id),
+    species   TEXT    NOT NULL,
+    family_id INTEGER NOT NULL,
+    PRIMARY KEY (game_id, species)
 );
 
 -- Sprite image per species, from pokeapi.co (data/sprites.json).
@@ -127,14 +144,16 @@ CREATE TABLE IF NOT EXISTS users (
     created_at    TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- Each attempt belongs to one account; numbers are unique per account.
+-- Each attempt belongs to one account and one game; numbers are unique per
+-- account and game.
 CREATE TABLE IF NOT EXISTS attempts (
     id         INTEGER PRIMARY KEY,
     user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    game_id    INTEGER NOT NULL REFERENCES games(id),
     number     INTEGER NOT NULL,
     notes      TEXT    NOT NULL DEFAULT '',  -- general notes; no longer shown (notes are per battle now)
     created_at TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE (user_id, number)
+    UNIQUE (user_id, game_id, number)
 );
 
 -- The attempt's box: what was caught on each route (at most one per route).
